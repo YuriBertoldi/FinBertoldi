@@ -1,0 +1,152 @@
+{{define "base"}}
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{.Title}} — FinBertoldi</title>
+  <script>
+    (function() {
+      var t = localStorage.getItem('theme') || 'dark';
+      document.documentElement.setAttribute('data-theme', t);
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.green.min.css">
+  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body class="has-sidebar">
+
+  <!-- Botão menu mobile -->
+  <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Abrir menu">
+    <span></span><span></span><span></span>
+  </button>
+
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+      <a href="/" class="brand-link">
+        <span class="brand-icon">💰</span>
+        <div class="brand-text">
+          <strong>FinBertoldi</strong>
+          <small>Controle financeiro</small>
+        </div>
+      </a>
+    </div>
+
+    <nav class="sidebar-nav">
+      <p class="nav-section-label">Menu</p>
+      <a href="/" class="nav-item {{if eq .Active "dashboard"}}active{{end}}">
+        <span class="nav-ico">📊</span>
+        <span class="nav-text">Dashboard</span>
+      </a>
+      <a href="/despesas" class="nav-item {{if eq .Active "despesas"}}active{{end}}">
+        <span class="nav-ico">💸</span>
+        <span class="nav-text">Despesas</span>
+      </a>
+      <a href="/receitas" class="nav-item {{if eq .Active "receitas"}}active{{end}}">
+        <span class="nav-ico">💵</span>
+        <span class="nav-text">Receitas</span>
+      </a>
+      <a href="/investimentos" class="nav-item {{if eq .Active "investimentos"}}active{{end}}">
+        <span class="nav-ico">📈</span>
+        <span class="nav-text">Investimentos</span>
+      </a>
+      <a href="/planejamento" class="nav-item {{if eq .Active "planejamento"}}active{{end}}">
+        <span class="nav-ico">🎯</span>
+        <span class="nav-text">Planejamento</span>
+      </a>
+
+      {{if and .CurrentUser .CurrentUser.Admin}}
+      <p class="nav-section-label">Administração</p>
+      <a href="/usuarios" class="nav-item {{if eq .Active "usuarios"}}active{{end}}">
+        <span class="nav-ico">👤</span>
+        <span class="nav-text">Usuários</span>
+      </a>
+      {{end}}
+    </nav>
+
+    <div class="sidebar-footer">
+      <button class="icon-btn theme-toggle" onclick="toggleTheme()" id="theme-btn" title="Alternar tema">🌙</button>
+      {{if .CurrentUser}}
+      <div class="user-chip">
+        <div class="user-avatar">{{slice .CurrentUser.Nome 0 1}}</div>
+        <div class="user-meta">
+          <span class="user-nome">{{.CurrentUser.Nome}}</span>
+          {{if .CurrentUser.Admin}}<span class="user-role">Admin</span>{{else}}<span class="user-role-user">Usuário</span>{{end}}
+        </div>
+        <form method="POST" action="/logout" style="display:inline;margin:0">
+          <button type="submit" class="icon-btn icon-btn-danger" title="Sair">↩</button>
+        </form>
+      </div>
+      {{end}}
+    </div>
+  </aside>
+
+  <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+
+  <main class="app-main">
+    <div class="app-container">
+      {{template "content" .}}
+    </div>
+  </main>
+
+  <script>
+    document.addEventListener('click', function(e) {
+      const btn = e.target.closest('[data-open-dialog]');
+      if (btn) {
+        const id = btn.getAttribute('data-open-dialog');
+        document.getElementById(id)?.showModal();
+      }
+      const close = e.target.closest('[data-close-dialog]');
+      if (close) {
+        close.closest('dialog')?.close();
+      }
+    });
+
+    function toggleTheme() {
+      const html = document.documentElement;
+      const next = html.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      html.setAttribute('data-theme', next);
+      localStorage.setItem('theme', next);
+      document.getElementById('theme-btn').textContent = next === 'dark' ? '🌙' : '☀️';
+    }
+
+    (function() {
+      var t = localStorage.getItem('theme') || 'dark';
+      var btn = document.getElementById('theme-btn');
+      if (btn) btn.textContent = t === 'dark' ? '🌙' : '☀️';
+    })();
+
+    // Sidebar mobile
+    const sidebar = document.getElementById('sidebar');
+    const backdrop = document.getElementById('sidebar-backdrop');
+    const toggle = document.getElementById('sidebar-toggle');
+    function openSidebar() { sidebar.classList.add('open'); backdrop.classList.add('show'); }
+    function closeSidebar() { sidebar.classList.remove('open'); backdrop.classList.remove('show'); }
+    toggle?.addEventListener('click', openSidebar);
+    backdrop?.addEventListener('click', closeSidebar);
+  </script>
+</body>
+</html>
+{{end}}
+
+{{define "toggle-btn"}}
+<button
+  hx-post="/api/despesas/{{.ID}}/toggle-pago?mes={{.Mes}}"
+  hx-target="this"
+  hx-swap="outerHTML"
+  class="btn-toggle {{if .Pago}}pago{{end}}"
+>{{if .Pago}}✓ Pago{{else}}Pagar{{end}}</button>
+{{end}}
+
+{{define "emprestimo-toggle-btn"}}
+<button
+  hx-post="/api/emprestimos/{{.ID}}/toggle-pago"
+  hx-target="this"
+  hx-swap="outerHTML"
+  class="btn-toggle {{if .Pago}}pago{{end}}"
+>{{if .Pago}}✓ Quitado{{else}}Quitar{{end}}</button>
+{{end}}

@@ -1,0 +1,520 @@
+{{define "content"}}
+<div class="page-header">
+  <h2>🎯 Planejamento Financeiro</h2>
+</div>
+
+<p class="hint">💡 Calculadoras e projeções baseadas nos seus dados reais. Use para se planejar a curto e longo prazo. Valores em <strong>termos reais</strong> (já descontada inflação) seguem práticas do movimento FIRE adaptado ao Brasil.</p>
+
+<!-- ====== VISÃO GERAL ====== -->
+<div class="summary-grid">
+  <article class="sum-card card-receita">
+    <div class="sum-icon">💵</div>
+    <div>
+      <p class="card-label">Receita mensal</p>
+      <p class="card-value">{{brl .ReceitaMensal}}</p>
+    </div>
+  </article>
+  <article class="sum-card card-despesa">
+    <div class="sum-icon">💸</div>
+    <div>
+      <p class="card-label">Despesa mensal</p>
+      <p class="card-value">{{brl .DespesaMensal}}</p>
+    </div>
+  </article>
+  <article class="sum-card {{if neg .SobraMensal}}card-negativo{{else}}card-sobra{{end}}">
+    <div class="sum-icon">{{if neg .SobraMensal}}⚠️{{else}}💰{{end}}</div>
+    <div>
+      <p class="card-label">Sobra mensal</p>
+      <p class="card-value">{{brl .SobraMensal}}</p>
+    </div>
+  </article>
+  <article class="sum-card card-investido">
+    <div class="sum-icon">🏦</div>
+    <div>
+      <p class="card-label">Patrimônio atual</p>
+      <p class="card-value">{{brl .PatrimonioAtual}}</p>
+    </div>
+  </article>
+</div>
+
+<!-- ====== SAÚDE FINANCEIRA ====== -->
+<section class="dash-section">
+  <h3 class="section-title">🩺 Saúde Financeira</h3>
+  <div class="health-grid">
+    <div class="health-card">
+      <div class="health-meta">
+        <span class="health-label">Taxa de Poupança</span>
+        <span class="health-value" id="hp-taxa">{{.TaxaPoupanca}}%</span>
+      </div>
+      <div class="health-bar"><div class="health-bar-fill" id="hp-taxa-bar"></div></div>
+      <p class="health-tip" id="hp-taxa-tip"></p>
+    </div>
+
+    <div class="health-card">
+      <div class="health-meta">
+        <span class="health-label">Reserva de Emergência</span>
+        <span class="health-value" id="hp-reserva">—</span>
+      </div>
+      <div class="health-bar"><div class="health-bar-fill" id="hp-reserva-bar"></div></div>
+      <p class="health-tip">
+        Ideal: <strong>{{brl .ReservaIdeal6m}}</strong> (6 meses) a <strong>{{brl .ReservaIdeal12m}}</strong> (12 meses).<br>
+        Atual: <strong>{{brl .ReservaAtual}}</strong>
+      </p>
+    </div>
+
+    <div class="health-card">
+      <div class="health-meta">
+        <span class="health-label">Score Geral</span>
+        <span class="health-value" id="hp-score">—</span>
+      </div>
+      <div class="health-bar"><div class="health-bar-fill" id="hp-score-bar"></div></div>
+      <p class="health-tip" id="hp-score-tip"></p>
+    </div>
+  </div>
+</section>
+
+<!-- ====== INDEPENDÊNCIA FINANCEIRA (FIRE) ====== -->
+<section class="dash-section">
+  <h3 class="section-title">🔥 Independência Financeira (FIRE)</h3>
+  <p class="hint" style="margin-bottom:1rem">Quanto você precisa acumular para viver dos rendimentos. Baseado na <strong>regra dos 25x</strong> (retirar 4% ao ano), ajustada para o Brasil.</p>
+
+  <div class="fire-grid">
+    <div class="fire-card" style="border-left-color: var(--color-receita)">
+      <p class="fire-label">🛡️ Conservador (3% a.a.)</p>
+      <p class="fire-value">{{brl .FireConservador}}</p>
+      <small class="muted">33,3× despesa anual</small>
+    </div>
+    <div class="fire-card" style="border-left-color: var(--color-sobra)">
+      <p class="fire-label">⚖️ Moderado (3,5% a.a.)</p>
+      <p class="fire-value">{{brl .FireModerado}}</p>
+      <small class="muted">28,5× despesa anual</small>
+    </div>
+    <div class="fire-card" style="border-left-color: var(--color-investido)">
+      <p class="fire-label">🚀 Agressivo (4% a.a.)</p>
+      <p class="fire-value">{{brl .FireAgressivo}}</p>
+      <small class="muted">25× despesa anual</small>
+    </div>
+  </div>
+
+  <div class="fire-eta">
+    <p>
+      Com aporte mensal de <strong id="fire-aporte-display">{{brl .SobraMensal}}</strong>
+      e rendimento real de <strong id="fire-taxa-display">5%</strong> ao ano,
+      você atingiria a meta <strong>moderada</strong> em
+      <span class="fire-eta-anos" id="fire-eta-anos">—</span>.
+    </p>
+    <div class="fire-controls">
+      <label>
+        Aporte mensal (R$)
+        <input type="number" id="fire-aporte" value="{{.SobraMensal}}" step="100">
+      </label>
+      <label>
+        Taxa real (% a.a.)
+        <input type="number" id="fire-taxa" value="5" step="0.5" min="0" max="20">
+      </label>
+    </div>
+  </div>
+</section>
+
+<!-- ====== CALCULADORA DE PROJEÇÃO ====== -->
+<section class="dash-section">
+  <h3 class="section-title">📈 Projeção de Patrimônio (Juros Compostos)</h3>
+  <p class="hint" style="margin-bottom:1rem">Simule como seu patrimônio cresce ao longo do tempo. Os campos vêm pré-preenchidos com seus dados.</p>
+
+  <div class="calc-grid">
+    <label>
+      Patrimônio inicial (R$)
+      <input type="number" id="proj-inicial" value="{{.PatrimonioAtual}}" step="1000">
+    </label>
+    <label>
+      Aporte mensal (R$)
+      <input type="number" id="proj-aporte" value="{{.SobraMensal}}" step="100">
+    </label>
+    <label>
+      Taxa anual (% real)
+      <input type="number" id="proj-taxa" value="6" step="0.5">
+    </label>
+    <label>
+      Anos
+      <input type="number" id="proj-anos" value="20" min="1" max="50">
+    </label>
+  </div>
+
+  <div class="proj-resultado">
+    <div class="proj-result-item">
+      <span class="proj-label">Total acumulado</span>
+      <span class="proj-value" id="proj-total">—</span>
+    </div>
+    <div class="proj-result-item">
+      <span class="proj-label">Total aportado</span>
+      <span class="proj-value" id="proj-aportado">—</span>
+    </div>
+    <div class="proj-result-item">
+      <span class="proj-label">Juros ganhos</span>
+      <span class="proj-value valor-positivo" id="proj-juros">—</span>
+    </div>
+  </div>
+
+  <div class="chart-wrap" style="height:320px;margin-top:1.5rem">
+    <canvas id="chartProjecao"></canvas>
+  </div>
+</section>
+
+<!-- ====== META FINANCEIRA ====== -->
+<section class="dash-section">
+  <h3 class="section-title">🎯 Quanto investir por mês para atingir uma meta?</h3>
+
+  <div class="calc-grid">
+    <label>
+      Valor da meta (R$)
+      <input type="number" id="meta-valor" value="100000" step="1000">
+    </label>
+    <label>
+      Prazo (anos)
+      <input type="number" id="meta-anos" value="10" min="1" max="50">
+    </label>
+    <label>
+      Taxa anual (% real)
+      <input type="number" id="meta-taxa" value="6" step="0.5">
+    </label>
+    <label>
+      Quanto você já tem (R$)
+      <input type="number" id="meta-inicial" value="0" step="100">
+    </label>
+  </div>
+
+  <div class="meta-resultado">
+    <p class="meta-frase">
+      Para acumular <strong id="meta-display-valor">R$ 100.000</strong> em
+      <strong id="meta-display-anos">10 anos</strong>, você precisa investir:
+    </p>
+    <p class="meta-aporte" id="meta-aporte-mensal">—</p>
+    <p class="meta-info" id="meta-info">—</p>
+  </div>
+</section>
+
+<!-- ====== COMPARADOR DE CENÁRIOS ====== -->
+<section class="dash-section">
+  <h3 class="section-title">⚔️ Comparador de Cenários — 20 anos</h3>
+  <p class="hint" style="margin-bottom:1rem">Como diferentes perfis de investimento afetam seu patrimônio. Aporte mensal: <strong>{{brl .SobraMensal}}</strong>, inicial: <strong>{{brl .PatrimonioAtual}}</strong>.</p>
+
+  <div class="cenarios-grid">
+    <div class="cenario-card cenario-conservador">
+      <p class="cenario-label">🛡️ Conservador</p>
+      <p class="cenario-rate">4% a.a. real</p>
+      <p class="cenario-value" id="cen-conserv">—</p>
+      <small class="muted">Tesouro IPCA+, CDB curto prazo</small>
+    </div>
+    <div class="cenario-card cenario-moderado">
+      <p class="cenario-label">⚖️ Moderado</p>
+      <p class="cenario-rate">6% a.a. real</p>
+      <p class="cenario-value" id="cen-moder">—</p>
+      <small class="muted">Mix RF + FIIs + parte em ações</small>
+    </div>
+    <div class="cenario-card cenario-agressivo">
+      <p class="cenario-label">🚀 Agressivo</p>
+      <p class="cenario-rate">9% a.a. real</p>
+      <p class="cenario-value" id="cen-agres">—</p>
+      <small class="muted">Maior peso em ações/Bolsa</small>
+    </div>
+  </div>
+</section>
+
+<!-- ====== ALOCAÇÃO SUGERIDA ====== -->
+<section class="dash-section">
+  <h3 class="section-title">📊 Sugestão de Alocação por Perfil</h3>
+  <p class="hint" style="margin-bottom:1rem">Sugestões genéricas — não é recomendação de investimento. Ajuste à sua tolerância de risco e objetivos.</p>
+
+  <div class="aloc-grid">
+    <div class="aloc-card">
+      <h4>🛡️ Conservador</h4>
+      <ul>
+        <li><strong>70%</strong> Renda Fixa (Tesouro Selic/IPCA+, CDB)</li>
+        <li><strong>20%</strong> Fundos Imobiliários (FIIs)</li>
+        <li><strong>10%</strong> Ações / ETFs</li>
+      </ul>
+      <small class="muted">Foco: preservação de capital, baixa volatilidade</small>
+    </div>
+    <div class="aloc-card">
+      <h4>⚖️ Moderado</h4>
+      <ul>
+        <li><strong>50%</strong> Renda Fixa</li>
+        <li><strong>25%</strong> FIIs</li>
+        <li><strong>20%</strong> Ações / ETFs</li>
+        <li><strong>5%</strong> Cripto / Internacional</li>
+      </ul>
+      <small class="muted">Foco: crescimento equilibrado</small>
+    </div>
+    <div class="aloc-card">
+      <h4>🚀 Agressivo</h4>
+      <ul>
+        <li><strong>20%</strong> Renda Fixa</li>
+        <li><strong>20%</strong> FIIs</li>
+        <li><strong>45%</strong> Ações / ETFs</li>
+        <li><strong>15%</strong> Cripto / Internacional</li>
+      </ul>
+      <small class="muted">Foco: longo prazo, alta volatilidade</small>
+    </div>
+  </div>
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+  const RECEITA_MENSAL    = {{.ReceitaMensal}};
+  const DESPESA_MENSAL    = {{.DespesaMensal}};
+  const SOBRA_MENSAL      = {{.SobraMensal}};
+  const TAXA_POUPANCA     = {{.TaxaPoupanca}};
+  const PATRIMONIO_ATUAL  = {{.PatrimonioAtual}};
+  const RESERVA_ATUAL     = {{.ReservaAtual}};
+  const RESERVA_IDEAL_6M  = {{.ReservaIdeal6m}};
+  const FIRE_MODERADO     = {{.FireModerado}};
+
+  const brl = v => 'R$ ' + (v||0).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+  const brlCompact = v => {
+    if (Math.abs(v) >= 1e6) return 'R$ ' + (v/1e6).toFixed(2) + 'M';
+    if (Math.abs(v) >= 1e3) return 'R$ ' + (v/1e3).toFixed(1) + 'k';
+    return brl(v);
+  };
+
+  const TEXT_PRIMARY = getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim() || '#e6e9ed';
+  const TEXT_MUTED   = getComputedStyle(document.documentElement).getPropertyValue('--text-muted').trim() || '#6a7385';
+  const GRID_COLOR   = getComputedStyle(document.documentElement).getPropertyValue('--border-soft').trim() || 'rgba(255,255,255,0.08)';
+
+  Chart.defaults.font.family = "'Inter', sans-serif";
+  Chart.defaults.color = TEXT_MUTED;
+
+  // ====== SAÚDE FINANCEIRA ======
+  function setHealth() {
+    // Taxa de poupança
+    const taxa = TAXA_POUPANCA;
+    document.getElementById('hp-taxa').textContent = taxa.toFixed(1) + '%';
+    const taxaBar = document.getElementById('hp-taxa-bar');
+    const taxaTip = document.getElementById('hp-taxa-tip');
+    const taxaFill = Math.min(100, Math.max(0, taxa * 2)); // 50% taxa = 100% bar
+    taxaBar.style.width = taxaFill + '%';
+    let taxaCor, taxaMsg;
+    if (taxa < 0)       { taxaCor = '#e74c3c'; taxaMsg = '🚨 Crítico: você está gastando mais do que ganha.'; }
+    else if (taxa < 10) { taxaCor = '#e67e22'; taxaMsg = '⚠️ Baixo: tente economizar pelo menos 10%.'; }
+    else if (taxa < 20) { taxaCor = '#f39c12'; taxaMsg = '👍 Razoável. Meta saudável: 20% ou mais.'; }
+    else if (taxa < 30) { taxaCor = '#27ae60'; taxaMsg = '🎉 Bom! Você está no caminho certo.'; }
+    else                { taxaCor = '#27ae60'; taxaMsg = '🏆 Excelente! Acelera para a independência.'; }
+    taxaBar.style.background = taxaCor;
+    taxaTip.textContent = taxaMsg;
+
+    // Reserva
+    const resPct = RESERVA_IDEAL_6M > 0 ? Math.min(100, (RESERVA_ATUAL / RESERVA_IDEAL_6M) * 100) : 0;
+    document.getElementById('hp-reserva').textContent = resPct.toFixed(0) + '%';
+    const resBar = document.getElementById('hp-reserva-bar');
+    resBar.style.width = resPct + '%';
+    if (resPct < 50)       resBar.style.background = '#e74c3c';
+    else if (resPct < 100) resBar.style.background = '#f39c12';
+    else                   resBar.style.background = '#27ae60';
+
+    // Score geral (média ponderada)
+    const scoreTaxa = Math.min(100, Math.max(0, taxa * 3.33)); // 30% taxa = 100
+    const scoreRes  = resPct;
+    const score = (scoreTaxa * 0.6 + scoreRes * 0.4);
+    document.getElementById('hp-score').textContent = score.toFixed(0) + '/100';
+    const scoreBar = document.getElementById('hp-score-bar');
+    scoreBar.style.width = score + '%';
+    const scoreTip = document.getElementById('hp-score-tip');
+    let cor, msg;
+    if (score < 30)      { cor = '#e74c3c'; msg = '🚨 Atenção urgente: foque em reduzir despesas e construir reserva.'; }
+    else if (score < 60) { cor = '#f39c12'; msg = '⚠️ Em construção: aumente sua taxa de poupança gradualmente.'; }
+    else if (score < 80) { cor = '#3498db'; msg = '👍 Saúde boa. Continue acumulando.'; }
+    else                 { cor = '#27ae60'; msg = '🏆 Saúde financeira excelente!'; }
+    scoreBar.style.background = cor;
+    scoreTip.textContent = msg;
+  }
+  setHealth();
+
+  // ====== JUROS COMPOSTOS ======
+  // FV = P*(1+r)^n + PMT*[((1+r)^n - 1)/r]
+  function futureValue(principal, monthlyContrib, annualRate, years) {
+    const r = annualRate / 100 / 12;
+    const n = years * 12;
+    if (r === 0) return principal + monthlyContrib * n;
+    return principal * Math.pow(1+r, n) + monthlyContrib * ((Math.pow(1+r, n) - 1) / r);
+  }
+  function monthsToTarget(principal, monthlyContrib, annualRate, target) {
+    const r = annualRate / 100 / 12;
+    let saldo = principal;
+    let meses = 0;
+    while (saldo < target && meses < 12 * 100) {
+      saldo = saldo * (1+r) + monthlyContrib;
+      meses++;
+    }
+    return meses >= 12*100 ? -1 : meses;
+  }
+
+  // ====== FIRE ETA ======
+  function updateFireEta() {
+    const aporte = parseFloat(document.getElementById('fire-aporte').value) || 0;
+    const taxa   = parseFloat(document.getElementById('fire-taxa').value) || 0;
+    document.getElementById('fire-aporte-display').textContent = brl(aporte);
+    document.getElementById('fire-taxa-display').textContent   = taxa.toFixed(1) + '%';
+
+    const meses = monthsToTarget(PATRIMONIO_ATUAL, aporte, taxa, FIRE_MODERADO);
+    const eta = document.getElementById('fire-eta-anos');
+    if (meses < 0)     eta.textContent = 'mais de 100 anos 😅';
+    else if (meses < 12) eta.textContent = meses + ' meses';
+    else {
+      const a = Math.floor(meses/12);
+      const m = meses % 12;
+      eta.textContent = a + ' anos' + (m > 0 ? ' e ' + m + ' meses' : '');
+    }
+  }
+  document.getElementById('fire-aporte').addEventListener('input', updateFireEta);
+  document.getElementById('fire-taxa').addEventListener('input', updateFireEta);
+  updateFireEta();
+
+  // ====== PROJEÇÃO ======
+  let chartProj;
+  function updateProjecao() {
+    const ini   = parseFloat(document.getElementById('proj-inicial').value) || 0;
+    const apo   = parseFloat(document.getElementById('proj-aporte').value)  || 0;
+    const taxa  = parseFloat(document.getElementById('proj-taxa').value)    || 0;
+    const anos  = parseInt(document.getElementById('proj-anos').value)      || 0;
+    const r = taxa / 100 / 12;
+
+    // Série anual
+    const labels = ['Hoje'];
+    const totalSerie = [ini];
+    const aportadoSerie = [ini];
+    let saldo = ini;
+    let aportado = ini;
+    for (let ano = 1; ano <= anos; ano++) {
+      for (let m = 0; m < 12; m++) {
+        saldo = saldo * (1+r) + apo;
+        aportado += apo;
+      }
+      labels.push('Ano ' + ano);
+      totalSerie.push(saldo);
+      aportadoSerie.push(aportado);
+    }
+
+    const total = saldo;
+    const juros = total - aportado;
+    document.getElementById('proj-total').textContent    = brl(total);
+    document.getElementById('proj-aportado').textContent = brl(aportado);
+    document.getElementById('proj-juros').textContent    = brl(juros);
+
+    const opts = {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: TEXT_PRIMARY, usePointStyle: true, padding: 14 } },
+        tooltip: {
+          backgroundColor: 'rgba(15, 20, 25, 0.95)',
+          padding: 12,
+          cornerRadius: 8,
+          callbacks: { label: ctx => ctx.dataset.label + ': ' + brl(ctx.parsed.y) }
+        }
+      },
+      scales: {
+        x: { grid: { color: GRID_COLOR }, ticks: { color: TEXT_MUTED } },
+        y: { grid: { color: GRID_COLOR }, ticks: { color: TEXT_MUTED, callback: v => brlCompact(v) }, beginAtZero: true }
+      }
+    };
+
+    if (chartProj) {
+      chartProj.data.labels = labels;
+      chartProj.data.datasets[0].data = totalSerie;
+      chartProj.data.datasets[1].data = aportadoSerie;
+      chartProj.update();
+    } else {
+      chartProj = new Chart(document.getElementById('chartProjecao'), {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            {
+              label: 'Patrimônio total',
+              data: totalSerie,
+              borderColor: '#27ae60',
+              backgroundColor: 'rgba(39, 174, 96, 0.15)',
+              tension: 0.3,
+              fill: true,
+              borderWidth: 3,
+              pointRadius: 0,
+              pointHoverRadius: 6
+            },
+            {
+              label: 'Total aportado',
+              data: aportadoSerie,
+              borderColor: '#3498db',
+              backgroundColor: 'transparent',
+              tension: 0.3,
+              borderDash: [6, 4],
+              borderWidth: 2,
+              pointRadius: 0,
+              pointHoverRadius: 6
+            }
+          ]
+        },
+        options: opts
+      });
+    }
+  }
+  ['proj-inicial', 'proj-aporte', 'proj-taxa', 'proj-anos'].forEach(id =>
+    document.getElementById(id).addEventListener('input', updateProjecao)
+  );
+  updateProjecao();
+
+  // ====== META ======
+  // Aporte necessário = (target - P*(1+r)^n) / [((1+r)^n - 1)/r]
+  function updateMeta() {
+    const valor   = parseFloat(document.getElementById('meta-valor').value)   || 0;
+    const anos    = parseInt(document.getElementById('meta-anos').value)      || 1;
+    const taxa    = parseFloat(document.getElementById('meta-taxa').value)    || 0;
+    const inicial = parseFloat(document.getElementById('meta-inicial').value) || 0;
+    const r = taxa / 100 / 12;
+    const n = anos * 12;
+
+    let aporte;
+    if (r === 0) {
+      aporte = (valor - inicial) / n;
+    } else {
+      const fvInicial = inicial * Math.pow(1+r, n);
+      const fator = (Math.pow(1+r, n) - 1) / r;
+      aporte = (valor - fvInicial) / fator;
+    }
+
+    document.getElementById('meta-display-valor').textContent = brl(valor);
+    document.getElementById('meta-display-anos').textContent  = anos + ' ' + (anos === 1 ? 'ano' : 'anos');
+    const display = document.getElementById('meta-aporte-mensal');
+    const info    = document.getElementById('meta-info');
+
+    if (aporte < 0) {
+      display.textContent = brl(0);
+      info.textContent = '✅ Você já tem mais do que o necessário! Seu valor inicial sozinho atingirá a meta.';
+    } else {
+      display.textContent = brl(aporte) + ' / mês';
+      const pctSobra = SOBRA_MENSAL > 0 ? (aporte / SOBRA_MENSAL * 100) : 0;
+      if (SOBRA_MENSAL > 0) {
+        if (aporte > SOBRA_MENSAL) {
+          info.textContent = '⚠️ Acima da sua sobra atual (' + brl(SOBRA_MENSAL) + '/mês). Faltam ' + brl(aporte - SOBRA_MENSAL) + '/mês.';
+        } else {
+          info.textContent = '✅ Cabe na sua sobra atual (' + pctSobra.toFixed(0) + '% dela).';
+        }
+      } else {
+        info.textContent = 'Você não tem sobra mensal positiva no momento.';
+      }
+    }
+  }
+  ['meta-valor', 'meta-anos', 'meta-taxa', 'meta-inicial'].forEach(id =>
+    document.getElementById(id).addEventListener('input', updateMeta)
+  );
+  updateMeta();
+
+  // ====== CENÁRIOS (20 anos) ======
+  function updateCenarios() {
+    const anos = 20;
+    const aporte = SOBRA_MENSAL > 0 ? SOBRA_MENSAL : 0;
+    document.getElementById('cen-conserv').textContent = brl(futureValue(PATRIMONIO_ATUAL, aporte, 4, anos));
+    document.getElementById('cen-moder').textContent   = brl(futureValue(PATRIMONIO_ATUAL, aporte, 6, anos));
+    document.getElementById('cen-agres').textContent   = brl(futureValue(PATRIMONIO_ATUAL, aporte, 9, anos));
+  }
+  updateCenarios();
+</script>
+{{end}}

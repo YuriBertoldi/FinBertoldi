@@ -1,0 +1,163 @@
+{{define "content"}}
+<div class="page-header">
+  <h2>Investimentos</h2>
+  <button data-open-dialog="dialog-novo-inv">+ Registrar Aporte</button>
+</div>
+
+<!-- Totais por instituição -->
+{{if .Totais}}
+<div class="summary-grid">
+  {{range $inst, $val := .Totais}}
+  <article class="card-investido">
+    <p class="card-label">{{$inst}}</p>
+    <p class="card-value">{{brl $val}}</p>
+  </article>
+  {{end}}
+  <article class="card-sobra">
+    <p class="card-label">Total Geral</p>
+    <p class="card-value">{{brl .TotalGeral}}</p>
+  </article>
+</div>
+{{end}}
+
+<!-- Reserva de Emergência -->
+<section>
+  <div class="page-header">
+    <h3>Reserva de Emergência</h3>
+    <button data-open-dialog="dialog-reserva-em" class="outline">Atualizar Saldo</button>
+  </div>
+  <p class="card-value" style="font-size:1.5rem">{{brl .ReservaEM}}</p>
+
+  {{if .HistoricoReserva}}
+  <details>
+    <summary>Ver histórico</summary>
+    <table>
+      <thead><tr><th>Data</th><th>Valor</th><th>Notas</th><th></th></tr></thead>
+      <tbody>
+        {{range .HistoricoReserva}}
+        <tr>
+          <td>{{date .Data}}</td>
+          <td>{{brl .Valor}}</td>
+          <td><small>{{.Notas}}</small></td>
+          <td>
+            <form method="POST" action="/reserva-em/{{.ID}}/delete" style="display:inline"
+                  onsubmit="return confirm('Excluir registro?')">
+              <button type="submit" class="btn-action danger" title="Excluir">🗑️</button>
+            </form>
+          </td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </details>
+  {{end}}
+</section>
+
+<!-- Histórico de aportes -->
+<section>
+  <h3>Histórico de Aportes</h3>
+  <div class="table-responsive">
+    <table>
+      <thead>
+        <tr>
+          <th>Instituição</th>
+          <th>Tipo</th>
+          <th>Valor</th>
+          <th>Data</th>
+          <th>Notas</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range .Investimentos}}
+        <tr>
+          <td><strong>{{.Instituicao}}</strong></td>
+          <td><small>{{.Tipo}}</small></td>
+          <td class="valor-positivo">{{brl .Valor}}</td>
+          <td><small>{{date .Data}}</small></td>
+          <td><small>{{.Notas}}</small></td>
+          <td>
+            <form method="POST" action="/investimentos/{{.ID}}/delete" style="display:inline"
+                  onsubmit="return confirm('Excluir aporte?')">
+              <button type="submit" class="btn-action danger" title="Excluir">🗑️</button>
+            </form>
+          </td>
+        </tr>
+        {{else}}
+        <tr><td colspan="6" class="muted center">Nenhum aporte registrado.</td></tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- Dialog novo aporte -->
+<dialog id="dialog-novo-inv">
+  <article>
+    <header>
+      <button data-close-dialog aria-label="Fechar"></button>
+      <h3>Registrar Aporte</h3>
+    </header>
+    <form method="POST" action="/investimentos">
+      <div class="grid">
+        <label>Instituição
+          <input type="text" name="instituicao" list="inst-list" placeholder="Rico" required autofocus>
+          <datalist id="inst-list">
+            <option value="Rico">
+            <option value="INCO">
+            <option value="Previdência">
+            <option value="Tesouro Direto">
+            <option value="CDB">
+          </datalist>
+        </label>
+        <label>Tipo
+          <select name="tipo">
+            <option value="Renda Variável">Renda Variável</option>
+            <option value="Renda Fixa">Renda Fixa</option>
+            <option value="Previdência">Previdência</option>
+            <option value="FII">FII</option>
+            <option value="Criptomoeda">Criptomoeda</option>
+          </select>
+        </label>
+      </div>
+      <div class="grid">
+        <label>Valor (R$)
+          <input type="text" name="valor" placeholder="1.000,00" required>
+        </label>
+        <label>Data
+          <input type="date" name="data" required>
+        </label>
+      </div>
+      <label>Notas (opcional)
+        <input type="text" name="notas" placeholder="Ex: Compra mensal programada">
+      </label>
+      <footer>
+        <button data-close-dialog type="button" class="secondary">Cancelar</button>
+        <button type="submit">Registrar</button>
+      </footer>
+    </form>
+  </article>
+</dialog>
+
+<!-- Dialog reserva de emergência -->
+<dialog id="dialog-reserva-em">
+  <article>
+    <header>
+      <button data-close-dialog aria-label="Fechar"></button>
+      <h3>Atualizar Reserva de Emergência</h3>
+    </header>
+    <form method="POST" action="/reserva-em">
+      <label>Saldo atual (R$)
+        <input type="text" name="valor" placeholder="10.000,00" required autofocus>
+      </label>
+      <label>Notas (opcional)
+        <input type="text" name="notas" placeholder="Ex: Após resgate parcial">
+      </label>
+      <footer>
+        <button data-close-dialog type="button" class="secondary">Cancelar</button>
+        <button type="submit">Salvar</button>
+      </footer>
+    </form>
+  </article>
+</dialog>
+{{end}}

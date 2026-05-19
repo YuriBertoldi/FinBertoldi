@@ -1,0 +1,89 @@
+{{define "content"}}
+<div class="page-header">
+  <h2>Receitas</h2>
+  <button data-open-dialog="dialog-nova-receita">+ Nova Receita</button>
+</div>
+
+<p class="hint">💡 Receitas marcadas como <strong>recorrentes</strong> (ex: salário) entram automaticamente em <strong>todos os meses</strong> do Dashboard. Receitas únicas só contam no mês da data informada.</p>
+
+<div class="table-responsive">
+  <table>
+    <thead>
+      <tr>
+        <th>Descrição</th>
+        <th>Tipo</th>
+        <th>Valor</th>
+        <th>Data</th>
+        <th>Frequência</th>
+        <th>Ações</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{range .Receitas}}
+      <tr>
+        <td>{{.Descricao}}</td>
+        <td><span class="badge badge-receita">{{.Tipo}}</span></td>
+        <td class="valor-positivo">{{brl .Valor}}</td>
+        <td><small>{{date .Data}}</small></td>
+        <td>
+          {{if .Recorrente}}
+            <span class="tag-recorrente">🔁 Mensal</span>
+          {{else}}
+            <span class="tag-unico">Única</span>
+          {{end}}
+        </td>
+        <td class="actions">
+          <form method="POST" action="/receitas/{{.ID}}/delete" style="display:inline"
+                onsubmit="return confirm('Excluir {{.Descricao}}?')">
+            <button type="submit" class="btn-action danger" title="Excluir">🗑️</button>
+          </form>
+        </td>
+      </tr>
+      {{else}}
+      <tr><td colspan="6" class="muted center">Nenhuma receita cadastrada.</td></tr>
+      {{end}}
+    </tbody>
+  </table>
+</div>
+
+<!-- Dialog nova receita -->
+<dialog id="dialog-nova-receita">
+  <article>
+    <header>
+      <button data-close-dialog aria-label="Fechar"></button>
+      <h3>Nova Receita</h3>
+    </header>
+    <form method="POST" action="/receitas">
+      <label>Descrição
+        <input type="text" name="descricao" placeholder="Ex: Salário CLT" required autofocus>
+      </label>
+      <div class="grid">
+        <label>Valor (R$)
+          <input type="text" name="valor" placeholder="5.000,00" required>
+        </label>
+        <label>Data
+          <input type="date" name="data" required>
+        </label>
+      </div>
+      <label>Tipo
+        <select name="tipo">
+          <option value="Salário">Salário</option>
+          <option value="Freelance">Freelance</option>
+          <option value="Investimento">Renda de Investimento</option>
+          <option value="Bônus">Bônus / 13º</option>
+          <option value="Outro">Outro</option>
+        </select>
+      </label>
+      <label class="check-row">
+        <input type="checkbox" name="recorrente" checked>
+        <span>🔁 <strong>Recorrente</strong> — entra em todos os meses automaticamente</span>
+      </label>
+      <p class="hint" style="margin-top:.5rem">Desmarque para registrar uma receita única (ex: bônus, freelance pontual).</p>
+      <footer>
+        <button data-close-dialog type="button" class="secondary">Cancelar</button>
+        <button type="submit">Adicionar</button>
+      </footer>
+    </form>
+  </article>
+</dialog>
+{{end}}

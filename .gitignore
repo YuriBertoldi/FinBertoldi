@@ -1,0 +1,25 @@
+# Binários
+fincontrol
+fincontrol.exe
+*.exe
+
+# Go
+*.test
+*.out
+
+# IDE
+.vscode/
+.idea/
+
+# Docker
+.env
+.env.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Data
+pgdata/
+*.bak
+*.dump

@@ -1,0 +1,100 @@
+{{define "content"}}
+<div class="page-header">
+  <h2>Empréstimos</h2>
+  <button data-open-dialog="dialog-novo-emp">+ Registrar</button>
+</div>
+
+<!-- Totais -->
+<div class="summary-grid">
+  <article class="card-despesa">
+    <p class="card-label">Você deve</p>
+    <p class="card-value">{{brl .TotalDevo}}</p>
+  </article>
+  <article class="card-receita">
+    <p class="card-label">Te devem</p>
+    <p class="card-value">{{brl .TotalAReceber}}</p>
+  </article>
+</div>
+
+<div class="table-responsive">
+  <table>
+    <thead>
+      <tr>
+        <th>Pessoa</th>
+        <th>Direção</th>
+        <th>Valor</th>
+        <th>Data</th>
+        <th>Notas</th>
+        <th>Status</th>
+        <th>Ações</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{range .Emprestimos}}
+      <tr class="{{if .Pago}}inativa{{end}}">
+        <td><strong>{{.Pessoa}}</strong></td>
+        <td>
+          {{if eq .Direcao "devo"}}
+            <span class="badge badge-despesa">Devo a eles</span>
+          {{else}}
+            <span class="badge badge-receita">Me devem</span>
+          {{end}}
+        </td>
+        <td class="{{if eq .Direcao "devo"}}valor-negativo{{else}}valor-positivo{{end}}">
+          {{brl .Valor}}
+        </td>
+        <td><small>{{date .Data}}</small></td>
+        <td><small>{{.Notas}}</small></td>
+        <td>
+          {{template "emprestimo-toggle-btn" .}}
+        </td>
+        <td class="actions">
+          <form method="POST" action="/emprestimos/{{.ID}}/delete" style="display:inline"
+                onsubmit="return confirm('Excluir empréstimo de {{.Pessoa}}?')">
+            <button type="submit" class="outline secondary">🗑️</button>
+          </form>
+        </td>
+      </tr>
+      {{else}}
+      <tr><td colspan="7" class="muted center">Nenhum empréstimo registrado.</td></tr>
+      {{end}}
+    </tbody>
+  </table>
+</div>
+
+<!-- Dialog novo empréstimo -->
+<dialog id="dialog-novo-emp">
+  <article>
+    <header>
+      <button data-close-dialog aria-label="Fechar"></button>
+      <h3>Registrar Empréstimo</h3>
+    </header>
+    <form method="POST" action="/emprestimos">
+      <label>Pessoa
+        <input type="text" name="pessoa" placeholder="Ex: Pai" required autofocus>
+      </label>
+      <div class="grid">
+        <label>Valor (R$)
+          <input type="text" name="valor" placeholder="500,00" required>
+        </label>
+        <label>Data
+          <input type="date" name="data" required>
+        </label>
+      </div>
+      <label>Direção
+        <select name="direcao">
+          <option value="devo">Eu devo (peguei emprestado)</option>
+          <option value="emprestei">Eu emprestei (me devem)</option>
+        </select>
+      </label>
+      <label>Notas (opcional)
+        <input type="text" name="notas" placeholder="Ex: Para emergência médica">
+      </label>
+      <footer>
+        <button data-close-dialog type="button" class="secondary">Cancelar</button>
+        <button type="submit">Registrar</button>
+      </footer>
+    </form>
+  </article>
+</dialog>
+{{end}}

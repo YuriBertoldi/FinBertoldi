@@ -1,0 +1,121 @@
+{{define "content"}}
+<div class="page-header">
+  <h2>Parcelamentos</h2>
+  <button data-open-dialog="dialog-novo-parc">+ Novo Parcelamento</button>
+</div>
+
+<p class="hint">Compras parceladas no cartão. Formato <strong>NxT</strong> = parcela atual x total de parcelas.</p>
+
+<div class="table-responsive">
+  <table>
+    <thead>
+      <tr>
+        <th>Descrição</th>
+        <th>Cartão</th>
+        <th>Progresso</th>
+        <th>Valor/Parcela</th>
+        <th>Restante</th>
+        <th>Início</th>
+        <th>Status</th>
+        <th>Ações</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{range .Parcelamentos}}
+      <tr class="{{if not .Ativo}}inativa{{end}}">
+        <td>{{.Descricao}}</td>
+        <td><small>{{.Cartao}}</small></td>
+        <td>
+          {{if .Ativo}}
+          <progress value="{{.ParcelaAtual}}" max="{{.TotalParcelas}}"></progress>
+          {{end}}
+          <span class="progress-label">{{progress .ParcelaAtual .TotalParcelas}}</span>
+        </td>
+        <td>{{brl .ValorParcela}}</td>
+        <td>{{if .Ativo}}{{brl .ValorRestante}}{{else}}<span class="muted">—</span>{{end}}</td>
+        <td><small>{{date .DataInicio}}</small></td>
+        <td>
+          {{if .Ativo}}
+            <span class="badge badge-ativo">Ativo</span>
+          {{else}}
+            <span class="badge badge-concluido">Concluído</span>
+          {{end}}
+        </td>
+        <td class="actions">
+          <button data-open-dialog="dialog-edit-parc-{{.ID}}" class="outline">✏️</button>
+          <form method="POST" action="/parcelamentos/{{.ID}}/delete" style="display:inline"
+                onsubmit="return confirm('Excluir {{.Descricao}}?')">
+            <button type="submit" class="outline secondary">🗑️</button>
+          </form>
+        </td>
+      </tr>
+
+      <!-- Dialog edição -->
+      <dialog id="dialog-edit-parc-{{.ID}}">
+        <article>
+          <header>
+            <button data-close-dialog aria-label="Fechar"></button>
+            <h3>Editar: {{.Descricao}}</h3>
+          </header>
+          <form method="POST" action="/parcelamentos/{{.ID}}/update">
+            <div class="grid">
+              <label>Parcela Atual
+                <input type="number" name="parcela_atual" value="{{.ParcelaAtual}}" min="1" max="{{.TotalParcelas}}">
+              </label>
+              <label>Status
+                <select name="ativo">
+                  <option value="true" {{if .Ativo}}selected{{end}}>Ativo</option>
+                  <option value="false" {{if not .Ativo}}selected{{end}}>Concluído</option>
+                </select>
+              </label>
+            </div>
+            <footer>
+              <button data-close-dialog type="button" class="secondary">Cancelar</button>
+              <button type="submit">Salvar</button>
+            </footer>
+          </form>
+        </article>
+      </dialog>
+      {{end}}
+    </tbody>
+  </table>
+</div>
+
+<!-- Dialog novo parcelamento -->
+<dialog id="dialog-novo-parc">
+  <article>
+    <header>
+      <button data-close-dialog aria-label="Fechar"></button>
+      <h3>Novo Parcelamento</h3>
+    </header>
+    <form method="POST" action="/parcelamentos">
+      <label>Descrição
+        <input type="text" name="descricao" placeholder="Ex: Viagem Europa" required autofocus>
+      </label>
+      <div class="grid">
+        <label>Cartão
+          <input type="text" name="cartao" placeholder="Ex: Nubank">
+        </label>
+        <label>Valor por parcela (R$)
+          <input type="text" name="valor_parcela" placeholder="350,00" required>
+        </label>
+      </div>
+      <div class="grid">
+        <label>Parcela Atual
+          <input type="number" name="parcela_atual" value="1" min="1">
+        </label>
+        <label>Total de Parcelas
+          <input type="number" name="total_parcelas" placeholder="12" min="1" required>
+        </label>
+        <label>Data de Início
+          <input type="date" name="data_inicio" required>
+        </label>
+      </div>
+      <footer>
+        <button data-close-dialog type="button" class="secondary">Cancelar</button>
+        <button type="submit">Adicionar</button>
+      </footer>
+    </form>
+  </article>
+</dialog>
+{{end}}

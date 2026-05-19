@@ -1,0 +1,265 @@
+{{define "content"}}
+<!-- Navegação de mês -->
+<div class="mes-nav">
+  <a href="/?mes={{.MesPrev}}" role="button" class="outline secondary mes-btn">‹</a>
+  <h2 class="mes-titulo">{{.MesDisplay}}</h2>
+  <a href="/?mes={{.MesNext}}" role="button" class="outline secondary mes-btn">›</a>
+</div>
+
+<!-- Cards de resumo -->
+<div class="summary-grid">
+  <article class="sum-card card-receita">
+    <div class="sum-icon">💵</div>
+    <div>
+      <p class="card-label">Receitas</p>
+      <p class="card-value">{{brl .TotalReceitas}}</p>
+    </div>
+  </article>
+  <article class="sum-card card-despesa">
+    <div class="sum-icon">💸</div>
+    <div>
+      <p class="card-label">Despesas</p>
+      <p class="card-value">{{brl .TotalDespesas}}</p>
+    </div>
+  </article>
+  <article class="sum-card {{if neg .Sobra}}card-negativo{{else}}card-sobra{{end}}">
+    <div class="sum-icon">{{if neg .Sobra}}⚠️{{else}}✅{{end}}</div>
+    <div>
+      <p class="card-label">Sobra</p>
+      <p class="card-value">{{brl .Sobra}}</p>
+    </div>
+  </article>
+  <article class="sum-card card-investido">
+    <div class="sum-icon">📈</div>
+    <div>
+      <p class="card-label">Investido</p>
+      <p class="card-value">{{brl .TotalInvestido}}</p>
+    </div>
+  </article>
+</div>
+
+<div class="dash-grid">
+  <!-- Coluna esquerda: GRÁFICOS -->
+  <div class="dash-left">
+    <section class="dash-section">
+      <h3 class="section-title">📊 Receitas vs Despesas — Últimos 6 meses</h3>
+      <div class="chart-wrap"><canvas id="chartReceitasDespesas"></canvas></div>
+    </section>
+
+    <section class="dash-section">
+      <h3 class="section-title">📈 Sobra Mensal — Evolução</h3>
+      <div class="chart-wrap"><canvas id="chartSobra"></canvas></div>
+    </section>
+
+    <section class="dash-section">
+      <h3 class="section-title">💰 Investimentos — Aportes Mensais</h3>
+      <div class="chart-wrap chart-small"><canvas id="chartInvestido"></canvas></div>
+    </section>
+
+    <!-- Detalhes do mês colapsável -->
+    <details class="dash-section detalhes-mes">
+      <summary>
+        <span class="section-title" style="margin:0;border:none;padding:0">📋 Detalhes do mês — marcar contas pagas</span>
+      </summary>
+      <div style="margin-top:1rem">
+        {{if .DespesasBasicas}}
+        <p class="cat-label">Contas Básicas</p>
+        <table class="dash-table">
+          <tbody>
+            {{range .DespesasBasicas}}
+            <tr>
+              <td>{{.Nome}}</td>
+              <td class="valor-col">{{brl .Valor}}</td>
+              <td class="status-col">{{template "toggle-btn" .}}</td>
+            </tr>
+            {{end}}
+          </tbody>
+        </table>
+        {{end}}
+
+        {{if .DespesasCartao}}
+        <p class="cat-label">Cartão de Crédito</p>
+        <table class="dash-table">
+          <tbody>
+            {{range .DespesasCartao}}
+            <tr>
+              <td>{{.Nome}}</td>
+              <td class="valor-col">{{brl .Valor}}</td>
+              <td class="status-col">{{template "toggle-btn" .}}</td>
+            </tr>
+            {{end}}
+          </tbody>
+        </table>
+        {{end}}
+
+        {{if .DespesasVR}}
+        <p class="cat-label">VR / Alimentação</p>
+        <table class="dash-table">
+          <tbody>
+            {{range .DespesasVR}}
+            <tr>
+              <td>{{.Nome}}</td>
+              <td class="valor-col">{{brl .Valor}}</td>
+              <td class="status-col">{{template "toggle-btn" .}}</td>
+            </tr>
+            {{end}}
+          </tbody>
+        </table>
+        {{end}}
+
+        {{if and (not .DespesasBasicas) (not .DespesasCartao) (not .DespesasVR)}}
+        <p class="muted">Nenhuma despesa cadastrada para este mês.</p>
+        {{end}}
+      </div>
+    </details>
+  </div>
+
+  <!-- Coluna direita -->
+  <div class="dash-right">
+    {{if .Parcelamentos}}
+    <section class="dash-section">
+      <h3 class="section-title">💳 Parcelamentos Ativos</h3>
+      {{range .Parcelamentos}}
+      <div class="parc-item">
+        <div class="parc-info">
+          <span class="parc-nome">{{.Descricao}}</span>
+          <small class="muted">{{.Cartao}}</small>
+        </div>
+        <div class="parc-right">
+          <span class="parc-valor">{{brl .ValorParcela}}/mês</span>
+          <small class="muted">{{progress .ParcelaAtual .TotalParcelas}}</small>
+          <progress value="{{.ParcelaAtual}}" max="{{.TotalParcelas}}" class="parc-progress"></progress>
+        </div>
+      </div>
+      {{end}}
+    </section>
+    {{end}}
+
+    <section class="dash-section em-section">
+      <h3 class="section-title">🛡️ Reserva de Emergência</h3>
+      <p class="card-value em-valor">{{brl .ReservaEM}}</p>
+      <a href="/investimentos" class="outline secondary" role="button" style="font-size:.8rem;padding:.3rem .8rem">
+        Gerenciar →
+      </a>
+    </section>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+  const HIST = {{json .Historico}};
+  const labels   = HIST.map(m => m.MesLabel);
+  const receitas = HIST.map(m => m.Receitas);
+  const despesas = HIST.map(m => m.Despesas);
+  const sobras   = HIST.map(m => m.Sobra);
+  const invests  = HIST.map(m => m.Investido);
+
+  const brl = v => 'R$ ' + (v||0).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+
+  // Cores baseadas no design system
+  const COLOR_RECEITA  = '#27ae60';
+  const COLOR_DESPESA  = '#e74c3c';
+  const COLOR_SOBRA    = '#3498db';
+  const COLOR_NEGATIVO = '#e74c3c';
+  const COLOR_INVEST   = '#9b59b6';
+  const TEXT_PRIMARY   = getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim() || '#e6e9ed';
+  const TEXT_MUTED     = getComputedStyle(document.documentElement).getPropertyValue('--text-muted').trim() || '#6a7385';
+  const GRID_COLOR     = getComputedStyle(document.documentElement).getPropertyValue('--border-soft').trim() || 'rgba(255,255,255,0.08)';
+
+  Chart.defaults.font.family = "'Inter', sans-serif";
+  Chart.defaults.color = TEXT_MUTED;
+
+  const commonOpts = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        labels: { color: TEXT_PRIMARY, usePointStyle: true, padding: 14, font: {size: 12, weight: '500'} }
+      },
+      tooltip: {
+        backgroundColor: 'rgba(15, 20, 25, 0.95)',
+        titleColor: TEXT_PRIMARY,
+        bodyColor: TEXT_PRIMARY,
+        borderColor: GRID_COLOR,
+        borderWidth: 1,
+        padding: 12,
+        cornerRadius: 8,
+        titleFont: {weight: '600'},
+        callbacks: { label: ctx => ctx.dataset.label + ': ' + brl(ctx.parsed.y) }
+      }
+    },
+    scales: {
+      x: { grid: { color: GRID_COLOR, drawBorder: false }, ticks: { color: TEXT_MUTED } },
+      y: { grid: { color: GRID_COLOR, drawBorder: false }, ticks: { color: TEXT_MUTED, callback: v => brl(v) }, beginAtZero: true }
+    }
+  };
+
+  // ===== GRÁFICO 1: Receitas vs Despesas (bar) =====
+  new Chart(document.getElementById('chartReceitasDespesas'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Receitas',
+          data: receitas,
+          backgroundColor: COLOR_RECEITA + 'cc',
+          borderColor: COLOR_RECEITA,
+          borderWidth: 0,
+          borderRadius: 6
+        },
+        {
+          label: 'Despesas',
+          data: despesas,
+          backgroundColor: COLOR_DESPESA + 'cc',
+          borderColor: COLOR_DESPESA,
+          borderWidth: 0,
+          borderRadius: 6
+        }
+      ]
+    },
+    options: commonOpts
+  });
+
+  // ===== GRÁFICO 2: Sobra (line + área) =====
+  const sobraColors = sobras.map(s => s < 0 ? COLOR_NEGATIVO : COLOR_SOBRA);
+  new Chart(document.getElementById('chartSobra'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Sobra',
+        data: sobras,
+        borderColor: COLOR_SOBRA,
+        backgroundColor: 'rgba(52, 152, 219, 0.15)',
+        tension: 0.35,
+        fill: true,
+        pointBackgroundColor: sobraColors,
+        pointBorderColor: '#fff',
+        pointBorderWidth: 2,
+        pointRadius: 5,
+        pointHoverRadius: 7,
+        borderWidth: 3
+      }]
+    },
+    options: commonOpts
+  });
+
+  // ===== GRÁFICO 3: Investimentos (bar) =====
+  new Chart(document.getElementById('chartInvestido'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Aportes',
+        data: invests,
+        backgroundColor: COLOR_INVEST + 'cc',
+        borderColor: COLOR_INVEST,
+        borderWidth: 0,
+        borderRadius: 6
+      }]
+    },
+    options: commonOpts
+  });
+</script>
+{{end}}

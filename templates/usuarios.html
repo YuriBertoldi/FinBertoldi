@@ -1,0 +1,130 @@
+{{define "content"}}
+<div class="page-header">
+  <h2>👤 Usuários</h2>
+  <button data-open-dialog="dialog-novo-usuario">+ Novo Usuário</button>
+</div>
+
+<p class="hint">Gerencie quem tem acesso ao sistema. Apenas administradores podem acessar esta página.</p>
+
+{{if .Erro}}
+<div class="alert alert-erro">⚠️ {{.Erro}}</div>
+{{end}}
+
+<div class="table-responsive">
+  <table>
+    <thead>
+      <tr>
+        <th>Nome</th>
+        <th>E-mail</th>
+        <th>Admin</th>
+        <th>Status</th>
+        <th>Criado em</th>
+        <th>Ações</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{range .Usuarios}}
+      <tr class="{{if not .Ativo}}inativa{{end}}">
+        <td>
+          <strong>{{.Nome}}</strong>
+          {{if eq .ID $.CurrentUser.ID}}
+            <span class="badge badge-ativo" style="font-size:.65rem">você</span>
+          {{end}}
+        </td>
+        <td>{{.Email}}</td>
+        <td>
+          {{if .Admin}}
+            <span class="badge badge-ativo">Admin</span>
+          {{else}}
+            <span class="badge badge-concluido">Usuário</span>
+          {{end}}
+        </td>
+        <td>
+          {{if .Ativo}}
+            <span class="badge badge-receita">Ativo</span>
+          {{else}}
+            <span class="badge badge-despesa">Inativo</span>
+          {{end}}
+        </td>
+        <td><small>{{date .CriadoEm}}</small></td>
+        <td class="actions">
+          {{if ne .ID $.CurrentUser.ID}}
+            <!-- Toggle Admin -->
+            <form method="POST" action="/usuarios/{{.ID}}/toggle-admin" style="display:inline" title="{{if .Admin}}Remover admin{{else}}Tornar admin{{end}}">
+              <button type="submit" class="btn-action" title="{{if .Admin}}Remover admin{{else}}Tornar admin{{end}}">
+                {{if .Admin}}👤{{else}}⭐{{end}}
+              </button>
+            </form>
+            <!-- Toggle Ativo -->
+            <form method="POST" action="/usuarios/{{.ID}}/toggle-ativo" style="display:inline">
+              <button type="submit" class="btn-action danger" title="{{if .Ativo}}Desativar{{else}}Ativar{{end}}">
+                {{if .Ativo}}🔒{{else}}🔓{{end}}
+              </button>
+            </form>
+            <!-- Reset Senha -->
+            <button data-open-dialog="dialog-reset-{{.ID}}" class="btn-action" title="Redefinir senha">
+              🔑
+            </button>
+            <!-- Excluir -->
+            <form method="POST" action="/usuarios/{{.ID}}/delete" style="display:inline"
+                  onsubmit="return confirm('Excluir usuário {{.Nome}}?')">
+              <button type="submit" class="btn-action danger" title="Excluir">🗑️</button>
+            </form>
+          {{else}}
+            <!-- Reset própria senha -->
+            <button data-open-dialog="dialog-reset-{{.ID}}" class="btn-action" title="Redefinir sua senha">
+              🔑
+            </button>
+          {{end}}
+        </td>
+      </tr>
+
+      <!-- Dialog reset de senha -->
+      <dialog id="dialog-reset-{{.ID}}">
+        <article>
+          <header>
+            <button data-close-dialog aria-label="Fechar"></button>
+            <h3>Redefinir Senha — {{.Nome}}</h3>
+          </header>
+          <form method="POST" action="/usuarios/{{.ID}}/reset-senha">
+            <label>
+              Nova Senha
+              <input type="password" name="nova_senha" placeholder="Mínimo 6 caracteres" minlength="6" required autofocus>
+            </label>
+            <footer>
+              <button data-close-dialog type="button" class="secondary">Cancelar</button>
+              <button type="submit">Salvar</button>
+            </footer>
+          </form>
+        </article>
+      </dialog>
+      {{else}}
+      <tr><td colspan="6" class="muted center">Nenhum usuário cadastrado.</td></tr>
+      {{end}}
+    </tbody>
+  </table>
+</div>
+
+<!-- Dialog novo usuário -->
+<dialog id="dialog-novo-usuario">
+  <article>
+    <header>
+      <button data-close-dialog aria-label="Fechar"></button>
+      <h3>Novo Usuário</h3>
+    </header>
+    <form method="POST" action="/usuarios">
+      <label>Nome<input type="text" name="nome" placeholder="Nome completo" required autofocus></label>
+      <label>E-mail<input type="email" name="email" placeholder="email@exemplo.com" required></label>
+      <label>Senha<input type="password" name="senha" placeholder="Mínimo 6 caracteres" minlength="6" required></label>
+      <label>
+        <input type="checkbox" name="admin">
+        Administrador (acesso total)
+      </label>
+      <footer>
+        <button data-close-dialog type="button" class="secondary">Cancelar</button>
+        <button type="submit">Criar</button>
+      </footer>
+    </form>
+  </article>
+</dialog>
+{{end}}

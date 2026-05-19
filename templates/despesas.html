@@ -1,0 +1,315 @@
+{{define "content"}}
+<div class="page-header">
+  <h2>Despesas</h2>
+  {{if eq .TabAtivo "fixas"}}
+    <button data-open-dialog="dialog-nova-despesa">+ Nova Despesa Fixa</button>
+  {{else if eq .TabAtivo "parcelamentos"}}
+    <button data-open-dialog="dialog-novo-parc">+ Parcelamento</button>
+  {{else if eq .TabAtivo "emprestimos"}}
+    <button data-open-dialog="dialog-novo-emp">+ Empréstimo</button>
+  {{end}}
+</div>
+
+<!-- Tabs -->
+<div class="tabs">
+  <a href="/despesas?tab=fixas" class="tab-item {{if eq .TabAtivo "fixas"}}active{{end}}">
+    🔄 Fixas (Recorrentes)
+  </a>
+  <a href="/despesas?tab=parcelamentos" class="tab-item {{if eq .TabAtivo "parcelamentos"}}active{{end}}">
+    💳 Parcelamentos
+  </a>
+  <a href="/despesas?tab=emprestimos" class="tab-item {{if eq .TabAtivo "emprestimos"}}active{{end}}">
+    🤝 Empréstimos
+  </a>
+</div>
+
+<!-- ===== TAB: DESPESAS FIXAS ===== -->
+{{if eq .TabAtivo "fixas"}}
+<p class="hint">💡 <strong>Despesas fixas</strong> são contas recorrentes (Netflix, água, luz, aluguel…) que aparecem automaticamente em <strong>todos os meses</strong> no Dashboard.</p>
+<div class="table-responsive">
+  <table>
+    <thead>
+      <tr>
+        <th>Nome</th>
+        <th>Categoria</th>
+        <th>Valor</th>
+        <th>Ativa</th>
+        <th>Ações</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{range .Despesas}}
+      <tr class="{{if not .Ativa}}inativa{{end}}">
+        <td>{{.Nome}}</td>
+        <td><span class="badge badge-{{.Categoria}}">{{.Categoria}}</span></td>
+        <td>{{brl .Valor}}</td>
+        <td>
+          <form method="POST" action="/despesas/{{.ID}}/toggle-ativa" style="display:inline">
+            <button type="submit" class="btn-mini {{if .Ativa}}active{{end}}">
+              {{if .Ativa}}● Sim{{else}}○ Não{{end}}
+            </button>
+          </form>
+        </td>
+        <td class="actions">
+          <button data-open-dialog="dialog-edit-{{.ID}}" class="btn-action" title="Editar">✏️</button>
+          <form method="POST" action="/despesas/{{.ID}}/delete" style="display:inline"
+                onsubmit="return confirm('Excluir {{.Nome}}?')">
+            <button type="submit" class="btn-action danger" title="Excluir">🗑️</button>
+          </form>
+        </td>
+      </tr>
+      <dialog id="dialog-edit-{{.ID}}">
+        <article>
+          <header>
+            <button data-close-dialog aria-label="Fechar"></button>
+            <h3>Editar: {{.Nome}}</h3>
+          </header>
+          <form method="POST" action="/despesas/{{.ID}}/update">
+            <label>Nome<input type="text" name="nome" value="{{.Nome}}" required></label>
+            <label>Valor (R$)<input type="text" name="valor" value="{{.Valor}}" placeholder="0,00"></label>
+            <label>Categoria
+              <select name="categoria">
+                <option value="Básicas" {{if eq .Categoria "Básicas"}}selected{{end}}>Básicas</option>
+                <option value="Cartão"  {{if eq .Categoria "Cartão"}}selected{{end}}>Cartão</option>
+                <option value="VR"      {{if eq .Categoria "VR"}}selected{{end}}>VR</option>
+              </select>
+            </label>
+            <footer>
+              <button data-close-dialog type="button" class="secondary">Cancelar</button>
+              <button type="submit">Salvar</button>
+            </footer>
+          </form>
+        </article>
+      </dialog>
+      {{else}}
+      <tr><td colspan="5" class="muted center">Nenhuma despesa fixa cadastrada.</td></tr>
+      {{end}}
+    </tbody>
+  </table>
+</div>
+
+<!-- Dialog nova despesa fixa -->
+<dialog id="dialog-nova-despesa">
+  <article>
+    <header>
+      <button data-close-dialog aria-label="Fechar"></button>
+      <h3>Nova Despesa Fixa</h3>
+    </header>
+    <form method="POST" action="/despesas">
+      <label>Nome<input type="text" name="nome" placeholder="Ex: Netflix" required autofocus></label>
+      <label>Valor (R$)<input type="text" name="valor" placeholder="55,90"></label>
+      <label>Categoria
+        <select name="categoria">
+          <option value="Básicas">Básicas (água, luz, etc.)</option>
+          <option value="Cartão">Cartão (streaming, etc.)</option>
+          <option value="VR">VR / Alimentação</option>
+        </select>
+      </label>
+      <p class="hint" style="margin-top:.75rem">🔁 Esta despesa será contabilizada em <strong>todos os meses</strong> automaticamente.</p>
+      <footer>
+        <button data-close-dialog type="button" class="secondary">Cancelar</button>
+        <button type="submit">Adicionar</button>
+      </footer>
+    </form>
+  </article>
+</dialog>
+{{end}}
+
+<!-- ===== TAB: PARCELAMENTOS ===== -->
+{{if eq .TabAtivo "parcelamentos"}}
+<p class="hint">💡 Parcelamentos param de contabilizar <strong>automaticamente</strong> quando todas as parcelas são pagas (baseado na data de início + total de parcelas).</p>
+<div class="table-responsive">
+  <table>
+    <thead>
+      <tr>
+        <th>Descrição</th>
+        <th>Cartão</th>
+        <th>Progresso</th>
+        <th>Valor/Parcela</th>
+        <th>Restante</th>
+        <th>Início</th>
+        <th>Status</th>
+        <th>Ações</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{range .Parcelamentos}}
+      <tr class="{{if not .Ativo}}inativa{{end}}">
+        <td>{{.Descricao}}</td>
+        <td><small>{{.Cartao}}</small></td>
+        <td>
+          {{if .Ativo}}
+          <progress value="{{.ParcelaAtual}}" max="{{.TotalParcelas}}"></progress>
+          {{end}}
+          <span class="progress-label">{{progress .ParcelaAtual .TotalParcelas}}</span>
+        </td>
+        <td>{{brl .ValorParcela}}</td>
+        <td>{{if .Ativo}}{{brl .ValorRestante}}{{else}}<span class="muted">—</span>{{end}}</td>
+        <td><small>{{date .DataInicio}}</small></td>
+        <td>
+          {{if .Ativo}}
+            <span class="badge badge-ativo">Ativo</span>
+          {{else}}
+            <span class="badge badge-concluido">Concluído</span>
+          {{end}}
+        </td>
+        <td class="actions">
+          <button data-open-dialog="dialog-edit-parc-{{.ID}}" class="btn-action" title="Editar">✏️</button>
+          <form method="POST" action="/parcelamentos/{{.ID}}/delete" style="display:inline"
+                onsubmit="return confirm('Excluir {{.Descricao}}?')">
+            <button type="submit" class="btn-action danger" title="Excluir">🗑️</button>
+          </form>
+        </td>
+      </tr>
+      <dialog id="dialog-edit-parc-{{.ID}}">
+        <article>
+          <header>
+            <button data-close-dialog aria-label="Fechar"></button>
+            <h3>Editar: {{.Descricao}}</h3>
+          </header>
+          <form method="POST" action="/parcelamentos/{{.ID}}/update">
+            <div class="grid">
+              <label>Parcela Atual
+                <input type="number" name="parcela_atual" value="{{.ParcelaAtual}}" min="1" max="{{.TotalParcelas}}">
+              </label>
+              <label>Status
+                <select name="ativo">
+                  <option value="true"  {{if .Ativo}}selected{{end}}>Ativo</option>
+                  <option value="false" {{if not .Ativo}}selected{{end}}>Concluído</option>
+                </select>
+              </label>
+            </div>
+            <footer>
+              <button data-close-dialog type="button" class="secondary">Cancelar</button>
+              <button type="submit">Salvar</button>
+            </footer>
+          </form>
+        </article>
+      </dialog>
+      {{else}}
+      <tr><td colspan="8" class="muted center">Nenhum parcelamento cadastrado.</td></tr>
+      {{end}}
+    </tbody>
+  </table>
+</div>
+
+<!-- Dialog novo parcelamento -->
+<dialog id="dialog-novo-parc">
+  <article>
+    <header>
+      <button data-close-dialog aria-label="Fechar"></button>
+      <h3>Novo Parcelamento</h3>
+    </header>
+    <form method="POST" action="/parcelamentos">
+      <label>Descrição<input type="text" name="descricao" placeholder="Ex: Viagem Europa" required autofocus></label>
+      <div class="grid">
+        <label>Cartão<input type="text" name="cartao" placeholder="Ex: Nubank"></label>
+        <label>Valor/Parcela (R$)<input type="text" name="valor_parcela" placeholder="350,00" required></label>
+      </div>
+      <div class="grid">
+        <label>Parcela Atual<input type="number" name="parcela_atual" value="1" min="1"></label>
+        <label>Total de Parcelas<input type="number" name="total_parcelas" placeholder="12" min="1" required></label>
+        <label>Data de Início<input type="date" name="data_inicio" required></label>
+      </div>
+      <p class="hint" style="margin-top:.75rem">🔁 O parcelamento será debitado <strong>do mês de início até o último mês</strong> e então pára automaticamente.</p>
+      <footer>
+        <button data-close-dialog type="button" class="secondary">Cancelar</button>
+        <button type="submit">Adicionar</button>
+      </footer>
+    </form>
+  </article>
+</dialog>
+{{end}}
+
+<!-- ===== TAB: EMPRÉSTIMOS ===== -->
+{{if eq .TabAtivo "emprestimos"}}
+<div class="summary-grid" style="max-width:480px;margin-bottom:1.5rem">
+  <article class="sum-card card-despesa">
+    <div class="sum-icon">💸</div>
+    <div>
+      <p class="card-label">Você deve</p>
+      <p class="card-value">{{brl .TotalDevo}}</p>
+    </div>
+  </article>
+  <article class="sum-card card-receita">
+    <div class="sum-icon">💰</div>
+    <div>
+      <p class="card-label">Te devem</p>
+      <p class="card-value">{{brl .TotalAReceber}}</p>
+    </div>
+  </article>
+</div>
+
+<div class="table-responsive">
+  <table>
+    <thead>
+      <tr>
+        <th>Pessoa</th>
+        <th>Direção</th>
+        <th>Valor</th>
+        <th>Data</th>
+        <th>Notas</th>
+        <th>Status</th>
+        <th>Ações</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{range .Emprestimos}}
+      <tr class="{{if .Pago}}inativa{{end}}">
+        <td><strong>{{.Pessoa}}</strong></td>
+        <td>
+          {{if eq .Direcao "devo"}}
+            <span class="badge badge-despesa">Devo</span>
+          {{else}}
+            <span class="badge badge-receita">Me devem</span>
+          {{end}}
+        </td>
+        <td class="{{if eq .Direcao "devo"}}valor-negativo{{else}}valor-positivo{{end}}">
+          {{brl .Valor}}
+        </td>
+        <td><small>{{date .Data}}</small></td>
+        <td><small>{{.Notas}}</small></td>
+        <td>{{template "emprestimo-toggle-btn" .}}</td>
+        <td class="actions">
+          <form method="POST" action="/emprestimos/{{.ID}}/delete" style="display:inline"
+                onsubmit="return confirm('Excluir empréstimo de {{.Pessoa}}?')">
+            <button type="submit" class="btn-action danger" title="Excluir">🗑️</button>
+          </form>
+        </td>
+      </tr>
+      {{else}}
+      <tr><td colspan="7" class="muted center">Nenhum empréstimo registrado.</td></tr>
+      {{end}}
+    </tbody>
+  </table>
+</div>
+
+<!-- Dialog novo empréstimo -->
+<dialog id="dialog-novo-emp">
+  <article>
+    <header>
+      <button data-close-dialog aria-label="Fechar"></button>
+      <h3>Registrar Empréstimo</h3>
+    </header>
+    <form method="POST" action="/emprestimos">
+      <label>Pessoa<input type="text" name="pessoa" placeholder="Ex: Pai" required autofocus></label>
+      <div class="grid">
+        <label>Valor (R$)<input type="text" name="valor" placeholder="500,00" required></label>
+        <label>Data<input type="date" name="data" required></label>
+      </div>
+      <label>Direção
+        <select name="direcao">
+          <option value="devo">Eu devo (peguei emprestado)</option>
+          <option value="emprestei">Eu emprestei (me devem)</option>
+        </select>
+      </label>
+      <label>Notas (opcional)<input type="text" name="notas" placeholder="Ex: Para emergência médica"></label>
+      <footer>
+        <button data-close-dialog type="button" class="secondary">Cancelar</button>
+        <button type="submit">Registrar</button>
+      </footer>
+    </form>
+  </article>
+</dialog>
+{{end}}
+{{end}}
