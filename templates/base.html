@@ -3,7 +3,11 @@
 <html lang="pt-BR" data-theme="dark">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0f1419">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>{{.Title}} — FinBertoldi</title>
   <script>
     (function() {
@@ -42,40 +46,89 @@
         <span class="nav-ico">📊</span>
         <span class="nav-text">Dashboard</span>
       </a>
+      {{if not (contains .BlockedScreens "despesas")}}
       <a href="/despesas" class="nav-item {{if eq .Active "despesas"}}active{{end}}">
         <span class="nav-ico">💸</span>
         <span class="nav-text">Despesas</span>
       </a>
+      {{end}}
+      {{if not (contains .BlockedScreens "receitas")}}
       <a href="/receitas" class="nav-item {{if eq .Active "receitas"}}active{{end}}">
         <span class="nav-ico">💵</span>
         <span class="nav-text">Receitas</span>
       </a>
+      {{end}}
+      {{if not (contains .BlockedScreens "investimentos")}}
       <a href="/investimentos" class="nav-item {{if eq .Active "investimentos"}}active{{end}}">
         <span class="nav-ico">📈</span>
         <span class="nav-text">Investimentos</span>
       </a>
+      {{end}}
+      {{if not (contains .BlockedScreens "planejamento")}}
       <a href="/planejamento" class="nav-item {{if eq .Active "planejamento"}}active{{end}}">
         <span class="nav-ico">🎯</span>
         <span class="nav-text">Planejamento</span>
       </a>
+      {{end}}
+      {{if not (contains .BlockedScreens "emprestimos")}}
+      <a href="/emprestimos" class="nav-item {{if eq .Active "emprestimos"}}active{{end}}">
+        <span class="nav-ico">🤝</span>
+        <span class="nav-text">Empréstimos</span>
+      </a>
+      {{end}}
+
+      <p class="nav-section-label">Configurações</p>
+      {{if not (contains .BlockedScreens "cadastros")}}
+      <a href="/cadastros" class="nav-item {{if eq .Active "cadastros"}}active{{end}}">
+        <span class="nav-ico">🗂️</span>
+        <span class="nav-text">Cadastros</span>
+      </a>
+      {{end}}
+
+      {{if and .CurrentUser .CurrentUser.FamilyAdmin}}
+      {{if not .CurrentUser.Admin}}
+      <p class="nav-section-label">Administração</p>
+      <a href="/minha-familia" class="nav-item {{if eq .Active "minha-familia"}}active{{end}}">
+        <span class="nav-ico">👥</span>
+        <span class="nav-text">Minha Família</span>
+      </a>
+      {{end}}
+      {{end}}
 
       {{if and .CurrentUser .CurrentUser.Admin}}
       <p class="nav-section-label">Administração</p>
+      <a href="/minha-familia" class="nav-item {{if eq .Active "minha-familia"}}active{{end}}">
+        <span class="nav-ico">👥</span>
+        <span class="nav-text">Minha Família</span>
+      </a>
       <a href="/usuarios" class="nav-item {{if eq .Active "usuarios"}}active{{end}}">
         <span class="nav-ico">👤</span>
         <span class="nav-text">Usuários</span>
+      </a>
+      <a href="/familias" class="nav-item {{if eq .Active "familias"}}active{{end}}">
+        <span class="nav-ico">👨‍👩‍👧</span>
+        <span class="nav-text">Famílias</span>
       </a>
       {{end}}
     </nav>
 
     <div class="sidebar-footer">
-      <button class="icon-btn theme-toggle" onclick="toggleTheme()" id="theme-btn" title="Alternar tema">🌙</button>
+      <div class="sidebar-footer-btns">
+        <button class="icon-btn theme-toggle" onclick="toggleTheme()" id="theme-btn" title="Alternar tema">🌙</button>
+        <button class="icon-btn" onclick="toggleValues()" id="values-btn" title="Mostrar/ocultar valores">👁</button>
+      </div>
       {{if .CurrentUser}}
       <div class="user-chip">
         <div class="user-avatar">{{slice .CurrentUser.Nome 0 1}}</div>
         <div class="user-meta">
           <span class="user-nome">{{.CurrentUser.Nome}}</span>
-          {{if .CurrentUser.Admin}}<span class="user-role">Admin</span>{{else}}<span class="user-role-user">Usuário</span>{{end}}
+          {{if .CurrentUser.FamilyNome}}
+            <span class="user-family" title="Sua família">👨‍👩‍👧 {{.CurrentUser.FamilyNome}}</span>
+          {{else if .CurrentUser.Admin}}
+            <span class="user-role">Admin</span>
+          {{else}}
+            <span class="user-role-user">Usuário</span>
+          {{end}}
         </div>
         <form method="POST" action="/logout" style="display:inline;margin:0">
           <button type="submit" class="icon-btn icon-btn-danger" title="Sair">↩</button>
@@ -86,6 +139,68 @@
   </aside>
 
   <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+
+  <script>
+    // ===== TABLE FILTER UTILITY =====
+    function initTableFilter(cfg) {
+      const tbody = document.querySelector('#' + cfg.tableId + ' tbody');
+      if (!tbody) return;
+      const searchEl  = cfg.searchId ? document.getElementById(cfg.searchId) : null;
+      const filterEls = (cfg.filters || []).map(f => ({
+        el: document.getElementById(f.id), col: f.col
+      })).filter(f => f.el);
+
+      function dataRows() {
+        return Array.from(tbody.querySelectorAll('tr')).filter(r => r.cells.length > 2);
+      }
+
+      function apply() {
+        const query = searchEl?.value.trim().toLowerCase() || '';
+        const rows  = dataRows();
+        let   count = 0;
+        rows.forEach(row => {
+          let show = true;
+          if (query) {
+            const text = Array.from(row.cells).slice(0, -1)
+              .map(c => c.textContent.trim()).join(' ').toLowerCase();
+            if (!text.includes(query)) show = false;
+          }
+          if (show) {
+            for (const {el, col} of filterEls) {
+              if (!el.value) continue;
+              const cellText = (row.cells[col]?.textContent || '').trim().toLowerCase();
+              if (!cellText.includes(el.value.toLowerCase())) { show = false; break; }
+            }
+          }
+          row.style.display = show ? '' : 'none';
+          if (show) count++;
+        });
+        const noRes = cfg.noResultsId ? document.getElementById(cfg.noResultsId) : null;
+        if (noRes) noRes.style.display = (rows.length > 0 && count === 0) ? 'block' : 'none';
+        const counter = cfg.countId ? document.getElementById(cfg.countId) : null;
+        if (counter) counter.textContent = rows.length > 0 ? count + ' de ' + rows.length : '';
+      }
+
+      searchEl?.addEventListener('input', apply);
+      filterEls.forEach(({el}) => el.addEventListener('change', apply));
+    }
+
+    function populateSelectFromCol(selectId, tableId, col) {
+      const select = document.getElementById(selectId);
+      if (!select) return;
+      const seen = new Set();
+      document.querySelectorAll('#' + tableId + ' tbody tr').forEach(row => {
+        if (row.cells.length <= 2) return;
+        const text = (row.cells[col]?.textContent || '').trim();
+        if (text && text !== '—' && !seen.has(text)) {
+          seen.add(text);
+          const opt = document.createElement('option');
+          opt.value = text; opt.textContent = text;
+          select.appendChild(opt);
+        }
+      });
+    }
+  </script>
 
   <main class="app-main">
     <div class="app-container">
@@ -114,21 +229,50 @@
       document.getElementById('theme-btn').textContent = next === 'dark' ? '🌙' : '☀️';
     }
 
+    function toggleValues() {
+      const hidden = document.body.classList.toggle('values-hidden');
+      localStorage.setItem('values-hidden', hidden ? '1' : '0');
+      document.getElementById('values-btn').textContent = hidden ? '🙈' : '👁';
+    }
+
     (function() {
       var t = localStorage.getItem('theme') || 'dark';
       var btn = document.getElementById('theme-btn');
       if (btn) btn.textContent = t === 'dark' ? '🌙' : '☀️';
+
+      if (localStorage.getItem('values-hidden') === '1') {
+        document.body.classList.add('values-hidden');
+        var vbtn = document.getElementById('values-btn');
+        if (vbtn) vbtn.textContent = '🙈';
+      }
     })();
 
     // Sidebar mobile
     const sidebar = document.getElementById('sidebar');
     const backdrop = document.getElementById('sidebar-backdrop');
     const toggle = document.getElementById('sidebar-toggle');
-    function openSidebar() { sidebar.classList.add('open'); backdrop.classList.add('show'); }
-    function closeSidebar() { sidebar.classList.remove('open'); backdrop.classList.remove('show'); }
-    toggle?.addEventListener('click', openSidebar);
+    function openSidebar() {
+      sidebar.classList.add('open');
+      backdrop.classList.add('show');
+      toggle?.classList.add('is-open');
+    }
+    function closeSidebar() {
+      sidebar.classList.remove('open');
+      backdrop.classList.remove('show');
+      toggle?.classList.remove('is-open');
+    }
+    toggle?.addEventListener('click', () => {
+      sidebar.classList.contains('open') ? closeSidebar() : openSidebar();
+    });
     backdrop?.addEventListener('click', closeSidebar);
-  </script>
+
+    // Fecha sidebar ao navegar (HTMX ou link)
+    document.querySelectorAll('.nav-item').forEach(a => {
+      a.addEventListener('click', closeSidebar);
+    });
+
+
+</script>
 </body>
 </html>
 {{end}}
@@ -142,11 +286,3 @@
 >{{if .Pago}}✓ Pago{{else}}Pagar{{end}}</button>
 {{end}}
 
-{{define "emprestimo-toggle-btn"}}
-<button
-  hx-post="/api/emprestimos/{{.ID}}/toggle-pago"
-  hx-target="this"
-  hx-swap="outerHTML"
-  class="btn-toggle {{if .Pago}}pago{{end}}"
->{{if .Pago}}✓ Quitado{{else}}Quitar{{end}}</button>
-{{end}}

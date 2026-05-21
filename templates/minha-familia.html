@@ -1,0 +1,174 @@
+{{define "content"}}
+<div class="page-header">
+  <h2>👨‍👩‍👧 Minha Família</h2>
+  <button data-open-dialog="dialog-novo-membro">+ Novo Membro</button>
+</div>
+
+<p class="hint">💡 Gerencie os membros da família <strong>{{.CurrentUser.FamilyNome}}</strong>. Membros compartilham despesas, receitas e investimentos.</p>
+
+{{if .Erro}}
+<div class="alert alert-erro">⚠️ {{.Erro}}</div>
+{{end}}
+{{if .Sucesso}}
+<div class="alert alert-success">✅ {{.Sucesso}}</div>
+{{end}}
+
+<div class="filter-bar">
+  <input type="search" id="fmt-busca" placeholder="🔍 Buscar por nome ou e-mail…">
+  <select id="fmt-status">
+    <option value="">Todos</option>
+    <option value="Ativo">Ativos</option>
+    <option value="Inativo">Inativos</option>
+  </select>
+  <span class="filter-count" id="fmt-count"></span>
+</div>
+<p class="filter-no-results" id="fmt-no-results">Nenhum membro encontrado.</p>
+
+<div class="table-responsive">
+  <table id="table-minha-familia">
+    <thead>
+      <tr>
+        <th>Nome</th>
+        <th>E-mail</th>
+        <th>Status</th>
+        <th>Criado em</th>
+        <th>Ações</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{range .Membros}}
+      <tr class="{{if not .Ativo}}inativa{{end}}">
+        <td>
+          <strong>{{.Nome}}</strong>
+          {{if eq .ID $.CurrentUser.ID}}
+            <span class="badge badge-ativo" style="font-size:.65rem">você</span>
+          {{end}}
+          {{if .Admin}}
+            <span class="badge badge-ativo" style="font-size:.65rem">⭐ Admin</span>
+          {{end}}
+        </td>
+        <td>{{.Email}}</td>
+        <td>
+          {{if .Ativo}}
+            <span class="badge badge-receita">Ativo</span>
+          {{else}}
+            <span class="badge badge-despesa">Inativo</span>
+          {{end}}
+        </td>
+        <td><small>{{date .CriadoEm}}</small></td>
+        <td class="actions">
+          {{if ne .ID $.CurrentUser.ID}}
+            {{if not .Admin}}
+            <form method="POST" action="/minha-familia/{{.ID}}/toggle-ativo" style="display:inline">
+              <button type="submit" class="btn-action danger" title="{{if .Ativo}}Desativar{{else}}Ativar{{end}}">
+                {{if .Ativo}}🚫{{else}}✅{{end}}
+              </button>
+            </form>
+            <button data-open-dialog="dialog-perm-{{.ID}}" class="btn-action" title="Controle de acesso">🔒</button>
+            {{else}}
+            <button class="btn-action" disabled style="opacity:.35;cursor:not-allowed" title="Não é possível alterar admin global">🚫</button>
+            {{end}}
+          {{end}}
+          {{/* Botão redefinir senha: admin global vê todos; family_admin só vê não-admins; usuário comum só vê a si mesmo */}}
+          {{if or $.CurrentUser.Admin (and $.CurrentUser.FamilyAdmin (not .Admin)) (eq .ID $.CurrentUser.ID)}}
+          {{if eq .ID $.CurrentUser.ID}}
+          <button data-open-dialog="dialog-reset-mf-{{.ID}}" class="btn-action" title="Redefinir minha senha">🔑</button>
+          {{else}}
+          <button data-open-dialog="dialog-reset-mf-{{.ID}}" class="btn-action" title="Redefinir senha">🔑</button>
+          {{end}}
+          {{end}}
+        </td>
+      </tr>
+
+      <dialog id="dialog-reset-mf-{{.ID}}">
+        <article>
+          <header>
+            <button data-close-dialog aria-label="Fechar"></button>
+            <h3>Redefinir Senha — {{.Nome}}</h3>
+          </header>
+          {{if eq .ID $.CurrentUser.ID}}
+          <form method="POST" action="/minha-senha">
+          {{else}}
+          <form method="POST" action="/minha-familia/{{.ID}}/reset-senha">
+          {{end}}
+            <label>
+              Nova Senha
+              <input type="password" name="nova_senha" placeholder="Mínimo 6 caracteres" minlength="6" required autofocus>
+            </label>
+            <footer>
+              <button data-close-dialog type="button" class="secondary">Cancelar</button>
+              <button type="submit">Salvar</button>
+            </footer>
+          </form>
+        </article>
+      </dialog>
+
+      {{if not .Admin}}
+      <dialog id="dialog-perm-{{.ID}}">
+        <article>
+          <header>
+            <button data-close-dialog aria-label="Fechar"></button>
+            <h3>🔒 Acesso — {{.Nome}}</h3>
+          </header>
+          <p class="hint" style="font-size:.82rem;margin-bottom:1rem">Telas bloqueadas ficam ocultas para este membro.</p>
+          <div class="perm-grid">
+            {{$member := .}}
+            {{range $.Telas}}
+            {{$blocked := contains $member.BlockedScreens .Key}}
+            <div class="perm-card {{if $blocked}}perm-blocked{{end}}">
+              <div class="perm-info">
+                <span class="perm-label">{{.Label}}</span>
+                <span class="perm-status">{{if $blocked}}Bloqueada{{else}}Liberada{{end}}</span>
+              </div>
+              <form method="POST" action="/minha-familia/{{$member.ID}}/permissoes/{{.Key}}/toggle" style="margin:0;width:100%">
+                <button type="submit" class="btn-perm {{if $blocked}}btn-perm-blocked{{end}}" style="width:100%;margin:0">
+                  {{if $blocked}}🔒 Liberar{{else}}🔓 Bloquear{{end}}
+                </button>
+              </form>
+            </div>
+            {{end}}
+          </div>
+          <footer>
+            <button data-close-dialog type="button" class="secondary">Fechar</button>
+          </footer>
+        </article>
+      </dialog>
+      {{end}}
+
+      {{else}}
+      <tr><td colspan="5" class="muted center">Nenhum membro cadastrado.</td></tr>
+      {{end}}
+    </tbody>
+  </table>
+</div>
+
+<script>
+  initTableFilter({
+    tableId: 'table-minha-familia',
+    searchId: 'fmt-busca',
+    filters: [{ id: 'fmt-status', col: 2 }],
+    countId: 'fmt-count',
+    noResultsId: 'fmt-no-results'
+  });
+</script>
+
+<!-- Dialog novo membro -->
+<dialog id="dialog-novo-membro">
+  <article>
+    <header>
+      <button data-close-dialog aria-label="Fechar"></button>
+      <h3>Novo Membro</h3>
+    </header>
+    <form method="POST" action="/minha-familia">
+      <label>Nome<input type="text" name="nome" placeholder="Nome completo" required autofocus></label>
+      <label>E-mail<input type="email" name="email" placeholder="email@exemplo.com" required></label>
+      <label>Senha<input type="password" name="senha" placeholder="Mínimo 6 caracteres" minlength="6" required></label>
+      <p class="hint" style="font-size:.78rem">O novo membro será adicionado à família <strong>{{.CurrentUser.FamilyNome}}</strong>.</p>
+      <footer>
+        <button data-close-dialog type="button" class="secondary">Cancelar</button>
+        <button type="submit">Criar</button>
+      </footer>
+    </form>
+  </article>
+</dialog>
+{{end}}

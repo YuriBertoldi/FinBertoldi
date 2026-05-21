@@ -1,22 +1,44 @@
 {{define "content"}}
 <div class="page-header">
   <h2>👤 Usuários</h2>
-  <button data-open-dialog="dialog-novo-usuario">+ Novo Usuário</button>
+  <div style="display:flex;gap:.5rem">
+    <a href="/familias" role="button" class="outline secondary">👨‍👩‍👧 Famílias</a>
+    <button data-open-dialog="dialog-novo-usuario">+ Novo Usuário</button>
+  </div>
 </div>
 
-<p class="hint">Gerencie quem tem acesso ao sistema. Apenas administradores podem acessar esta página.</p>
+<p class="hint">💡 Cada usuário pertence a uma <strong>família</strong>. Usuários da mesma família compartilham todos os dados financeiros. Usuários de famílias diferentes não veem dados uns dos outros.</p>
 
 {{if .Erro}}
 <div class="alert alert-erro">⚠️ {{.Erro}}</div>
 {{end}}
 
+<div class="filter-bar">
+  <input type="search" id="fu-busca" placeholder="🔍 Buscar por nome ou e-mail…">
+  <select id="fu-familia"><option value="">Todas as famílias</option></select>
+  <select id="fu-perfil">
+    <option value="">Todos os perfis</option>
+    <option value="Admin">⭐ Admin</option>
+    <option value="Fam. Admin">🏠 Fam. Admin</option>
+    <option value="Usuário">Usuário</option>
+  </select>
+  <select id="fu-status">
+    <option value="">Todos</option>
+    <option value="Ativo">Ativos</option>
+    <option value="Inativo">Inativos</option>
+  </select>
+  <span class="filter-count" id="fu-count"></span>
+</div>
+<p class="filter-no-results" id="fu-no-results">Nenhum usuário encontrado para os filtros selecionados.</p>
+
 <div class="table-responsive">
-  <table>
+  <table id="table-usuarios">
     <thead>
       <tr>
         <th>Nome</th>
         <th>E-mail</th>
-        <th>Admin</th>
+        <th>Família</th>
+        <th>Perfil</th>
         <th>Status</th>
         <th>Criado em</th>
         <th>Ações</th>
@@ -33,8 +55,20 @@
         </td>
         <td>{{.Email}}</td>
         <td>
+          <form method="POST" action="/usuarios/{{.ID}}/family" style="display:inline">
+            <select name="family_id" onchange="this.form.submit()" class="select-mini">
+              {{$cur := .FamilyID}}
+              {{range $.Familias}}
+              <option value="{{.ID}}" {{if eq .ID $cur}}selected{{end}}>{{.Nome}}</option>
+              {{end}}
+            </select>
+          </form>
+        </td>
+        <td>
           {{if .Admin}}
-            <span class="badge badge-ativo">Admin</span>
+            <span class="badge badge-ativo">⭐ Admin</span>
+          {{else if .FamilyAdmin}}
+            <span class="badge badge-investido">🏠 Fam. Admin</span>
           {{else}}
             <span class="badge badge-concluido">Usuário</span>
           {{end}}
@@ -49,29 +83,31 @@
         <td><small>{{date .CriadoEm}}</small></td>
         <td class="actions">
           {{if ne .ID $.CurrentUser.ID}}
-            <!-- Toggle Admin -->
-            <form method="POST" action="/usuarios/{{.ID}}/toggle-admin" style="display:inline" title="{{if .Admin}}Remover admin{{else}}Tornar admin{{end}}">
-              <button type="submit" class="btn-action" title="{{if .Admin}}Remover admin{{else}}Tornar admin{{end}}">
+            <form method="POST" action="/usuarios/{{.ID}}/toggle-admin" style="display:inline" title="{{if .Admin}}Remover admin global{{else}}Tornar admin global{{end}}">
+              <button type="submit" class="btn-action" title="{{if .Admin}}Remover admin global{{else}}Tornar admin global{{end}}">
                 {{if .Admin}}👤{{else}}⭐{{end}}
               </button>
             </form>
-            <!-- Toggle Ativo -->
+            {{if not .Admin}}
+            <form method="POST" action="/usuarios/{{.ID}}/toggle-family-admin" style="display:inline" title="{{if .FamilyAdmin}}Remover admin de família{{else}}Tornar admin de família{{end}}">
+              <button type="submit" class="btn-action" title="{{if .FamilyAdmin}}Remover admin de família{{else}}Tornar admin de família{{end}}" style="{{if .FamilyAdmin}}opacity:1{{else}}opacity:.6{{end}}">
+                {{if .FamilyAdmin}}🏠✓{{else}}🏠{{end}}
+              </button>
+            </form>
+            {{end}}
             <form method="POST" action="/usuarios/{{.ID}}/toggle-ativo" style="display:inline">
               <button type="submit" class="btn-action danger" title="{{if .Ativo}}Desativar{{else}}Ativar{{end}}">
                 {{if .Ativo}}🔒{{else}}🔓{{end}}
               </button>
             </form>
-            <!-- Reset Senha -->
             <button data-open-dialog="dialog-reset-{{.ID}}" class="btn-action" title="Redefinir senha">
               🔑
             </button>
-            <!-- Excluir -->
             <form method="POST" action="/usuarios/{{.ID}}/delete" style="display:inline"
                   onsubmit="return confirm('Excluir usuário {{.Nome}}?')">
               <button type="submit" class="btn-action danger" title="Excluir">🗑️</button>
             </form>
           {{else}}
-            <!-- Reset própria senha -->
             <button data-open-dialog="dialog-reset-{{.ID}}" class="btn-action" title="Redefinir sua senha">
               🔑
             </button>
@@ -79,7 +115,6 @@
         </td>
       </tr>
 
-      <!-- Dialog reset de senha -->
       <dialog id="dialog-reset-{{.ID}}">
         <article>
           <header>
@@ -99,7 +134,7 @@
         </article>
       </dialog>
       {{else}}
-      <tr><td colspan="6" class="muted center">Nenhum usuário cadastrado.</td></tr>
+      <tr><td colspan="7" class="muted center">Nenhum usuário cadastrado.</td></tr>
       {{end}}
     </tbody>
   </table>
@@ -112,14 +147,36 @@
       <button data-close-dialog aria-label="Fechar"></button>
       <h3>Novo Usuário</h3>
     </header>
-    <form method="POST" action="/usuarios">
+    <form method="POST" action="/usuarios" id="form-novo-user">
       <label>Nome<input type="text" name="nome" placeholder="Nome completo" required autofocus></label>
       <label>E-mail<input type="email" name="email" placeholder="email@exemplo.com" required></label>
       <label>Senha<input type="password" name="senha" placeholder="Mínimo 6 caracteres" minlength="6" required></label>
-      <label>
+
+      <fieldset class="family-fieldset">
+        <legend>👨‍👩‍👧 Família</legend>
+        <label class="radio-row">
+          <input type="radio" name="family_opt" value="existente" checked onchange="toggleFamilyMode()">
+          <span>Vincular a uma família existente</span>
+        </label>
+        <select name="family_id" id="select-family-existente">
+          {{range .Familias}}
+          <option value="{{.ID}}">{{.Nome}} ({{.NumMembros}} membro(s))</option>
+          {{end}}
+        </select>
+
+        <label class="radio-row" style="margin-top:.75rem">
+          <input type="radio" name="family_opt" value="nova" onchange="toggleFamilyMode()">
+          <span>Criar nova família</span>
+        </label>
+        <input type="text" name="new_family_name" id="input-family-nova" placeholder="Nome da nova família (ou deixe em branco)" disabled>
+        <p class="hint" style="margin-top:.5rem;font-size:.78rem">Se vazio, usará o nome do usuário.</p>
+      </fieldset>
+
+      <label class="check-row" style="margin-top:1rem">
         <input type="checkbox" name="admin">
-        Administrador (acesso total)
+        <span>⭐ <strong>Administrador</strong> — acesso total (gerenciar usuários e famílias)</span>
       </label>
+
       <footer>
         <button data-close-dialog type="button" class="secondary">Cancelar</button>
         <button type="submit">Criar</button>
@@ -127,4 +184,25 @@
     </form>
   </article>
 </dialog>
+
+<script>
+  populateSelectFromCol('fu-familia', 'table-usuarios', 2);
+  initTableFilter({
+    tableId: 'table-usuarios',
+    searchId: 'fu-busca',
+    filters: [
+      { id: 'fu-familia', col: 2 },
+      { id: 'fu-perfil',  col: 3 },
+      { id: 'fu-status',  col: 4 }
+    ],
+    countId: 'fu-count',
+    noResultsId: 'fu-no-results'
+  });
+
+  function toggleFamilyMode() {
+    const opt = document.querySelector('input[name="family_opt"]:checked').value;
+    document.getElementById('select-family-existente').disabled = opt !== 'existente';
+    document.getElementById('input-family-nova').disabled = opt !== 'nova';
+  }
+</script>
 {{end}}

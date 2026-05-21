@@ -1,25 +1,45 @@
-# Binários
+# Binários compilados
 fincontrol
 fincontrol.exe
+finBertoldi
+finBertoldi.exe
 *.exe
+*.out
 
 # Go
 *.test
-*.out
+coverage.out
+coverage.html
 
 # IDE
 .vscode/
 .idea/
+*.swp
+*.swo
 
-# Docker
+# Variáveis de ambiente (NUNCA commitar)
 .env
-.env.local
+.env.*
+!.env.*.example
+
+# Chaves e certificados
+*.key
+*.pem
+*.p12
+*.pfx
+
+# Docker volumes / dados locais
+pgdata/
+
+# Backups / dumps
+*.bak
+*.dump
+*.sql.gz
 
 # OS
 .DS_Store
 Thumbs.db
+desktop.ini
 
-# Data
-pgdata/
-*.bak
-*.dump
+# Logs
+*.log

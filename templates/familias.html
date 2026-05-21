@@ -1,0 +1,105 @@
+{{define "content"}}
+<div class="page-header">
+  <h2>👨‍👩‍👧 Famílias</h2>
+  <div style="display:flex;gap:.5rem">
+    <a href="/usuarios" role="button" class="outline secondary">👤 Usuários</a>
+    <button data-open-dialog="dialog-nova-familia">+ Nova Família</button>
+  </div>
+</div>
+
+<p class="hint">💡 Famílias isolam os dados financeiros. Usuários da mesma família compartilham despesas, receitas, investimentos e parcelamentos.</p>
+
+<div class="filter-bar">
+  <input type="search" id="ff-busca" placeholder="🔍 Buscar por nome…">
+  <select id="ff-membros">
+    <option value="">Todas</option>
+    <option value="0 membro">Sem membros</option>
+  </select>
+  <span class="filter-count" id="ff-count"></span>
+</div>
+<p class="filter-no-results" id="ff-no-results">Nenhuma família encontrada.</p>
+
+<div class="table-responsive">
+  <table id="table-familias">
+    <thead>
+      <tr>
+        <th>Nome</th>
+        <th>Membros</th>
+        <th>Criada em</th>
+        <th>Ações</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{range .Familias}}
+      <tr>
+        <td><strong>{{.Nome}}</strong></td>
+        <td>
+          <span class="badge badge-ativo">{{.NumMembros}} membro(s)</span>
+        </td>
+        <td><small>{{date .CriadoEm}}</small></td>
+        <td class="actions">
+          <button data-open-dialog="dialog-rename-{{.ID}}" class="btn-action" title="Renomear">✏️</button>
+          {{if eq .NumMembros 0}}
+          <form method="POST" action="/familias/{{.ID}}/delete" style="display:inline"
+                onsubmit="return confirm('Excluir família {{.Nome}}? Esta ação só funciona se não houver dados nem usuários.')">
+            <button type="submit" class="btn-action danger" title="Excluir">🗑️</button>
+          </form>
+          {{else}}
+          <button class="btn-action" title="Não é possível excluir — há membros" disabled style="opacity:.35;cursor:not-allowed">🗑️</button>
+          {{end}}
+        </td>
+      </tr>
+
+      <dialog id="dialog-rename-{{.ID}}">
+        <article>
+          <header>
+            <button data-close-dialog aria-label="Fechar"></button>
+            <h3>Renomear Família</h3>
+          </header>
+          <form method="POST" action="/familias/{{.ID}}/rename">
+            <label>Nome
+              <input type="text" name="nome" value="{{.Nome}}" required autofocus>
+            </label>
+            <footer>
+              <button data-close-dialog type="button" class="secondary">Cancelar</button>
+              <button type="submit">Salvar</button>
+            </footer>
+          </form>
+        </article>
+      </dialog>
+      {{else}}
+      <tr><td colspan="4" class="muted center">Nenhuma família cadastrada.</td></tr>
+      {{end}}
+    </tbody>
+  </table>
+</div>
+
+<script>
+  initTableFilter({
+    tableId: 'table-familias',
+    searchId: 'ff-busca',
+    filters: [{ id: 'ff-membros', col: 1 }],
+    countId: 'ff-count',
+    noResultsId: 'ff-no-results'
+  });
+</script>
+
+<dialog id="dialog-nova-familia">
+  <article>
+    <header>
+      <button data-close-dialog aria-label="Fechar"></button>
+      <h3>Nova Família</h3>
+    </header>
+    <form method="POST" action="/familias">
+      <label>Nome
+        <input type="text" name="nome" placeholder="Ex: Família Silva" required autofocus>
+      </label>
+      <p class="hint">A família terá dados financeiros independentes. Use para separar contas de diferentes núcleos familiares no mesmo sistema.</p>
+      <footer>
+        <button data-close-dialog type="button" class="secondary">Cancelar</button>
+        <button type="submit">Criar</button>
+      </footer>
+    </form>
+  </article>
+</dialog>
+{{end}}

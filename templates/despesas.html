@@ -5,8 +5,6 @@
     <button data-open-dialog="dialog-nova-despesa">+ Nova Despesa Fixa</button>
   {{else if eq .TabAtivo "parcelamentos"}}
     <button data-open-dialog="dialog-novo-parc">+ Parcelamento</button>
-  {{else if eq .TabAtivo "emprestimos"}}
-    <button data-open-dialog="dialog-novo-emp">+ Empréstimo</button>
   {{end}}
 </div>
 
@@ -18,16 +16,25 @@
   <a href="/despesas?tab=parcelamentos" class="tab-item {{if eq .TabAtivo "parcelamentos"}}active{{end}}">
     💳 Parcelamentos
   </a>
-  <a href="/despesas?tab=emprestimos" class="tab-item {{if eq .TabAtivo "emprestimos"}}active{{end}}">
-    🤝 Empréstimos
-  </a>
 </div>
 
 <!-- ===== TAB: DESPESAS FIXAS ===== -->
 {{if eq .TabAtivo "fixas"}}
 <p class="hint">💡 <strong>Despesas fixas</strong> são contas recorrentes (Netflix, água, luz, aluguel…) que aparecem automaticamente em <strong>todos os meses</strong> no Dashboard.</p>
+<div class="filter-bar">
+  <input type="search" id="sf-busca" placeholder="🔍 Buscar por nome, categoria ou valor…">
+  <select id="sf-cat"><option value="">Todas as categorias</option></select>
+  <select id="sf-status">
+    <option value="">Todas</option>
+    <option value="Ativa">Ativas</option>
+    <option value="Inativa">Inativas</option>
+  </select>
+  <span class="filter-count" id="sf-count"></span>
+</div>
+<p class="filter-no-results" id="sf-no-results">Nenhuma despesa encontrada para os filtros selecionados.</p>
+
 <div class="table-responsive">
-  <table>
+  <table id="table-fixas">
     <thead>
       <tr>
         <th>Nome</th>
@@ -41,12 +48,12 @@
       {{range .Despesas}}
       <tr class="{{if not .Ativa}}inativa{{end}}">
         <td>{{.Nome}}</td>
-        <td><span class="badge badge-{{.Categoria}}">{{.Categoria}}</span></td>
-        <td>{{brl .Valor}}</td>
+        <td><span class="badge badge-grupo-{{.Grupo}}">{{.Categoria}}</span></td>
+        <td class="valor-negativo" style="font-weight:600">{{brl .Valor}}</td>
         <td>
           <form method="POST" action="/despesas/{{.ID}}/toggle-ativa" style="display:inline">
             <button type="submit" class="btn-mini {{if .Ativa}}active{{end}}">
-              {{if .Ativa}}● Sim{{else}}○ Não{{end}}
+              {{if .Ativa}}● Ativa{{else}}○ Inativa{{end}}
             </button>
           </form>
         </td>
@@ -69,9 +76,12 @@
             <label>Valor (R$)<input type="text" name="valor" value="{{.Valor}}" placeholder="0,00"></label>
             <label>Categoria
               <select name="categoria">
-                <option value="Básicas" {{if eq .Categoria "Básicas"}}selected{{end}}>Básicas</option>
-                <option value="Cartão"  {{if eq .Categoria "Cartão"}}selected{{end}}>Cartão</option>
-                <option value="VR"      {{if eq .Categoria "VR"}}selected{{end}}>VR</option>
+                {{$cat := .Categoria}}
+                {{range $.Categorias}}
+                  {{if .Ativo}}
+                    <option value="{{.Nome}}" {{if eq .Nome $cat}}selected{{end}}>{{.Nome}}</option>
+                  {{end}}
+                {{end}}
               </select>
             </label>
             <footer>
@@ -100,9 +110,9 @@
       <label>Valor (R$)<input type="text" name="valor" placeholder="55,90"></label>
       <label>Categoria
         <select name="categoria">
-          <option value="Básicas">Básicas (água, luz, etc.)</option>
-          <option value="Cartão">Cartão (streaming, etc.)</option>
-          <option value="VR">VR / Alimentação</option>
+          {{range .Categorias}}
+            {{if .Ativo}}<option value="{{.Nome}}">{{.Nome}}</option>{{end}}
+          {{end}}
         </select>
       </label>
       <p class="hint" style="margin-top:.75rem">🔁 Esta despesa será contabilizada em <strong>todos os meses</strong> automaticamente.</p>
@@ -118,8 +128,21 @@
 <!-- ===== TAB: PARCELAMENTOS ===== -->
 {{if eq .TabAtivo "parcelamentos"}}
 <p class="hint">💡 Parcelamentos param de contabilizar <strong>automaticamente</strong> quando todas as parcelas são pagas (baseado na data de início + total de parcelas).</p>
+
+<div class="filter-bar">
+  <input type="search" id="sp-busca" placeholder="🔍 Buscar por descrição ou cartão…">
+  <select id="sp-cartao"><option value="">Todos os cartões</option></select>
+  <select id="sp-status">
+    <option value="">Todos</option>
+    <option value="Ativo">Ativos</option>
+    <option value="Concluído">Concluídos</option>
+  </select>
+  <span class="filter-count" id="sp-count"></span>
+</div>
+<p class="filter-no-results" id="sp-no-results">Nenhum parcelamento encontrado para os filtros selecionados.</p>
+
 <div class="table-responsive">
-  <table>
+  <table id="table-parc">
     <thead>
       <tr>
         <th>Descrição</th>
@@ -203,7 +226,18 @@
     <form method="POST" action="/parcelamentos">
       <label>Descrição<input type="text" name="descricao" placeholder="Ex: Viagem Europa" required autofocus></label>
       <div class="grid">
-        <label>Cartão<input type="text" name="cartao" placeholder="Ex: Nubank"></label>
+        <label>Cartão
+          {{if .Cartoes}}
+          <select name="cartao">
+            <option value="">— Selecione ou deixe em branco —</option>
+            {{range .Cartoes}}
+              {{if .Ativo}}<option value="{{.Nome}}">{{.Nome}}{{if .Bandeira}} ({{.Bandeira}}){{end}}</option>{{end}}
+            {{end}}
+          </select>
+          {{else}}
+          <input type="text" name="cartao" placeholder="Ex: Nubank (cadastre em Cadastros > Cartões)">
+          {{end}}
+        </label>
         <label>Valor/Parcela (R$)<input type="text" name="valor_parcela" placeholder="350,00" required></label>
       </div>
       <div class="grid">
@@ -221,95 +255,35 @@
 </dialog>
 {{end}}
 
-<!-- ===== TAB: EMPRÉSTIMOS ===== -->
-{{if eq .TabAtivo "emprestimos"}}
-<div class="summary-grid" style="max-width:480px;margin-bottom:1.5rem">
-  <article class="sum-card card-despesa">
-    <div class="sum-icon">💸</div>
-    <div>
-      <p class="card-label">Você deve</p>
-      <p class="card-value">{{brl .TotalDevo}}</p>
-    </div>
-  </article>
-  <article class="sum-card card-receita">
-    <div class="sum-icon">💰</div>
-    <div>
-      <p class="card-label">Te devem</p>
-      <p class="card-value">{{brl .TotalAReceber}}</p>
-    </div>
-  </article>
-</div>
 
-<div class="table-responsive">
-  <table>
-    <thead>
-      <tr>
-        <th>Pessoa</th>
-        <th>Direção</th>
-        <th>Valor</th>
-        <th>Data</th>
-        <th>Notas</th>
-        <th>Status</th>
-        <th>Ações</th>
-      </tr>
-    </thead>
-    <tbody>
-      {{range .Emprestimos}}
-      <tr class="{{if .Pago}}inativa{{end}}">
-        <td><strong>{{.Pessoa}}</strong></td>
-        <td>
-          {{if eq .Direcao "devo"}}
-            <span class="badge badge-despesa">Devo</span>
-          {{else}}
-            <span class="badge badge-receita">Me devem</span>
-          {{end}}
-        </td>
-        <td class="{{if eq .Direcao "devo"}}valor-negativo{{else}}valor-positivo{{end}}">
-          {{brl .Valor}}
-        </td>
-        <td><small>{{date .Data}}</small></td>
-        <td><small>{{.Notas}}</small></td>
-        <td>{{template "emprestimo-toggle-btn" .}}</td>
-        <td class="actions">
-          <form method="POST" action="/emprestimos/{{.ID}}/delete" style="display:inline"
-                onsubmit="return confirm('Excluir empréstimo de {{.Pessoa}}?')">
-            <button type="submit" class="btn-action danger" title="Excluir">🗑️</button>
-          </form>
-        </td>
-      </tr>
-      {{else}}
-      <tr><td colspan="7" class="muted center">Nenhum empréstimo registrado.</td></tr>
-      {{end}}
-    </tbody>
-  </table>
-</div>
-
-<!-- Dialog novo empréstimo -->
-<dialog id="dialog-novo-emp">
-  <article>
-    <header>
-      <button data-close-dialog aria-label="Fechar"></button>
-      <h3>Registrar Empréstimo</h3>
-    </header>
-    <form method="POST" action="/emprestimos">
-      <label>Pessoa<input type="text" name="pessoa" placeholder="Ex: Pai" required autofocus></label>
-      <div class="grid">
-        <label>Valor (R$)<input type="text" name="valor" placeholder="500,00" required></label>
-        <label>Data<input type="date" name="data" required></label>
-      </div>
-      <label>Direção
-        <select name="direcao">
-          <option value="devo">Eu devo (peguei emprestado)</option>
-          <option value="emprestei">Eu emprestei (me devem)</option>
-        </select>
-      </label>
-      <label>Notas (opcional)<input type="text" name="notas" placeholder="Ex: Para emergência médica"></label>
-      <footer>
-        <button data-close-dialog type="button" class="secondary">Cancelar</button>
-        <button type="submit">Registrar</button>
-      </footer>
-    </form>
-  </article>
-</dialog>
-{{end}}
+<script>
+  // Despesas Fixas
+  if (document.getElementById('sf-busca')) {
+    populateSelectFromCol('sf-cat', 'table-fixas', 1);
+    initTableFilter({
+      tableId: 'table-fixas',
+      searchId: 'sf-busca',
+      filters: [
+        { id: 'sf-cat',    col: 1 },
+        { id: 'sf-status', col: 3 }
+      ],
+      countId: 'sf-count',
+      noResultsId: 'sf-no-results'
+    });
+  }
+  // Parcelamentos
+  if (document.getElementById('sp-busca')) {
+    populateSelectFromCol('sp-cartao', 'table-parc', 1);
+    initTableFilter({
+      tableId: 'table-parc',
+      searchId: 'sp-busca',
+      filters: [
+        { id: 'sp-cartao', col: 1 },
+        { id: 'sp-status', col: 6 }
+      ],
+      countId: 'sp-count',
+      noResultsId: 'sp-no-results'
+    });
+  }
+</script>
 {{end}}

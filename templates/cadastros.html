@@ -1,0 +1,338 @@
+{{define "content"}}
+<div class="page-header">
+  <h2>🗂️ Cadastros Auxiliares</h2>
+  {{if eq .TabAtivo "categorias"}}
+    <button data-open-dialog="dialog-nova-cat">+ Nova Categoria</button>
+  {{else if eq .TabAtivo "cartoes"}}
+    <button data-open-dialog="dialog-novo-cartao">+ Novo Cartão</button>
+  {{end}}
+</div>
+
+<!-- Tabs -->
+<div class="tabs">
+  <a href="/cadastros?tab=categorias" class="tab-item {{if eq .TabAtivo "categorias"}}active{{end}}">
+    🏷️ Categorias
+  </a>
+  <a href="/cadastros?tab=cartoes" class="tab-item {{if eq .TabAtivo "cartoes"}}active{{end}}">
+    💳 Cartões
+  </a>
+</div>
+
+<!-- ===== TAB: CATEGORIAS ===== -->
+{{if eq .TabAtivo "categorias"}}
+<p class="hint">💡 As categorias classificam suas <strong>despesas fixas</strong>. O <strong>grupo</strong> determina como aparecem no Dashboard (Básicas, Cartão ou VR).</p>
+
+<div class="filter-bar">
+  <input type="search" id="fc-busca" placeholder="🔍 Buscar por nome…">
+  <select id="fc-grupo">
+    <option value="">Todos os grupos</option>
+    <option value="Básicas">📋 Básicas</option>
+    <option value="Cartão">💳 Cartão</option>
+    <option value="VR">🍽️ VR/Alim.</option>
+  </select>
+  <select id="fc-status">
+    <option value="">Todas</option>
+    <option value="Sim">Ativas</option>
+    <option value="Não">Inativas</option>
+  </select>
+  <span class="filter-count" id="fc-count"></span>
+</div>
+<p class="filter-no-results" id="fc-no-results">Nenhuma categoria encontrada.</p>
+
+<div class="table-responsive">
+  <table id="table-cats">
+    <thead>
+      <tr>
+        <th>Cor</th>
+        <th>Nome</th>
+        <th>Grupo (Dashboard)</th>
+        <th>Ativa</th>
+        <th>Ações</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{range .Categorias}}
+      <tr class="{{if not .Ativo}}inativa{{end}}">
+        <td>
+          <span class="color-swatch" style="background:{{.Cor}}"></span>
+        </td>
+        <td><strong>{{.Nome}}</strong></td>
+        <td>
+          {{if eq .Grupo "cartao"}}
+            <span class="badge badge-grupo-cartao">💳 Cartão</span>
+          {{else if eq .Grupo "vr"}}
+            <span class="badge badge-grupo-vr">🍽️ VR/Alim.</span>
+          {{else}}
+            <span class="badge badge-grupo-basica">📋 Básicas</span>
+          {{end}}
+        </td>
+        <td>
+          <form method="POST" action="/cadastros/categorias/{{.ID}}/toggle-ativa" style="display:inline">
+            <button type="submit" class="btn-mini {{if .Ativo}}active{{end}}">
+              {{if .Ativo}}● Sim{{else}}○ Não{{end}}
+            </button>
+          </form>
+        </td>
+        <td class="actions">
+          <button data-open-dialog="dialog-edit-cat-{{.ID}}" class="btn-action" title="Editar">✏️</button>
+          <form method="POST" action="/cadastros/categorias/{{.ID}}/delete" style="display:inline"
+                onsubmit="return confirm('Excluir categoria {{.Nome}}?')">
+            <button type="submit" class="btn-action danger" title="Excluir">🗑️</button>
+          </form>
+        </td>
+      </tr>
+
+      <!-- Dialog editar categoria -->
+      <dialog id="dialog-edit-cat-{{.ID}}">
+        <article>
+          <header>
+            <button data-close-dialog aria-label="Fechar"></button>
+            <h3>Editar: {{.Nome}}</h3>
+          </header>
+          <form method="POST" action="/cadastros/categorias/{{.ID}}/update">
+            <div class="grid">
+              <label>Nome
+                <input type="text" name="nome" value="{{.Nome}}" required>
+              </label>
+              <label>Cor
+                <input type="color" name="cor" value="{{.Cor}}" class="input-color">
+              </label>
+            </div>
+            <label>Grupo (como aparece no Dashboard)
+              <select name="grupo">
+                <option value="basica" {{if eq .Grupo "basica"}}selected{{end}}>📋 Básicas (contas do dia a dia)</option>
+                <option value="cartao" {{if eq .Grupo "cartao"}}selected{{end}}>💳 Cartão (débito/crédito)</option>
+                <option value="vr"     {{if eq .Grupo "vr"}}selected{{end}}>🍽️ VR / Alimentação</option>
+              </select>
+            </label>
+            <footer>
+              <button data-close-dialog type="button" class="secondary">Cancelar</button>
+              <button type="submit">Salvar</button>
+            </footer>
+          </form>
+        </article>
+      </dialog>
+      {{else}}
+      <tr><td colspan="5" class="muted center">Nenhuma categoria cadastrada.</td></tr>
+      {{end}}
+    </tbody>
+  </table>
+</div>
+
+<script>
+  initTableFilter({
+    tableId: 'table-cats',
+    searchId: 'fc-busca',
+    filters: [
+      { id: 'fc-grupo',  col: 2 },
+      { id: 'fc-status', col: 3 }
+    ],
+    countId: 'fc-count',
+    noResultsId: 'fc-no-results'
+  });
+</script>
+
+<!-- Dialog nova categoria -->
+<dialog id="dialog-nova-cat">
+  <article>
+    <header>
+      <button data-close-dialog aria-label="Fechar"></button>
+      <h3>Nova Categoria</h3>
+    </header>
+    <form method="POST" action="/cadastros/categorias">
+      <div class="grid">
+        <label>Nome
+          <input type="text" name="nome" placeholder="Ex: Streaming" required autofocus>
+        </label>
+        <label>Cor
+          <input type="color" name="cor" value="#607d8b" class="input-color">
+        </label>
+      </div>
+      <label>Grupo (como aparece no Dashboard)
+        <select name="grupo">
+          <option value="basica">📋 Básicas (contas do dia a dia)</option>
+          <option value="cartao">💳 Cartão (débito/crédito)</option>
+          <option value="vr">🍽️ VR / Alimentação</option>
+        </select>
+      </label>
+      <footer>
+        <button data-close-dialog type="button" class="secondary">Cancelar</button>
+        <button type="submit">Adicionar</button>
+      </footer>
+    </form>
+  </article>
+</dialog>
+{{end}}
+
+<!-- ===== TAB: CARTÕES ===== -->
+{{if eq .TabAtivo "cartoes"}}
+<p class="hint">💡 Os cartões cadastrados aqui aparecem como opções no <strong>select de parcelamentos</strong>. Cadastre seus cartões de crédito e débito.</p>
+
+<div class="filter-bar">
+  <input type="search" id="fct-busca" placeholder="🔍 Buscar por nome ou bandeira…">
+  <select id="fct-bandeira"><option value="">Todas as bandeiras</option></select>
+  <select id="fct-status">
+    <option value="">Todos</option>
+    <option value="Sim">Ativos</option>
+    <option value="Não">Inativos</option>
+  </select>
+  <span class="filter-count" id="fct-count"></span>
+</div>
+<p class="filter-no-results" id="fct-no-results">Nenhum cartão encontrado.</p>
+
+<div class="table-responsive">
+  <table id="table-cartoes">
+    <thead>
+      <tr>
+        <th>Cor</th>
+        <th>Nome</th>
+        <th>Bandeira</th>
+        <th>Limite</th>
+        <th>Ativo</th>
+        <th>Ações</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{range .Cartoes}}
+      <tr class="{{if not .Ativo}}inativa{{end}}">
+        <td>
+          <span class="color-swatch" style="background:{{.Cor}}"></span>
+        </td>
+        <td>
+          <strong>{{.Nome}}</strong>
+        </td>
+        <td>
+          {{if .Bandeira}}
+            <span class="bandeira-tag">{{.Bandeira}}</span>
+          {{else}}
+            <span class="muted">—</span>
+          {{end}}
+        </td>
+        <td>
+          {{if gt .Limite 0.0}}
+            {{brl .Limite}}
+          {{else}}
+            <span class="muted">—</span>
+          {{end}}
+        </td>
+        <td>
+          <form method="POST" action="/cadastros/cartoes/{{.ID}}/toggle-ativo" style="display:inline">
+            <button type="submit" class="btn-mini {{if .Ativo}}active{{end}}">
+              {{if .Ativo}}● Sim{{else}}○ Não{{end}}
+            </button>
+          </form>
+        </td>
+        <td class="actions">
+          <button data-open-dialog="dialog-edit-cartao-{{.ID}}" class="btn-action" title="Editar">✏️</button>
+          <form method="POST" action="/cadastros/cartoes/{{.ID}}/delete" style="display:inline"
+                onsubmit="return confirm('Excluir cartão {{.Nome}}?')">
+            <button type="submit" class="btn-action danger" title="Excluir">🗑️</button>
+          </form>
+        </td>
+      </tr>
+
+      <!-- Dialog editar cartão -->
+      <dialog id="dialog-edit-cartao-{{.ID}}">
+        <article>
+          <header>
+            <button data-close-dialog aria-label="Fechar"></button>
+            <h3>Editar: {{.Nome}}</h3>
+          </header>
+          <form method="POST" action="/cadastros/cartoes/{{.ID}}/update">
+            <div class="grid">
+              <label>Nome do Cartão
+                <input type="text" name="nome" value="{{.Nome}}" required>
+              </label>
+              <label>Cor
+                <input type="color" name="cor" value="{{.Cor}}" class="input-color">
+              </label>
+            </div>
+            <div class="grid">
+              <label>Bandeira
+                <select name="bandeira">
+                  <option value="" {{if eq .Bandeira ""}}selected{{end}}>— Não informado —</option>
+                  <option value="Visa"       {{if eq .Bandeira "Visa"}}selected{{end}}>Visa</option>
+                  <option value="Mastercard" {{if eq .Bandeira "Mastercard"}}selected{{end}}>Mastercard</option>
+                  <option value="Elo"        {{if eq .Bandeira "Elo"}}selected{{end}}>Elo</option>
+                  <option value="Amex"       {{if eq .Bandeira "Amex"}}selected{{end}}>American Express</option>
+                  <option value="Débito"     {{if eq .Bandeira "Débito"}}selected{{end}}>Débito</option>
+                  <option value="PIX"        {{if eq .Bandeira "PIX"}}selected{{end}}>PIX / TED</option>
+                </select>
+              </label>
+              <label>Limite (R$)
+                <input type="text" name="limite" value="{{.Limite}}" placeholder="0,00">
+              </label>
+            </div>
+            <footer>
+              <button data-close-dialog type="button" class="secondary">Cancelar</button>
+              <button type="submit">Salvar</button>
+            </footer>
+          </form>
+        </article>
+      </dialog>
+      {{else}}
+      <tr><td colspan="6" class="muted center">Nenhum cartão cadastrado.</td></tr>
+      {{end}}
+    </tbody>
+  </table>
+</div>
+
+<!-- Dialog novo cartão -->
+<dialog id="dialog-novo-cartao">
+  <article>
+    <header>
+      <button data-close-dialog aria-label="Fechar"></button>
+      <h3>Novo Cartão</h3>
+    </header>
+    <form method="POST" action="/cadastros/cartoes">
+      <div class="grid">
+        <label>Nome do Cartão
+          <input type="text" name="nome" placeholder="Ex: Nubank Roxo" required autofocus>
+        </label>
+        <label>Cor
+          <input type="color" name="cor" value="#9c27b0" class="input-color">
+        </label>
+      </div>
+      <div class="grid">
+        <label>Bandeira
+          <select name="bandeira">
+            <option value="">— Não informado —</option>
+            <option value="Visa">Visa</option>
+            <option value="Mastercard">Mastercard</option>
+            <option value="Elo">Elo</option>
+            <option value="Amex">American Express</option>
+            <option value="Débito">Débito</option>
+            <option value="PIX">PIX / TED</option>
+          </select>
+        </label>
+        <label>Limite (R$)
+          <input type="text" name="limite" placeholder="5.000,00">
+        </label>
+      </div>
+      <footer>
+        <button data-close-dialog type="button" class="secondary">Cancelar</button>
+        <button type="submit">Adicionar</button>
+      </footer>
+    </form>
+  </article>
+</dialog>
+
+<script>
+  // Filtro Cartões
+  if (document.getElementById('fct-busca')) {
+    populateSelectFromCol('fct-bandeira', 'table-cartoes', 2);
+    initTableFilter({
+      tableId: 'table-cartoes',
+      searchId: 'fct-busca',
+      filters: [
+        { id: 'fct-bandeira', col: 2 },
+        { id: 'fct-status',   col: 4 }
+      ],
+      countId: 'fct-count',
+      noResultsId: 'fct-no-results'
+    });
+  }
+</script>
+{{end}}
+
+{{end}}

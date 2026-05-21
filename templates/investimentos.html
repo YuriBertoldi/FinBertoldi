@@ -56,8 +56,24 @@
 <!-- Histórico de aportes -->
 <section>
   <h3>Histórico de Aportes</h3>
+
+  <div class="filter-bar">
+    <input type="search" id="fi-busca" placeholder="🔍 Buscar por instituição ou notas…">
+    <select id="fi-tipo">
+      <option value="">Todos os tipos</option>
+      <option value="Renda Variável">Renda Variável</option>
+      <option value="Renda Fixa">Renda Fixa</option>
+      <option value="Previdência">Previdência</option>
+      <option value="FII">FII</option>
+      <option value="Criptomoeda">Criptomoeda</option>
+    </select>
+    <select id="fi-inst"><option value="">Todas as instituições</option></select>
+    <span class="filter-count" id="fi-count"></span>
+  </div>
+  <p class="filter-no-results" id="fi-no-results">Nenhum aporte encontrado para os filtros selecionados.</p>
+
   <div class="table-responsive">
-    <table>
+    <table id="table-inv">
       <thead>
         <tr>
           <th>Instituição</th>
@@ -90,6 +106,20 @@
     </table>
   </div>
 </section>
+
+<script>
+  populateSelectFromCol('fi-inst', 'table-inv', 0);
+  initTableFilter({
+    tableId: 'table-inv',
+    searchId: 'fi-busca',
+    filters: [
+      { id: 'fi-tipo', col: 1 },
+      { id: 'fi-inst', col: 0 }
+    ],
+    countId: 'fi-count',
+    noResultsId: 'fi-no-results'
+  });
+</script>
 
 <!-- Dialog novo aporte -->
 <dialog id="dialog-novo-inv">

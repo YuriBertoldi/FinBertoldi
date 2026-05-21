@@ -1,32 +1,58 @@
 {{define "content"}}
 <div class="page-header">
-  <h2>Empréstimos</h2>
+  <h2>🤝 Empréstimos</h2>
   <button data-open-dialog="dialog-novo-emp">+ Registrar</button>
 </div>
 
+<p class="hint">💡 Registre valores que você deve ou que te devem. Use <strong>Quitar parcial</strong> para abater parte do saldo sem precisar relançar.</p>
+
 <!-- Totais -->
-<div class="summary-grid">
-  <article class="card-despesa">
-    <p class="card-label">Você deve</p>
-    <p class="card-value">{{brl .TotalDevo}}</p>
+<div class="summary-grid" style="max-width:480px;margin-bottom:1.5rem">
+  <article class="sum-card card-despesa">
+    <div class="sum-icon">💸</div>
+    <div>
+      <p class="card-label">Você deve</p>
+      <p class="card-value">{{brl .TotalDevo}}</p>
+    </div>
   </article>
-  <article class="card-receita">
-    <p class="card-label">Te devem</p>
-    <p class="card-value">{{brl .TotalAReceber}}</p>
+  <article class="sum-card card-receita">
+    <div class="sum-icon">💰</div>
+    <div>
+      <p class="card-label">Te devem</p>
+      <p class="card-value">{{brl .TotalAReceber}}</p>
+    </div>
   </article>
 </div>
 
+<div class="filter-bar">
+  <input type="search" id="se-busca" placeholder="🔍 Buscar por pessoa ou notas…">
+  <select id="se-direcao">
+    <option value="">Todos</option>
+    <option value="Devo">Eu devo</option>
+    <option value="devem">Me devem</option>
+  </select>
+  <select id="se-status">
+    <option value="">Todos</option>
+    <option value="Pendente">Pendentes</option>
+    <option value="Quitado">Quitados</option>
+  </select>
+  <span class="filter-count" id="se-count"></span>
+</div>
+<p class="filter-no-results" id="se-no-results">Nenhum empréstimo encontrado para os filtros selecionados.</p>
+
 <div class="table-responsive">
-  <table>
+  <table id="table-emp">
     <thead>
       <tr>
         <th>Pessoa</th>
         <th>Direção</th>
-        <th>Valor</th>
+        <th>Valor Original</th>
+        <th>Pago</th>
+        <th>Restante</th>
         <th>Data</th>
         <th>Notas</th>
         <th>Status</th>
-        <th>Ações</th>
+        <th class="actions">Ações</th>
       </tr>
     </thead>
     <tbody>
@@ -35,7 +61,7 @@
         <td><strong>{{.Pessoa}}</strong></td>
         <td>
           {{if eq .Direcao "devo"}}
-            <span class="badge badge-despesa">Devo a eles</span>
+            <span class="badge badge-despesa">Devo</span>
           {{else}}
             <span class="badge badge-receita">Me devem</span>
           {{end}}
@@ -43,20 +69,85 @@
         <td class="{{if eq .Direcao "devo"}}valor-negativo{{else}}valor-positivo{{end}}">
           {{brl .Valor}}
         </td>
+        <td>
+          {{if gt .ValorPago 0.0}}
+            <span class="valor-positivo">{{brl .ValorPago}}</span>
+          {{else}}
+            <span class="muted">—</span>
+          {{end}}
+        </td>
+        <td>
+          {{if .Pago}}
+            <span class="badge badge-concluido">Quitado</span>
+          {{else}}
+            <span class="{{if eq .Direcao "devo"}}valor-negativo{{else}}valor-positivo{{end}}">
+              {{brl .ValorRestante}}
+            </span>
+            {{if gt .ValorPago 0.0}}
+            <div class="emp-progress-wrap">
+              <progress value="{{.ValorPago}}" max="{{.Valor}}"></progress>
+            </div>
+            {{end}}
+          {{end}}
+        </td>
         <td><small>{{date .Data}}</small></td>
         <td><small>{{.Notas}}</small></td>
         <td>
-          {{template "emprestimo-toggle-btn" .}}
+          {{if .Pago}}
+            <span class="badge badge-concluido">Quitado ✓</span>
+          {{else}}
+            <span class="badge badge-despesa">Pendente</span>
+          {{end}}
         </td>
         <td class="actions">
+          {{if not .Pago}}
+          <button data-open-dialog="dialog-parcial-{{.ID}}" class="btn-action" title="Pagamento parcial">💰</button>
+          {{end}}
+          <form method="POST" action="/emprestimos/{{.ID}}/toggle-pago" style="display:inline"
+                onsubmit="return confirm('{{if .Pago}}Reabrir empréstimo de {{.Pessoa}}?{{else}}Marcar como totalmente quitado?{{end}}')">
+            <button type="submit" class="btn-action {{if .Pago}}danger{{end}}" title="{{if .Pago}}Reabrir{{else}}Quitar total{{end}}">
+              {{if .Pago}}↩{{else}}✓{{end}}
+            </button>
+          </form>
           <form method="POST" action="/emprestimos/{{.ID}}/delete" style="display:inline"
                 onsubmit="return confirm('Excluir empréstimo de {{.Pessoa}}?')">
-            <button type="submit" class="outline secondary">🗑️</button>
+            <button type="submit" class="btn-action danger" title="Excluir">🗑️</button>
           </form>
         </td>
       </tr>
+
+      <!-- Dialog pagamento parcial -->
+      {{if not .Pago}}
+      <dialog id="dialog-parcial-{{.ID}}">
+        <article>
+          <header>
+            <button data-close-dialog aria-label="Fechar"></button>
+            <h3>Pagamento Parcial — {{.Pessoa}}</h3>
+          </header>
+          <p class="hint">Restante: <strong>{{brl .ValorRestante}}</strong></p>
+          <form method="POST" action="/emprestimos/{{.ID}}/pagamento">
+            <div class="grid">
+              <label>Valor pago (R$)
+                <input type="text" name="valor" placeholder="100,00" required autofocus>
+              </label>
+              <label>Data
+                <input type="date" name="data" required>
+              </label>
+            </div>
+            <label>Notas (opcional)
+              <input type="text" name="notas" placeholder="Ex: PIX enviado">
+            </label>
+            <footer>
+              <button data-close-dialog type="button" class="secondary">Cancelar</button>
+              <button type="submit">Registrar pagamento</button>
+            </footer>
+          </form>
+        </article>
+      </dialog>
+      {{end}}
+
       {{else}}
-      <tr><td colspan="7" class="muted center">Nenhum empréstimo registrado.</td></tr>
+      <tr><td colspan="9" class="muted center">Nenhum empréstimo registrado.</td></tr>
       {{end}}
     </tbody>
   </table>
@@ -74,7 +165,7 @@
         <input type="text" name="pessoa" placeholder="Ex: Pai" required autofocus>
       </label>
       <div class="grid">
-        <label>Valor (R$)
+        <label>Valor total (R$)
           <input type="text" name="valor" placeholder="500,00" required>
         </label>
         <label>Data
@@ -97,4 +188,17 @@
     </form>
   </article>
 </dialog>
+
+<script>
+  initTableFilter({
+    tableId: 'table-emp',
+    searchId: 'se-busca',
+    filters: [
+      { id: 'se-direcao', col: 1 },
+      { id: 'se-status',  col: 7 }
+    ],
+    countId: 'se-count',
+    noResultsId: 'se-no-results'
+  });
+</script>
 {{end}}

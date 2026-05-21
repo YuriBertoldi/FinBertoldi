@@ -1,4 +1,4 @@
-package main
+package models
 
 import "time"
 
@@ -9,6 +9,7 @@ type DespesaFixa struct {
 	Nome      string
 	Valor     float64
 	Categoria string
+	Grupo     string
 	Ativa     bool
 	CriadoEm time.Time
 }
@@ -18,8 +19,28 @@ type DespesaMes struct {
 	Nome      string
 	Valor     float64
 	Categoria string
+	Grupo     string
 	Mes       string
 	Pago      bool
+}
+
+type Categoria struct {
+	ID       int
+	Nome     string
+	Grupo    string
+	Cor      string
+	Ativo    bool
+	CriadoEm time.Time
+}
+
+type Cartao struct {
+	ID       int
+	Nome     string
+	Bandeira string
+	Limite   float64
+	Cor      string
+	Ativo    bool
+	CriadoEm time.Time
 }
 
 type Parcelamento struct {
@@ -64,32 +85,50 @@ type ReservaEM struct {
 }
 
 type Emprestimo struct {
-	ID       int
-	Pessoa   string
-	Valor    float64
-	Direcao  string
-	Data     time.Time
-	Pago     bool
-	Notas    string
-	CriadoEm time.Time
+	ID            int
+	Pessoa        string
+	Valor         float64
+	ValorPago     float64
+	ValorRestante float64
+	Direcao       string
+	Data          time.Time
+	Pago          bool
+	Notas         string
+	CriadoEm      time.Time
+}
+
+type ScreenInfo struct {
+	Key   string
+	Label string
 }
 
 type User struct {
-	ID        int
-	Nome      string
-	Email     string
-	Admin     bool
-	Ativo     bool
-	CriadoEm time.Time
+	ID             int
+	Nome           string
+	Email          string
+	Admin          bool
+	FamilyAdmin    bool
+	Ativo          bool
+	FamilyID       int
+	FamilyNome     string
+	CriadoEm       time.Time
+	BlockedScreens []string
+}
+
+type Family struct {
+	ID         int
+	Nome       string
+	NumMembros int
+	CriadoEm   time.Time
 }
 
 // --- Page Data ---
 
-// BasePage é embutida em todos os page data. Contém campos comuns ao layout.
 type BasePage struct {
-	CurrentUser *User
-	Active      string
-	Title       string
+	CurrentUser    *User
+	Active         string
+	Title          string
+	BlockedScreens []string
 }
 
 type DashboardData struct {
@@ -107,18 +146,16 @@ type DashboardData struct {
 	DespesasCartao  []DespesaMes
 	DespesasVR      []DespesaMes
 	Parcelamentos   []Parcelamento
-	// Histórico para gráficos (últimos N meses)
 	Historico       []MesResumo
 }
 
-// MesResumo representa o total de receitas/despesas de um mês para gráficos
 type MesResumo struct {
-	Mes          string  // "2026-05"
-	MesLabel     string  // "Mai/26"
-	Receitas     float64
-	Despesas     float64
-	Sobra        float64
-	Investido    float64
+	Mes       string
+	MesLabel  string
+	Receitas  float64
+	Despesas  float64
+	Sobra     float64
+	Investido float64
 }
 
 type DespesasPage struct {
@@ -126,9 +163,22 @@ type DespesasPage struct {
 	TabAtivo      string
 	Despesas      []DespesaFixa
 	Parcelamentos []Parcelamento
+	Categorias    []Categoria
+	Cartoes       []Cartao
+}
+
+type EmprestimosPage struct {
+	BasePage
 	Emprestimos   []Emprestimo
 	TotalDevo     float64
 	TotalAReceber float64
+}
+
+type CadastrosPage struct {
+	BasePage
+	TabAtivo   string
+	Categorias []Categoria
+	Cartoes    []Cartao
 }
 
 type ReceitasPage struct {
@@ -148,8 +198,22 @@ type InvestimentosPage struct {
 type UsuariosPage struct {
 	BasePage
 	Usuarios []User
+	Familias []Family
 	Erro     string
 	Sucesso  string
+}
+
+type FamiliasPage struct {
+	BasePage
+	Familias []Family
+}
+
+type MeuTimePage struct {
+	BasePage
+	Membros []User
+	Telas   []ScreenInfo
+	Erro    string
+	Sucesso string
 }
 
 type LoginPage struct {
@@ -159,18 +223,18 @@ type LoginPage struct {
 
 type PlanejamentoPage struct {
 	BasePage
-	ReceitaMensal     float64 // receitas recorrentes (mensais)
-	DespesaMensal     float64 // despesas fixas ativas + parcelamentos vigentes
-	SobraMensal       float64 // receita - despesa
-	TaxaPoupanca      float64 // sobra/receita * 100
-	PatrimonioAtual   float64 // total investido + reserva EM
-	TotalInvestido    float64
-	ReservaAtual      float64
-	ReservaIdeal6m    float64 // 6x despesa mensal
-	ReservaIdeal12m   float64
-	FireConservador   float64 // 33.3x despesa anual (3% withdrawal)
-	FireModerado      float64 // 28.5x (3.5%)
-	FireAgressivo     float64 // 25x (4%)
-	DespesaAnual      float64
-	HistoricoSobra    []MesResumo
+	ReceitaMensal   float64
+	DespesaMensal   float64
+	SobraMensal     float64
+	TaxaPoupanca    float64
+	PatrimonioAtual float64
+	TotalInvestido  float64
+	ReservaAtual    float64
+	ReservaIdeal6m  float64
+	ReservaIdeal12m float64
+	FireConservador float64
+	FireModerado    float64
+	FireAgressivo   float64
+	DespesaAnual    float64
+	HistoricoSobra  []MesResumo
 }

@@ -1,84 +1,117 @@
 package main
 
 import (
-	"database/sql"
 	"log"
 	"net/http"
+	"os"
+
+	"fincontrol/internal/auth"
+	"fincontrol/internal/handler"
+	"fincontrol/internal/store"
 )
 
-type App struct {
-	db *sql.DB
+func getEnv(key, def string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return def
 }
 
 func main() {
-	db := newDB()
+	db := store.NewDB()
 	defer db.Close()
 
-	if err := dbAutoMigrate(db); err != nil {
+	if err := store.RunMigrations(db); err != nil {
 		log.Fatal("migrate:", err)
 	}
-	if err := dbEnsureAdmin(db); err != nil {
+	if err := store.EnsureAdmin(db); err != nil {
 		log.Fatal("ensure admin:", err)
 	}
 
-	app := &App{db: db}
-	initTemplates()
-
+	handler.InitTemplates()
 	mux := http.NewServeMux()
 
-	// Arquivos estáticos (sem auth)
+	// Estáticos (sem auth)
 	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 
 	// Login / Logout (sem auth)
-	mux.HandleFunc("GET /login", handleLogin(app))
-	mux.HandleFunc("POST /login", handleLogin(app))
-	mux.HandleFunc("POST /logout", handleLogout(app))
+	mux.HandleFunc("GET /login", handler.HandleLogin(db))
+	mux.HandleFunc("POST /login", handler.HandleLogin(db))
+	mux.HandleFunc("POST /logout", handler.HandleLogout(db))
 
 	// Dashboard
-	mux.HandleFunc("GET /", protected(app, handleDashboard(app)))
-	mux.HandleFunc("POST /api/despesas/{id}/toggle-pago", protected(app, handleToggleDespesaPago(app)))
+	mux.HandleFunc("GET /", auth.Protected(db, handler.HandleDashboard(db)))
+	mux.HandleFunc("POST /api/despesas/{id}/toggle-pago", auth.Protected(db, handler.HandleToggleDespesaPago(db)))
 
 	// Despesas
-	mux.HandleFunc("GET /despesas", protected(app, handleDespesas(app)))
-	mux.HandleFunc("POST /despesas", protected(app, handleCreateDespesa(app)))
-	mux.HandleFunc("POST /despesas/{id}/update", protected(app, handleUpdateDespesa(app)))
-	mux.HandleFunc("POST /despesas/{id}/delete", protected(app, handleDeleteDespesa(app)))
-	mux.HandleFunc("POST /despesas/{id}/toggle-ativa", protected(app, handleToggleDespesaAtiva(app)))
+	mux.HandleFunc("GET /despesas", auth.ScreenProtected(db, "despesas", handler.HandleDespesas(db)))
+	mux.HandleFunc("POST /despesas", auth.ScreenProtected(db, "despesas", handler.HandleCreateDespesa(db)))
+	mux.HandleFunc("POST /despesas/{id}/update", auth.ScreenProtected(db, "despesas", handler.HandleUpdateDespesa(db)))
+	mux.HandleFunc("POST /despesas/{id}/delete", auth.ScreenProtected(db, "despesas", handler.HandleDeleteDespesa(db)))
+	mux.HandleFunc("POST /despesas/{id}/toggle-ativa", auth.ScreenProtected(db, "despesas", handler.HandleToggleDespesaAtiva(db)))
 
 	// Parcelamentos
-	mux.HandleFunc("GET /parcelamentos", protected(app, handleParcelamentos(app)))
-	mux.HandleFunc("POST /parcelamentos", protected(app, handleCreateParcelamento(app)))
-	mux.HandleFunc("POST /parcelamentos/{id}/update", protected(app, handleUpdateParcelamento(app)))
-	mux.HandleFunc("POST /parcelamentos/{id}/delete", protected(app, handleDeleteParcelamento(app)))
+	mux.HandleFunc("GET /parcelamentos", auth.ScreenProtected(db, "despesas", handler.HandleParcelamentos(db)))
+	mux.HandleFunc("POST /parcelamentos", auth.ScreenProtected(db, "despesas", handler.HandleCreateParcelamento(db)))
+	mux.HandleFunc("POST /parcelamentos/{id}/update", auth.ScreenProtected(db, "despesas", handler.HandleUpdateParcelamento(db)))
+	mux.HandleFunc("POST /parcelamentos/{id}/delete", auth.ScreenProtected(db, "despesas", handler.HandleDeleteParcelamento(db)))
 
 	// Receitas
-	mux.HandleFunc("GET /receitas", protected(app, handleReceitas(app)))
-	mux.HandleFunc("POST /receitas", protected(app, handleCreateReceita(app)))
-	mux.HandleFunc("POST /receitas/{id}/delete", protected(app, handleDeleteReceita(app)))
+	mux.HandleFunc("GET /receitas", auth.ScreenProtected(db, "receitas", handler.HandleReceitas(db)))
+	mux.HandleFunc("POST /receitas", auth.ScreenProtected(db, "receitas", handler.HandleCreateReceita(db)))
+	mux.HandleFunc("POST /receitas/{id}/delete", auth.ScreenProtected(db, "receitas", handler.HandleDeleteReceita(db)))
 
 	// Investimentos
-	mux.HandleFunc("GET /investimentos", protected(app, handleInvestimentos(app)))
-	mux.HandleFunc("POST /investimentos", protected(app, handleCreateInvestimento(app)))
-	mux.HandleFunc("POST /investimentos/{id}/delete", protected(app, handleDeleteInvestimento(app)))
-	mux.HandleFunc("POST /reserva-em", protected(app, handleAddReservaEM(app)))
-	mux.HandleFunc("POST /reserva-em/{id}/delete", protected(app, handleDeleteReservaEM(app)))
+	mux.HandleFunc("GET /investimentos", auth.ScreenProtected(db, "investimentos", handler.HandleInvestimentos(db)))
+	mux.HandleFunc("POST /investimentos", auth.ScreenProtected(db, "investimentos", handler.HandleCreateInvestimento(db)))
+	mux.HandleFunc("POST /investimentos/{id}/delete", auth.ScreenProtected(db, "investimentos", handler.HandleDeleteInvestimento(db)))
+	mux.HandleFunc("POST /reserva-em", auth.ScreenProtected(db, "investimentos", handler.HandleAddReservaEM(db)))
+	mux.HandleFunc("POST /reserva-em/{id}/delete", auth.ScreenProtected(db, "investimentos", handler.HandleDeleteReservaEM(db)))
 
 	// Empréstimos
-	mux.HandleFunc("GET /emprestimos", protected(app, handleEmprestimos(app)))
-	mux.HandleFunc("POST /emprestimos", protected(app, handleCreateEmprestimo(app)))
-	mux.HandleFunc("POST /emprestimos/{id}/delete", protected(app, handleDeleteEmprestimo(app)))
-	mux.HandleFunc("POST /api/emprestimos/{id}/toggle-pago", protected(app, handleToggleEmprestimoPago(app)))
+	mux.HandleFunc("GET /emprestimos", auth.ScreenProtected(db, "emprestimos", handler.HandleEmprestimos(db)))
+	mux.HandleFunc("POST /emprestimos", auth.ScreenProtected(db, "emprestimos", handler.HandleCreateEmprestimo(db)))
+	mux.HandleFunc("POST /emprestimos/{id}/delete", auth.ScreenProtected(db, "emprestimos", handler.HandleDeleteEmprestimo(db)))
+	mux.HandleFunc("POST /emprestimos/{id}/toggle-pago", auth.ScreenProtected(db, "emprestimos", handler.HandleToggleEmprestimoPago(db)))
+	mux.HandleFunc("POST /emprestimos/{id}/pagamento", auth.ScreenProtected(db, "emprestimos", handler.HandlePagamentoEmprestimo(db)))
 
 	// Planejamento
-	mux.HandleFunc("GET /planejamento", protected(app, handlePlanejamento(app)))
+	mux.HandleFunc("GET /planejamento", auth.ScreenProtected(db, "planejamento", handler.HandlePlanejamento(db)))
+
+	// Cadastros
+	mux.HandleFunc("GET /cadastros", auth.ScreenProtected(db, "cadastros", handler.HandleCadastros(db)))
+	mux.HandleFunc("POST /cadastros/categorias", auth.ScreenProtected(db, "cadastros", handler.HandleCreateCategoria(db)))
+	mux.HandleFunc("POST /cadastros/categorias/{id}/update", auth.ScreenProtected(db, "cadastros", handler.HandleUpdateCategoria(db)))
+	mux.HandleFunc("POST /cadastros/categorias/{id}/delete", auth.ScreenProtected(db, "cadastros", handler.HandleDeleteCategoria(db)))
+	mux.HandleFunc("POST /cadastros/categorias/{id}/toggle-ativa", auth.ScreenProtected(db, "cadastros", handler.HandleToggleCategoriaAtiva(db)))
+	mux.HandleFunc("POST /cadastros/cartoes", auth.ScreenProtected(db, "cadastros", handler.HandleCreateCartao(db)))
+	mux.HandleFunc("POST /cadastros/cartoes/{id}/update", auth.ScreenProtected(db, "cadastros", handler.HandleUpdateCartao(db)))
+	mux.HandleFunc("POST /cadastros/cartoes/{id}/delete", auth.ScreenProtected(db, "cadastros", handler.HandleDeleteCartao(db)))
+	mux.HandleFunc("POST /cadastros/cartoes/{id}/toggle-ativo", auth.ScreenProtected(db, "cadastros", handler.HandleToggleCartaoAtivo(db)))
 
 	// Usuários (admin only)
-	mux.HandleFunc("GET /usuarios", handleUsuarios(app))
-	mux.HandleFunc("POST /usuarios", handleCreateUsuario(app))
-	mux.HandleFunc("POST /usuarios/{id}/toggle-admin", handleToggleUsuarioAdmin(app))
-	mux.HandleFunc("POST /usuarios/{id}/toggle-ativo", handleToggleUsuarioAtivo(app))
-	mux.HandleFunc("POST /usuarios/{id}/reset-senha", handleResetSenha(app))
-	mux.HandleFunc("POST /usuarios/{id}/delete", handleDeleteUsuario(app))
+	mux.HandleFunc("GET /usuarios", auth.AdminOnly(db, handler.HandleUsuarios(db)))
+	mux.HandleFunc("POST /usuarios", auth.AdminOnly(db, handler.HandleCreateUsuario(db)))
+	mux.HandleFunc("POST /usuarios/{id}/toggle-admin", auth.AdminOnly(db, handler.HandleToggleUsuarioAdmin(db)))
+	mux.HandleFunc("POST /usuarios/{id}/toggle-family-admin", auth.AdminOnly(db, handler.HandleToggleFamilyAdminFlag(db)))
+	mux.HandleFunc("POST /usuarios/{id}/toggle-ativo", auth.AdminOnly(db, handler.HandleToggleUsuarioAtivo(db)))
+	mux.HandleFunc("POST /usuarios/{id}/reset-senha", auth.AdminOnly(db, handler.HandleResetSenha(db)))
+	mux.HandleFunc("POST /usuarios/{id}/delete", auth.AdminOnly(db, handler.HandleDeleteUsuario(db)))
+	mux.HandleFunc("POST /usuarios/{id}/family", auth.AdminOnly(db, handler.HandleChangeUserFamily(db)))
+
+	// Minha Família (family admin)
+	mux.HandleFunc("GET /minha-familia", auth.FamilyAdminOnly(db, handler.HandleMeuTime(db)))
+	mux.HandleFunc("POST /minha-familia", auth.FamilyAdminOnly(db, handler.HandleMeuTimeCreateMembro(db)))
+	mux.HandleFunc("POST /minha-familia/{id}/toggle-ativo", auth.FamilyAdminOnly(db, handler.HandleMeuTimeToggleAtivo(db)))
+	mux.HandleFunc("POST /minha-familia/{id}/reset-senha", auth.FamilyAdminOnly(db, handler.HandleMeuTimeResetSenha(db)))
+	mux.HandleFunc("POST /minha-senha", auth.Protected(db, handler.HandleMinhaSenha(db)))
+	mux.HandleFunc("POST /minha-familia/{id}/permissoes/{tela}/toggle", auth.FamilyAdminOnly(db, handler.HandleToggleScreenPermission(db)))
+
+	// Famílias (admin only)
+	mux.HandleFunc("GET /familias", auth.AdminOnly(db, handler.HandleFamilias(db)))
+	mux.HandleFunc("POST /familias", auth.AdminOnly(db, handler.HandleCreateFamilia(db)))
+	mux.HandleFunc("POST /familias/{id}/rename", auth.AdminOnly(db, handler.HandleRenameFamilia(db)))
+	mux.HandleFunc("POST /familias/{id}/delete", auth.AdminOnly(db, handler.HandleDeleteFamilia(db)))
 
 	port := getEnv("PORT", "8080")
 	log.Printf("Servidor iniciado em http://localhost:%s", port)

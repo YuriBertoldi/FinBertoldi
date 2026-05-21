@@ -4,10 +4,30 @@
   <button data-open-dialog="dialog-nova-receita">+ Nova Receita</button>
 </div>
 
+<div class="filter-bar">
+  <input type="search" id="fr-busca" placeholder="🔍 Buscar por descrição ou valor…">
+  <select id="fr-tipo">
+    <option value="">Todos os tipos</option>
+    <option value="Salário">Salário</option>
+    <option value="Freelance">Freelance</option>
+    <option value="Investimento">Renda de Investimento</option>
+    <option value="Bônus">Bônus / 13º</option>
+    <option value="Horas Extras">Horas Extras</option>
+    <option value="Outro">Outro</option>
+  </select>
+  <select id="fr-freq">
+    <option value="">Todas</option>
+    <option value="Mensal">🔁 Mensal</option>
+    <option value="Única">Única</option>
+  </select>
+  <span class="filter-count" id="fr-count"></span>
+</div>
+<p class="filter-no-results" id="fr-no-results">Nenhuma receita encontrada para os filtros selecionados.</p>
+
 <p class="hint">💡 Receitas marcadas como <strong>recorrentes</strong> (ex: salário) entram automaticamente em <strong>todos os meses</strong> do Dashboard. Receitas únicas só contam no mês da data informada.</p>
 
 <div class="table-responsive">
-  <table>
+  <table id="table-receitas">
     <thead>
       <tr>
         <th>Descrição</th>
@@ -46,6 +66,19 @@
   </table>
 </div>
 
+<script>
+  initTableFilter({
+    tableId: 'table-receitas',
+    searchId: 'fr-busca',
+    filters: [
+      { id: 'fr-tipo', col: 1 },
+      { id: 'fr-freq', col: 4 }
+    ],
+    countId: 'fr-count',
+    noResultsId: 'fr-no-results'
+  });
+</script>
+
 <!-- Dialog nova receita -->
 <dialog id="dialog-nova-receita">
   <article>
@@ -71,6 +104,7 @@
           <option value="Freelance">Freelance</option>
           <option value="Investimento">Renda de Investimento</option>
           <option value="Bônus">Bônus / 13º</option>
+          <option value="Horas Extras">Horas Extras</option>
           <option value="Outro">Outro</option>
         </select>
       </label>

@@ -214,6 +214,10 @@ body.has-sidebar {
   flex-direction: column;
   gap: .65rem;
 }
+.sidebar-footer-btns {
+  display: flex;
+  gap: .5rem;
+}
 .theme-toggle { align-self: flex-start; }
 
 .icon-btn {
@@ -296,20 +300,21 @@ body.has-sidebar {
 .sidebar-toggle {
   display: none;
   position: fixed;
-  top: 1rem;
-  left: 1rem;
+  top: max(3rem, calc(env(safe-area-inset-top, 0px) + 0.75rem));
+  left: max(1rem, env(safe-area-inset-left, 1rem));
   z-index: 110;
-  width: 42px;
-  height: 42px;
+  width: 48px;
+  height: 48px;
   background: var(--bg-elev-1);
   border: 1px solid var(--border-soft);
-  border-radius: 10px;
+  border-radius: 12px;
   cursor: pointer;
   backdrop-filter: blur(10px);
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: 5px;
+  touch-action: manipulation;
 }
 .sidebar-toggle span {
   display: block;
@@ -328,6 +333,48 @@ body.has-sidebar {
   z-index: 99;
 }
 .sidebar-backdrop.show { display: block; }
+
+/* ====================================================
+   FILTER BAR
+   ==================================================== */
+.filter-bar {
+  display: flex;
+  gap: .5rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.filter-bar input[type="search"] {
+  flex: 1;
+  min-width: 180px;
+  margin: 0;
+}
+.filter-bar select {
+  width: auto;
+  min-width: 130px;
+  flex: 0 0 auto;
+  margin: 0;
+}
+.filter-count {
+  margin-left: auto;
+  font-size: .78rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  align-self: center;
+}
+.filter-no-results {
+  display: none;
+  text-align: center;
+  padding: 1.5rem;
+  color: var(--text-muted);
+  font-size: .9rem;
+}
+@media (max-width: 600px) {
+  .filter-bar { flex-direction: column; }
+  .filter-bar input[type="search"],
+  .filter-bar select { width: 100%; min-width: unset; flex: unset; }
+  .filter-count { margin-left: 0; }
+}
 
 /* ====================================================
    MAIN LAYOUT
@@ -800,6 +847,11 @@ button.outline:hover {
   text-transform: uppercase;
   letter-spacing: .04em;
 }
+/* grupo-based badges (categorias dinâmicas) */
+.badge-grupo-basica  { background: rgba(52, 152, 219, .18); color: #5dade2; }
+.badge-grupo-cartao  { background: rgba(243, 156, 18, .18); color: #f4d03f; }
+.badge-grupo-vr      { background: rgba(39, 174, 96, .18);  color: #58d68d; }
+/* legados — retrocompatibilidade */
 .badge-Básicas    { background: rgba(52, 152, 219, .18); color: #5dade2; }
 .badge-Cartão     { background: rgba(243, 156, 18, .18); color: #f4d03f; }
 .badge-VR         { background: rgba(39, 174, 96, .18);  color: #58d68d; }
@@ -807,14 +859,49 @@ button.outline:hover {
 .badge-concluido  { background: rgba(127,140,141,.15);   color: #95a5a6; }
 .badge-receita    { background: rgba(39, 174, 96, .18);  color: #58d68d; }
 .badge-despesa    { background: rgba(231, 76, 60, .18);  color: #f1948a; }
+.badge-investido  { background: rgba(52, 152, 219, .18); color: #5dade2; }
 
+[data-theme="light"] .badge-grupo-basica  { background: #dbeafe; color: #1d4ed8; }
+[data-theme="light"] .badge-grupo-cartao  { background: #fef9c3; color: #a16207; }
+[data-theme="light"] .badge-grupo-vr      { background: #dcfce7; color: #15803d; }
 [data-theme="light"] .badge-Básicas   { background: #dbeafe; color: #1d4ed8; }
 [data-theme="light"] .badge-Cartão    { background: #fef9c3; color: #a16207; }
 [data-theme="light"] .badge-VR        { background: #dcfce7; color: #15803d; }
 [data-theme="light"] .badge-ativo     { background: #dcfce7; color: #15803d; }
-[data-theme="light"] .badge-concluido { background: #f1f5f9; color: #475569; }
+[data-theme="light"] .badge-concluido  { background: #f1f5f9; color: #475569; }
 [data-theme="light"] .badge-receita   { background: #dcfce7; color: #15803d; }
 [data-theme="light"] .badge-despesa   { background: #fee2e2; color: #b91c1c; }
+[data-theme="light"] .badge-investido { background: #dbeafe; color: #1d4ed8; }
+
+/* ===== Cadastros Auxiliares ===== */
+.color-swatch {
+  display: inline-block;
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+  border: 1px solid rgba(255,255,255,.15);
+  vertical-align: middle;
+}
+.input-color {
+  padding: 2px 4px;
+  height: 38px;
+  width: 100%;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--card-bg);
+  cursor: pointer;
+}
+.bandeira-tag {
+  display: inline-block;
+  font-size: .7rem;
+  font-weight: 700;
+  padding: 2px 9px;
+  border-radius: 10px;
+  background: rgba(255,255,255,.08);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
 
 /* ====================================================
    TABLES
@@ -825,6 +912,98 @@ button.outline:hover {
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-lg);
   backdrop-filter: blur(10px);
+}
+
+/* ---- MOBILE TABLE → CARDS (≤640px) ---- */
+@media (max-width: 640px) {
+  /* Wrapper sem borda/fundo — os cards são as próprias linhas */
+  .table-responsive {
+    background: transparent !important;
+    border: none !important;
+    border-radius: 0 !important;
+    overflow-x: visible !important;
+    backdrop-filter: none !important;
+    padding: 0 !important;
+  }
+
+  /* Cabeçalho escondido */
+  .table-responsive thead { display: none !important; }
+
+  /* Tabela e tbody viram containers de bloco */
+  .table-responsive table,
+  .table-responsive tbody { display: block !important; width: 100% !important; }
+
+  /*
+   * Cada <tr> vira um card de 2 colunas:
+   *  - coluna 1 (1fr): todos os tds de dados, empilhados
+   *  - coluna 2 (auto): td.actions, faixa lateral direita
+   */
+  .table-responsive tbody tr {
+    display: grid !important;
+    grid-template-columns: 1fr auto !important;
+    grid-auto-rows: auto !important;
+    background: var(--bg-elev-1) !important;
+    border: 1px solid var(--border-soft) !important;
+    border-radius: var(--radius-md) !important;
+    margin-bottom: .45rem !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+  }
+  .table-responsive tbody tr.inativa { opacity: .5 !important; }
+
+  /* Tds de dados: coluna 1, bloco */
+  .table-responsive td {
+    display: block !important;
+    grid-column: 1 !important;
+    border: none !important;
+    padding: .2rem 1rem !important;
+    font-size: .87rem !important;
+    line-height: 1.45;
+    min-width: 0;
+  }
+
+  /* Primeiro td = nome/título do item */
+  .table-responsive td:first-child {
+    padding-top: .75rem !important;
+    font-weight: 700 !important;
+    font-size: .95rem !important;
+    color: var(--text-primary) !important;
+  }
+
+  /* Penúltimo td (antes de .actions) recebe padding inferior */
+  .table-responsive td:not(.actions):last-of-type {
+    padding-bottom: .75rem !important;
+  }
+
+  /* Coluna de ações: coluna 2, ocupa toda a altura do card */
+  .table-responsive td.actions {
+    grid-column: 2 !important;
+    grid-row: 1 / -1 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: .4rem !important;
+    padding: .6rem .65rem !important;
+    border-left: 1px solid var(--border-soft) !important;
+    background: var(--bg-elev-2) !important;
+    min-width: 52px !important;
+    width: auto !important;
+    margin: 0 !important;
+  }
+  .table-responsive td.actions form { display: block !important; margin: 0 !important; }
+
+  /* Linha "sem dados" (td com colspan) */
+  .table-responsive td[colspan] {
+    grid-column: 1 / -1 !important;
+    text-align: center !important;
+    padding: 1.5rem 1rem !important;
+    color: var(--text-muted) !important;
+    font-size: .88rem !important;
+  }
+
+  /* Classe auxiliar — esconde colunas supérfluas no mobile */
+  .table-responsive td.col-hide-mobile { display: none !important; }
 }
 table {
   width: 100%;
@@ -870,6 +1049,7 @@ input, select, textarea {
   border-radius: 10px !important;
   color: var(--text-primary) !important;
   font-family: inherit !important;
+  font-size: 16px !important; /* evita zoom automático no iOS */
   transition: border-color .15s, box-shadow .15s !important;
 }
 input:focus, select:focus, textarea:focus {
@@ -878,6 +1058,65 @@ input:focus, select:focus, textarea:focus {
   outline: none !important;
 }
 label { color: var(--text-secondary); font-weight: 500; }
+
+/* Família no chip do usuário */
+.user-family {
+  font-size: .65rem;
+  color: var(--color-sobra);
+  font-weight: 600;
+  letter-spacing: .02em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 140px;
+}
+
+/* Select mini inline (usado em tabelas) */
+.select-mini {
+  padding: 4px 8px !important;
+  font-size: .82rem !important;
+  border-radius: 6px !important;
+  height: auto !important;
+  width: auto !important;
+  min-width: 160px;
+  margin: 0 !important;
+  background: var(--bg-elev-2) !important;
+  border: 1px solid var(--border-soft) !important;
+}
+
+/* Fieldset de família no cadastro */
+.family-fieldset {
+  border: 1px solid var(--border-soft);
+  border-radius: 10px;
+  padding: 1rem;
+  margin: 1rem 0 0;
+  background: rgba(52, 152, 219, 0.04);
+}
+.family-fieldset legend {
+  font-size: .85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  padding: 0 .5rem;
+}
+.family-fieldset select,
+.family-fieldset input[type="text"] {
+  margin-top: .35rem !important;
+}
+.radio-row {
+  display: flex !important;
+  align-items: center;
+  gap: .5rem;
+  padding: .4rem 0;
+  font-size: .9rem;
+  cursor: pointer;
+  color: var(--text-primary);
+}
+.radio-row input[type="radio"] {
+  width: 16px !important;
+  height: 16px !important;
+  margin: 0 !important;
+  accent-color: var(--color-receita);
+}
 
 /* Checkbox destacado em formulários */
 .check-row {
@@ -1201,4 +1440,278 @@ dialog::backdrop {
   background: rgba(39, 174, 96, .12);
   border: 1px solid rgba(39, 174, 96, .35);
   color: #58d68d;
+}
+
+/* ====================================================
+   RESPONSIVIDADE — MOBILE FIRST
+   ==================================================== */
+
+/* ---- 768px: tablet portrait ---- */
+@media (max-width: 768px) {
+  /* Tabs: scroll horizontal em vez de overflow */
+  .tabs {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    flex-wrap: nowrap;
+    margin-bottom: 1.25rem;
+  }
+  .tabs::-webkit-scrollbar { display: none; }
+
+  /* Page header: empilha título e botão */
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .page-header > button,
+  .page-header > [data-open-dialog] {
+    width: 100%;
+  }
+
+  /* Summary cards: 2 colunas */
+  .summary-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: .75rem;
+  }
+
+  /* Dialogs: largura máxima reduzida */
+  dialog {
+    width: calc(100vw - 2rem) !important;
+    max-width: 480px !important;
+    margin: auto !important;
+  }
+  dialog article { max-width: 100%; }
+}
+
+/* ---- 480px: celular portrait ---- */
+@media (max-width: 480px) {
+  /* Espaçamento do container principal */
+  .app-container {
+    padding: 4rem .65rem 2.5rem !important;
+  }
+
+  /* Cabeçalho de página */
+  .page-header h2 { font-size: 1.2rem; }
+
+  /* Summary: 2 colunas compactas */
+  .summary-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: .5rem;
+    margin-bottom: 1.25rem;
+  }
+  .sum-card {
+    padding: .85rem .9rem;
+    gap: .55rem;
+  }
+  .card-value { font-size: 1.05rem !important; }
+  .card-label { font-size: .65rem !important; }
+  .sum-icon   { font-size: 1.25rem; }
+
+  /* Navegação de mês */
+  .mes-nav { padding: .35rem .5rem; }
+  .mes-titulo {
+    font-size: .88rem;
+    min-width: 0;
+  }
+
+  /* Cabeçalhos de tabela (desktop fallback) */
+  table th { padding: .55rem .6rem !important; font-size: .68rem !important; }
+  progress { width: 55px; }
+
+  /* Botões de ação compactos */
+  .btn-action {
+    width: 28px !important;
+    height: 28px !important;
+    margin: 0 !important;
+  }
+
+  /* Gráficos menores */
+  .chart-wrap { height: 200px !important; }
+  .chart-wrap.chart-small { height: 150px !important; }
+
+  /* Dialogs: fullscreen em telas muito pequenas */
+  dialog {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    max-height: 100dvh !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    border-left: none !important;
+    border-right: none !important;
+    overflow-y: auto !important;
+  }
+  dialog article {
+    max-width: 100%;
+    padding: 1.25rem;
+  }
+
+  /* Formulários: força coluna única dentro de dialogs */
+  dialog .grid,
+  form .grid {
+    grid-template-columns: 1fr !important;
+  }
+  dialog footer {
+    flex-direction: column;
+  }
+  dialog footer button { width: 100%; }
+
+  /* Planning page: grids forçados para 1 coluna */
+  .health-grid,
+  .fire-grid,
+  .cenarios-grid,
+  .aloc-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .calc-grid,
+  .fire-controls {
+    grid-template-columns: 1fr 1fr !important;
+    gap: .5rem;
+  }
+  .proj-resultado {
+    grid-template-columns: 1fr 1fr !important;
+    gap: .65rem;
+  }
+  .meta-aporte { font-size: 1.75rem; }
+
+  /* Dash: seções menores */
+  .dash-section { padding: 1rem; }
+  .detalhes-mes summary { padding: 1rem; }
+  .detalhes-mes > div   { padding: 0 1rem 1rem; }
+
+  /* Parcelamentos: esconde coluna progresso em phones */
+  .parc-progress { width: 45px; }
+
+  /* Badge mais compacto */
+  .badge { font-size: .62rem; padding: 2px 7px; }
+
+  /* Hint text menor */
+  .hint { font-size: .82rem; }
+}
+
+/* ====================================================
+   OCULTAR VALORES (botão olho)
+   ==================================================== */
+.money { transition: filter .2s; }
+.values-hidden .money {
+  filter: blur(7px);
+  user-select: none;
+}
+
+/* ====================================================
+   EMPRÉSTIMOS — progresso de pagamento parcial
+   ==================================================== */
+.emp-progress-wrap {
+  margin-top: .3rem;
+}
+.emp-progress-wrap progress {
+  width: 80px;
+  height: 5px;
+  vertical-align: middle;
+}
+
+/* ====================================================
+   PERMISSÕES DE TELA (minha-família)
+   ==================================================== */
+.perm-grid {
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+  margin-bottom: 1rem;
+}
+.perm-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  padding: .65rem .9rem;
+  background: var(--bg-elev-1);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  transition: border-color .15s;
+}
+.perm-card.perm-blocked {
+  border-color: rgba(231, 76, 60, .35);
+  background: rgba(231, 76, 60, .05);
+}
+.perm-info {
+  display: flex;
+  flex-direction: column;
+  gap: .15rem;
+}
+.perm-label {
+  font-size: .9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.perm-status {
+  font-size: .72rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  font-weight: 600;
+}
+.perm-blocked .perm-status { color: var(--color-despesa); }
+
+.btn-perm {
+  padding: .3rem .7rem !important;
+  font-size: .78rem !important;
+  border-radius: 8px !important;
+  height: auto !important;
+  width: auto !important;
+  flex-shrink: 0;
+  font-weight: 600 !important;
+  white-space: nowrap;
+  background: rgba(39, 174, 96, .1) !important;
+  border: 1px solid rgba(39, 174, 96, .35) !important;
+  color: var(--color-receita) !important;
+  cursor: pointer;
+  transition: all .15s;
+  line-height: 1.4 !important;
+  margin: 0 !important;
+}
+.btn-perm:hover {
+  background: rgba(39, 174, 96, .18) !important;
+}
+.btn-perm-blocked {
+  background: rgba(231, 76, 60, .1) !important;
+  border-color: rgba(231, 76, 60, .35) !important;
+  color: var(--color-despesa) !important;
+}
+.btn-perm-blocked:hover {
+  background: rgba(231, 76, 60, .18) !important;
+}
+
+/* ---- Sidebar toggle: animação X quando aberta ---- */
+.sidebar-toggle { z-index: 101; }
+
+.sidebar.open ~ .sidebar-backdrop ~ * .sidebar-toggle,
+body.sidebar-is-open .sidebar-toggle { }
+
+/* Transforma em X quando sidebar está aberta */
+.sidebar.open + .sidebar-backdrop {
+  /* backdrop visível — z-index 99 já definido acima */
+}
+
+@media (max-width: 960px) {
+  /* Toggle vira X quando sidebar aberta */
+  .sidebar.open ~ main .sidebar-toggle-inner span:nth-child(1),
+  .sidebar-toggle.is-open span:nth-child(1) {
+    transform: translateY(6px) rotate(45deg);
+  }
+  .sidebar-toggle.is-open span:nth-child(2) {
+    opacity: 0;
+    transform: scaleX(0);
+  }
+  .sidebar-toggle.is-open span:nth-child(3) {
+    transform: translateY(-6px) rotate(-45deg);
+  }
+
+  /* Animação suave nas linhas do hamburger */
+  .sidebar-toggle span {
+    transition: transform .22s ease, opacity .15s ease;
+  }
+
+  /* Tabelas: coluna extra pode ser escondida em tablet */
+  .hide-tablet { display: none !important; }
 }
