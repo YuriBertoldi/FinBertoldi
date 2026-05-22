@@ -229,18 +229,41 @@ func ToggleDespesaMesPago(db *sql.DB, fid, despesaID int, mes time.Time) (bool, 
 
 // --- Parcelamentos ---
 
+func ToggleParcelamentoMesPago(db *sql.DB, fid, parcID int, mes time.Time) (bool, error) {
+	var ok bool
+	db.QueryRow(`SELECT EXISTS(SELECT 1 FROM parcelamentos WHERE id=$1 AND family_id=$2)`, parcID, fid).Scan(&ok)
+	if !ok {
+		return false, fmt.Errorf("parcelamento não pertence à família")
+	}
+	_, err := db.Exec(`
+		INSERT INTO parcelamentos_mes (parcelamento_id, mes, pago) VALUES ($1,$2,false)
+		ON CONFLICT (parcelamento_id, mes) DO NOTHING`, parcID, mes)
+	if err != nil {
+		return false, err
+	}
+	var pago bool
+	err = db.QueryRow(`
+		UPDATE parcelamentos_mes SET pago = NOT pago, pago_em = CASE WHEN NOT pago THEN NOW() ELSE NULL END
+		WHERE parcelamento_id=$1 AND mes=$2
+		RETURNING pago`, parcID, mes).Scan(&pago)
+	return pago, err
+}
+
 func GetParcelamentosVigentesNoMes(db *sql.DB, fid int, mes time.Time) ([]models.Parcelamento, error) {
+	mesStr := mes.Format("2006-01")
 	rows, err := db.Query(`
-		SELECT id, descricao, cartao, valor_parcela, total_parcelas, data_inicio, ativo,
-		       (EXTRACT(YEAR  FROM $1::date) - EXTRACT(YEAR  FROM data_inicio)) * 12
-		     + (EXTRACT(MONTH FROM $1::date) - EXTRACT(MONTH FROM data_inicio)) + 1 AS parcela_mes
-		FROM parcelamentos
-		WHERE ativo = true
-		  AND family_id = $2
-		  AND data_inicio <= $1::date
-		  AND (EXTRACT(YEAR  FROM $1::date) - EXTRACT(YEAR  FROM data_inicio)) * 12
-		    + (EXTRACT(MONTH FROM $1::date) - EXTRACT(MONTH FROM data_inicio)) + 1 <= total_parcelas
-		ORDER BY descricao`, mes, fid)
+		SELECT p.id, p.descricao, p.cartao, p.valor_parcela, p.total_parcelas, p.data_inicio, p.ativo,
+		       (EXTRACT(YEAR  FROM $1::date) - EXTRACT(YEAR  FROM p.data_inicio)) * 12
+		     + (EXTRACT(MONTH FROM $1::date) - EXTRACT(MONTH FROM p.data_inicio)) + 1 AS parcela_mes,
+		       COALESCE(pm.pago, false) AS pago
+		FROM parcelamentos p
+		LEFT JOIN parcelamentos_mes pm ON pm.parcelamento_id = p.id AND pm.mes = $1
+		WHERE p.ativo = true
+		  AND p.family_id = $2
+		  AND p.data_inicio <= $1::date
+		  AND (EXTRACT(YEAR  FROM $1::date) - EXTRACT(YEAR  FROM p.data_inicio)) * 12
+		    + (EXTRACT(MONTH FROM $1::date) - EXTRACT(MONTH FROM p.data_inicio)) + 1 <= p.total_parcelas
+		ORDER BY p.descricao`, mes, fid)
 	if err != nil {
 		return nil, err
 	}
@@ -250,8 +273,9 @@ func GetParcelamentosVigentesNoMes(db *sql.DB, fid int, mes time.Time) ([]models
 		var p models.Parcelamento
 		var parcelaMes int
 		rows.Scan(&p.ID, &p.Descricao, &p.Cartao, &p.ValorParcela,
-			&p.TotalParcelas, &p.DataInicio, &p.Ativo, &parcelaMes)
+			&p.TotalParcelas, &p.DataInicio, &p.Ativo, &parcelaMes, &p.Pago)
 		p.ParcelaAtual = parcelaMes
+		p.Mes = mesStr
 		p.Restantes = p.TotalParcelas - parcelaMes
 		if p.Restantes < 0 {
 			p.Restantes = 0
@@ -355,6 +379,12 @@ func CreateReceita(db *sql.DB, fid int, descricao string, valor float64, data ti
 	return err
 }
 
+func UpdateReceita(db *sql.DB, fid, id int, descricao string, valor float64, data time.Time, tipo string, recorrente bool) error {
+	_, err := db.Exec(`UPDATE receitas SET descricao=$1, valor=$2, data=$3, tipo=$4, recorrente=$5 WHERE id=$6 AND family_id=$7`,
+		descricao, valor, data, tipo, recorrente, id, fid)
+	return err
+}
+
 func DeleteReceita(db *sql.DB, fid, id int) error {
 	_, err := db.Exec(`DELETE FROM receitas WHERE id=$1 AND family_id=$2`, id, fid)
 	return err
@@ -450,6 +480,12 @@ func CreateInvestimento(db *sql.DB, fid int, instituicao, tipo string, valor flo
 	return err
 }
 
+func UpdateInvestimento(db *sql.DB, fid, id int, instituicao, tipo string, valor float64, data time.Time, notas string) error {
+	_, err := db.Exec(`UPDATE investimentos SET instituicao=$1, tipo=$2, valor=$3, data=$4, notas=$5 WHERE id=$6 AND family_id=$7`,
+		instituicao, tipo, valor, data, notas, id, fid)
+	return err
+}
+
 func DeleteInvestimento(db *sql.DB, fid, id int) error {
 	_, err := db.Exec(`DELETE FROM investimentos WHERE id=$1 AND family_id=$2`, id, fid)
 	return err
@@ -459,7 +495,7 @@ func DeleteInvestimento(db *sql.DB, fid, id int) error {
 
 func GetReservaEM(db *sql.DB, fid int) (float64, error) {
 	var v float64
-	err := db.QueryRow(`SELECT COALESCE(valor,0) FROM reserva_emergencia WHERE family_id=$1 ORDER BY data DESC LIMIT 1`, fid).Scan(&v)
+	err := db.QueryRow(`SELECT COALESCE(SUM(CASE WHEN tipo='deposito' THEN valor ELSE -valor END), 0) FROM reserva_emergencia WHERE family_id=$1`, fid).Scan(&v)
 	if err == sql.ErrNoRows {
 		return 0, nil
 	}
@@ -467,7 +503,7 @@ func GetReservaEM(db *sql.DB, fid int) (float64, error) {
 }
 
 func GetHistoricoReserva(db *sql.DB, fid int) ([]models.ReservaEM, error) {
-	rows, err := db.Query(`SELECT id, valor, data, notas, criado_em FROM reserva_emergencia WHERE family_id=$1 ORDER BY data DESC`, fid)
+	rows, err := db.Query(`SELECT id, valor, tipo, data, notas, criado_em FROM reserva_emergencia WHERE family_id=$1 ORDER BY data DESC, criado_em DESC`, fid)
 	if err != nil {
 		return nil, err
 	}
@@ -475,20 +511,32 @@ func GetHistoricoReserva(db *sql.DB, fid int) ([]models.ReservaEM, error) {
 	var list []models.ReservaEM
 	for rows.Next() {
 		var r models.ReservaEM
-		rows.Scan(&r.ID, &r.Valor, &r.Data, &r.Notas, &r.CriadoEm)
+		rows.Scan(&r.ID, &r.Valor, &r.Tipo, &r.Data, &r.Notas, &r.CriadoEm)
 		list = append(list, r)
 	}
 	return list, nil
 }
 
-func AddReservaEM(db *sql.DB, fid int, valor float64, notas string) error {
-	_, err := db.Exec(`INSERT INTO reserva_emergencia (family_id, valor, notas) VALUES ($1,$2,$3)`, fid, valor, notas)
+func AddReservaEM(db *sql.DB, fid int, valor float64, data time.Time, tipo, notas string) error {
+	_, err := db.Exec(`INSERT INTO reserva_emergencia (family_id, valor, data, tipo, notas) VALUES ($1,$2,$3,$4,$5)`, fid, valor, data, tipo, notas)
+	return err
+}
+
+func UpdateReservaEM(db *sql.DB, fid, id int, valor float64, data time.Time, tipo, notas string) error {
+	_, err := db.Exec(`UPDATE reserva_emergencia SET valor=$1, data=$2, tipo=$3, notas=$4 WHERE id=$5 AND family_id=$6`, valor, data, tipo, notas, id, fid)
 	return err
 }
 
 func DeleteReservaEM(db *sql.DB, fid, id int) error {
 	_, err := db.Exec(`DELETE FROM reserva_emergencia WHERE id=$1 AND family_id=$2`, id, fid)
 	return err
+}
+
+func GetInvestidoNoMes(db *sql.DB, fid int, mes time.Time) float64 {
+	var totalInv, totalReserva float64
+	db.QueryRow(`SELECT COALESCE(SUM(valor),0) FROM investimentos WHERE family_id=$1 AND date_trunc('month', data) = date_trunc('month', $2::date)`, fid, mes).Scan(&totalInv)
+	db.QueryRow(`SELECT COALESCE(SUM(valor),0) FROM reserva_emergencia WHERE family_id=$1 AND tipo='deposito' AND date_trunc('month', data) = date_trunc('month', $2::date)`, fid, mes).Scan(&totalReserva)
+	return totalInv + totalReserva
 }
 
 // --- Empréstimos ---
@@ -980,6 +1028,26 @@ var migrations = []migration{
 			     ('Serviços',    'basica', '#607d8b')
 			 ) AS cat(nome, grupo, cor)
 			 ON CONFLICT (family_id, nome) DO NOTHING`,
+		},
+	},
+	{
+		version: 9,
+		name:    "create_parcelamentos_mes",
+		stmts: []string{
+			`CREATE TABLE IF NOT EXISTS parcelamentos_mes (
+				parcelamento_id INTEGER NOT NULL REFERENCES parcelamentos(id) ON DELETE CASCADE,
+				mes             DATE    NOT NULL,
+				pago            BOOLEAN NOT NULL DEFAULT false,
+				pago_em         TIMESTAMPTZ,
+				PRIMARY KEY (parcelamento_id, mes)
+			)`,
+		},
+	},
+	{
+		version: 10,
+		name:    "reserva_em_tipo",
+		stmts: []string{
+			`ALTER TABLE reserva_emergencia ADD COLUMN IF NOT EXISTS tipo VARCHAR(10) NOT NULL DEFAULT 'deposito'`,
 		},
 	},
 }

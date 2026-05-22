@@ -1,7 +1,10 @@
 {{define "content"}}
 <div class="page-header">
   <h2>Investimentos</h2>
-  <button data-open-dialog="dialog-novo-inv">+ Registrar Aporte</button>
+  <div class="page-actions">
+    <button type="button" class="outline" onclick="window.open('/relatorio/investimentos','_blank')">📄 Relatório</button>
+    <button data-open-dialog="dialog-novo-inv">+ Registrar Aporte</button>
+  </div>
 </div>
 
 <!-- Totais por instituição -->
@@ -32,20 +35,62 @@
   <details>
     <summary>Ver histórico</summary>
     <table>
-      <thead><tr><th>Data</th><th>Valor</th><th>Notas</th><th></th></tr></thead>
+      <thead><tr><th>Data</th><th>Tipo</th><th>Valor</th><th>Notas</th><th></th></tr></thead>
       <tbody>
         {{range .HistoricoReserva}}
         <tr>
-          <td>{{date .Data}}</td>
-          <td>{{brl .Valor}}</td>
+          <td><small>{{date .Data}}</small></td>
+          <td>
+            {{if eq .Tipo "retirada"}}
+              <span class="badge badge-despesa">Retirada</span>
+            {{else}}
+              <span class="badge badge-receita">Depósito</span>
+            {{end}}
+          </td>
+          <td class="{{if eq .Tipo "retirada"}}valor-negativo{{else}}valor-positivo{{end}}">{{brl .Valor}}</td>
           <td><small>{{.Notas}}</small></td>
           <td>
+            <button data-open-dialog="dialog-edit-res-{{.ID}}" class="btn-action" title="Editar">✏️</button>
             <form method="POST" action="/reserva-em/{{.ID}}/delete" style="display:inline"
                   onsubmit="return confirm('Excluir registro?')">
               <button type="submit" class="btn-action danger" title="Excluir">🗑️</button>
             </form>
           </td>
         </tr>
+
+        <!-- Dialog editar reserva -->
+        <dialog id="dialog-edit-res-{{.ID}}">
+          <article>
+            <header>
+              <button data-close-dialog aria-label="Fechar"></button>
+              <h3>Editar Registro</h3>
+            </header>
+            <form method="POST" action="/reserva-em/{{.ID}}/update">
+              <div class="grid">
+                <label>Valor (R$)
+                  <input type="text" name="valor" value="{{.Valor}}" required autofocus>
+                </label>
+                <label>Data
+                  <input type="date" name="data" value="{{dateInput .Data}}" required>
+                </label>
+              </div>
+              <label>Tipo
+                <select name="tipo">
+                  <option value="deposito" {{if ne .Tipo "retirada"}}selected{{end}}>Depósito (+)</option>
+                  <option value="retirada" {{if eq .Tipo "retirada"}}selected{{end}}>Retirada (−)</option>
+                </select>
+              </label>
+              <label>Notas (opcional)
+                <input type="text" name="notas" value="{{.Notas}}">
+              </label>
+              <footer>
+                <button data-close-dialog type="button" class="secondary">Cancelar</button>
+                <button type="submit">Salvar</button>
+              </footer>
+            </form>
+          </article>
+        </dialog>
+
         {{end}}
       </tbody>
     </table>
@@ -76,6 +121,7 @@
     <table id="table-inv">
       <thead>
         <tr>
+          <th class="col-check"><input type="checkbox" id="chk-inv-all" title="Selecionar todos"></th>
           <th>Instituição</th>
           <th>Tipo</th>
           <th>Valor</th>
@@ -87,38 +133,104 @@
       <tbody>
         {{range .Investimentos}}
         <tr>
+          <td class="col-check"><input type="checkbox" class="row-check"></td>
           <td><strong>{{.Instituicao}}</strong></td>
           <td><small>{{.Tipo}}</small></td>
           <td class="valor-positivo">{{brl .Valor}}</td>
           <td><small>{{date .Data}}</small></td>
           <td><small>{{.Notas}}</small></td>
           <td>
+            <button data-open-dialog="dialog-edit-inv-{{.ID}}" class="btn-action" title="Editar">✏️</button>
             <form method="POST" action="/investimentos/{{.ID}}/delete" style="display:inline"
                   onsubmit="return confirm('Excluir aporte?')">
               <button type="submit" class="btn-action danger" title="Excluir">🗑️</button>
             </form>
           </td>
         </tr>
+
+        <!-- Dialog editar aporte -->
+        <dialog id="dialog-edit-inv-{{.ID}}">
+          <article>
+            <header>
+              <button data-close-dialog aria-label="Fechar"></button>
+              <h3>Editar Aporte</h3>
+            </header>
+            <form method="POST" action="/investimentos/{{.ID}}/update">
+              <div class="grid">
+                <label>Instituição
+                  <input type="text" name="instituicao" value="{{.Instituicao}}" list="inst-list-edit" required autofocus>
+                  <datalist id="inst-list-edit">
+                    <option value="Rico">
+                    <option value="INCO">
+                    <option value="Previdência">
+                    <option value="Tesouro Direto">
+                    <option value="CDB">
+                  </datalist>
+                </label>
+                <label>Tipo
+                  <select name="tipo">
+                    <option value="Renda Variável" {{if eq .Tipo "Renda Variável"}}selected{{end}}>Renda Variável</option>
+                    <option value="Renda Fixa" {{if eq .Tipo "Renda Fixa"}}selected{{end}}>Renda Fixa</option>
+                    <option value="Previdência" {{if eq .Tipo "Previdência"}}selected{{end}}>Previdência</option>
+                    <option value="FII" {{if eq .Tipo "FII"}}selected{{end}}>FII</option>
+                    <option value="Criptomoeda" {{if eq .Tipo "Criptomoeda"}}selected{{end}}>Criptomoeda</option>
+                  </select>
+                </label>
+              </div>
+              <div class="grid">
+                <label>Valor (R$)
+                  <input type="text" name="valor" value="{{.Valor}}" required>
+                </label>
+                <label>Data
+                  <input type="date" name="data" value="{{dateInput .Data}}" required>
+                </label>
+              </div>
+              <label>Notas (opcional)
+                <input type="text" name="notas" value="{{.Notas}}">
+              </label>
+              <footer>
+                <button data-close-dialog type="button" class="secondary">Cancelar</button>
+                <button type="submit">Salvar</button>
+              </footer>
+            </form>
+          </article>
+        </dialog>
+
         {{else}}
-        <tr><td colspan="6" class="muted center">Nenhum aporte registrado.</td></tr>
+        <tr><td colspan="7" class="muted center">Nenhum aporte registrado.</td></tr>
         {{end}}
       </tbody>
     </table>
   </div>
 </section>
 
+<div id="sel-bar-inv" class="sel-bar">
+  <span class="sel-bar-info"></span>
+  <span class="sel-bar-total"></span>
+  <button type="button" class="outline secondary sel-bar-clear">✕ Limpar</button>
+</div>
+
 <script>
-  populateSelectFromCol('fi-inst', 'table-inv', 0);
+  // Pre-fill today's date in the reserva dialog
+  (function() {
+    var today = new Date().toISOString().slice(0, 10);
+    var d = document.querySelector('#dialog-reserva-em input[type=date]');
+    if (d && !d.value) d.value = today;
+  })();
+
+  initTableSort('table-inv');
+  populateSelectFromCol('fi-inst', 'table-inv', 1);
   initTableFilter({
     tableId: 'table-inv',
     searchId: 'fi-busca',
     filters: [
-      { id: 'fi-tipo', col: 1 },
-      { id: 'fi-inst', col: 0 }
+      { id: 'fi-tipo', col: 2 },
+      { id: 'fi-inst', col: 1 }
     ],
     countId: 'fi-count',
     noResultsId: 'fi-no-results'
   });
+  initSelecao({ tableId: 'table-inv', valorCol: 3, barId: 'sel-bar-inv', tipoValor: 'positivo' });
 </script>
 
 <!-- Dialog novo aporte -->
@@ -174,11 +286,22 @@
   <article>
     <header>
       <button data-close-dialog aria-label="Fechar"></button>
-      <h3>Atualizar Reserva de Emergência</h3>
+      <h3>Lançar na Reserva de Emergência</h3>
     </header>
     <form method="POST" action="/reserva-em">
-      <label>Saldo atual (R$)
-        <input type="text" name="valor" placeholder="10.000,00" required autofocus>
+      <div class="grid">
+        <label>Valor (R$)
+          <input type="text" name="valor" placeholder="10.000,00" required autofocus>
+        </label>
+        <label>Data
+          <input type="date" name="data" required>
+        </label>
+      </div>
+      <label>Tipo
+        <select name="tipo">
+          <option value="deposito">Depósito (+)</option>
+          <option value="retirada">Retirada (−)</option>
+        </select>
       </label>
       <label>Notas (opcional)
         <input type="text" name="notas" placeholder="Ex: Após resgate parcial">

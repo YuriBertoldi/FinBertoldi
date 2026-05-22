@@ -51,6 +51,10 @@
         <span class="nav-ico">💸</span>
         <span class="nav-text">Despesas</span>
       </a>
+      <a href="/pagamentos" class="nav-item {{if eq .Active "pagamentos"}}active{{end}}">
+        <span class="nav-ico">💳</span>
+        <span class="nav-text">Pagamentos</span>
+      </a>
       {{end}}
       {{if not (contains .BlockedScreens "receitas")}}
       <a href="/receitas" class="nav-item {{if eq .Active "receitas"}}active{{end}}">
@@ -84,6 +88,10 @@
         <span class="nav-text">Cadastros</span>
       </a>
       {{end}}
+      <a href="/dados" class="nav-item {{if eq .Active "importexport"}}active{{end}}">
+        <span class="nav-ico">📊</span>
+        <span class="nav-text">Importar / Exportar</span>
+      </a>
 
       {{if and .CurrentUser .CurrentUser.FamilyAdmin}}
       {{if not .CurrentUser.Admin}}
@@ -200,6 +208,100 @@
         }
       });
     }
+
+    // Seleção com totalização
+    function initSelecao(cfg) {
+      // cfg: { tableId, valorCol, barId, tipoValor, allCheckId }
+      const table   = document.getElementById(cfg.tableId);
+      const bar     = document.getElementById(cfg.barId);
+      const infoEl  = bar.querySelector('.sel-bar-info');
+      const totalEl = bar.querySelector('.sel-bar-total');
+      const clearBtn= bar.querySelector('.sel-bar-clear');
+      const brl = v => 'R$ ' + v.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+
+      function update() {
+        const checked = table.querySelectorAll('tbody input.row-check:checked');
+        if (checked.length === 0) { bar.classList.remove('visible'); return; }
+        let total = 0;
+        checked.forEach(cb => {
+          const row = cb.closest('tr');
+          const cell = row.cells[cfg.valorCol];
+          const txt = cell ? cell.textContent.replace(/[R$\s.]/g,'').replace(',','.') : '0';
+          total += parseFloat(txt) || 0;
+        });
+        infoEl.textContent = checked.length + ' item(s) selecionado(s)';
+        totalEl.textContent = brl(total);
+        totalEl.className = 'sel-bar-total' + (cfg.tipoValor === 'negativo' ? ' negativo' : '');
+        bar.classList.add('visible');
+      }
+
+      function setAll(checked) {
+        table.querySelectorAll('tbody input.row-check').forEach(cb => {
+          if (cb.closest('tr').style.display === 'none') return;
+          cb.checked = checked;
+          cb.closest('tr').classList.toggle('sel-row', checked);
+        });
+        update();
+      }
+
+      table.addEventListener('change', e => {
+        if (!e.target.classList.contains('row-check')) return;
+        e.target.closest('tr').classList.toggle('sel-row', e.target.checked);
+        update();
+      });
+      clearBtn.addEventListener('click', () => setAll(false));
+
+      // "selecionar todos" — usa data-all-for no checkbox do thead
+      const allChk = table.querySelector('thead input[type="checkbox"]');
+      if (allChk) allChk.addEventListener('change', () => setAll(allChk.checked));
+    }
+
+    // Ordenação de tabelas por coluna
+    function initTableSort(tableId) {
+      const table = document.getElementById(tableId);
+      if (!table) return;
+      const ths = table.querySelectorAll('thead th');
+      let lastCol = -1, asc = true;
+
+      function cellValue(row, col) {
+        const cell = row.cells[col];
+        if (!cell) return '';
+        // ignora checkboxes e botões
+        const text = cell.innerText.trim();
+        // tenta converter valor BRL (R$ 1.234,56) para número
+        const num = parseFloat(text.replace(/[R$\s.]/g, '').replace(',', '.'));
+        return isNaN(num) ? text.toLowerCase() : num;
+      }
+
+      ths.forEach((th, col) => {
+        // não sorteia colunas de checkbox ou ações
+        if (th.classList.contains('col-check')) return;
+        th.style.cursor = 'pointer';
+        th.title = 'Clique para ordenar';
+        th.innerHTML += '<span class="sort-icon"> ⇅</span>';
+
+        th.addEventListener('click', () => {
+          if (lastCol === col) asc = !asc; else { lastCol = col; asc = true; }
+
+          // reseta ícones
+          ths.forEach(h => { const ic = h.querySelector('.sort-icon'); if (ic) ic.textContent = ' ⇅'; h.classList.remove('sort-asc','sort-desc'); });
+          const icon = th.querySelector('.sort-icon');
+          icon.textContent = asc ? ' ▲' : ' ▼';
+          th.classList.add(asc ? 'sort-asc' : 'sort-desc');
+
+          const tbody = table.querySelector('tbody');
+          const rows = Array.from(tbody.querySelectorAll('tr'));
+          rows.sort((a, b) => {
+            const va = cellValue(a, col), vb = cellValue(b, col);
+            if (va === vb) return 0;
+            const cmp = (typeof va === 'number' && typeof vb === 'number')
+              ? va - vb : String(va).localeCompare(String(vb), 'pt-BR');
+            return asc ? cmp : -cmp;
+          });
+          rows.forEach(r => tbody.appendChild(r));
+        });
+      });
+    }
   </script>
 
   <main class="app-main">
@@ -280,6 +382,15 @@
 {{define "toggle-btn"}}
 <button
   hx-post="/api/despesas/{{.ID}}/toggle-pago?mes={{.Mes}}"
+  hx-target="this"
+  hx-swap="outerHTML"
+  class="btn-toggle {{if .Pago}}pago{{end}}"
+>{{if .Pago}}✓ Pago{{else}}Pagar{{end}}</button>
+{{end}}
+
+{{define "toggle-parc-btn"}}
+<button
+  hx-post="/api/parcelamentos/{{.ID}}/toggle-pago?mes={{.Mes}}"
   hx-target="this"
   hx-swap="outerHTML"
   class="btn-toggle {{if .Pago}}pago{{end}}"

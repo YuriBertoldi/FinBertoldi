@@ -1,0 +1,114 @@
+{{define "content"}}
+<div class="page-header">
+  <h2>💳 Pagamentos do Mês</h2>
+</div>
+
+<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem;margin-bottom:1rem">
+  <div class="mes-nav" style="margin:0">
+    <a href="/pagamentos?mes={{.MesPrev}}" role="button" class="outline secondary mes-btn">‹</a>
+    <h3 class="mes-titulo" style="margin:0">{{.MesDisplay}}</h3>
+    <a href="/pagamentos?mes={{.MesNext}}" role="button" class="outline secondary mes-btn">›</a>
+  </div>
+</div>
+
+<div class="filter-bar">
+  <input type="search" id="pag-busca" placeholder="🔍 Buscar por nome…" oninput="filtrarPagamentos()">
+  <select id="pag-cat" onchange="filtrarPagamentos()">
+    <option value="">Todas as categorias</option>
+    <option value="basica">Contas Básicas</option>
+    <option value="cartao">Cartão de Crédito</option>
+    <option value="vr">VR / Alimentação</option>
+    <option value="parcelamento">Parcelamentos</option>
+  </select>
+  <select id="pag-status" onchange="filtrarPagamentos()">
+    <option value="">Todos</option>
+    <option value="pago">Pagos</option>
+    <option value="pendente">Pendentes</option>
+  </select>
+  <span class="filter-count" id="pag-count"></span>
+</div>
+<p class="filter-no-results" id="pag-no-results" style="display:none">Nenhum item encontrado.</p>
+
+<table class="dash-table" id="pag-table">
+  <thead>
+    <tr>
+      <th class="col-check"><input type="checkbox" id="chk-pag-all" title="Selecionar todos"></th>
+      <th>Descrição</th><th>Valor</th><th>Status</th>
+    </tr>
+  </thead>
+  <tbody>
+    {{range .DespesasBasicas}}
+    <tr data-cat="basica" data-status="{{if .Pago}}pago{{else}}pendente{{end}}" data-nome="{{.Nome}}">
+      <td class="col-check"><input type="checkbox" class="row-check"></td>
+      <td><span class="badge badge-grupo-basica" style="margin-right:.5rem">Básica</span>{{.Nome}}</td>
+      <td class="valor-col">{{brl .Valor}}</td>
+      <td class="status-col">{{template "toggle-btn" .}}</td>
+    </tr>
+    {{end}}
+    {{range .DespesasCartao}}
+    <tr data-cat="cartao" data-status="{{if .Pago}}pago{{else}}pendente{{end}}" data-nome="{{.Nome}}">
+      <td class="col-check"><input type="checkbox" class="row-check"></td>
+      <td><span class="badge badge-grupo-cartao" style="margin-right:.5rem">Cartão</span>{{.Nome}}</td>
+      <td class="valor-col">{{brl .Valor}}</td>
+      <td class="status-col">{{template "toggle-btn" .}}</td>
+    </tr>
+    {{end}}
+    {{range .DespesasVR}}
+    <tr data-cat="vr" data-status="{{if .Pago}}pago{{else}}pendente{{end}}" data-nome="{{.Nome}}">
+      <td class="col-check"><input type="checkbox" class="row-check"></td>
+      <td><span class="badge badge-grupo-vr" style="margin-right:.5rem">VR</span>{{.Nome}}</td>
+      <td class="valor-col">{{brl .Valor}}</td>
+      <td class="status-col">{{template "toggle-btn" .}}</td>
+    </tr>
+    {{end}}
+    {{range .ParcelamentosMes}}
+    <tr data-cat="parcelamento" data-status="{{if .Pago}}pago{{else}}pendente{{end}}" data-nome="{{.Descricao}}">
+      <td class="col-check"><input type="checkbox" class="row-check"></td>
+      <td><span class="badge badge-grupo-cartao" style="margin-right:.5rem">Parcela</span>{{.Descricao}} <small class="muted">({{progress .ParcelaAtual .TotalParcelas}})</small></td>
+      <td class="valor-col">{{brl .ValorParcela}}</td>
+      <td class="status-col">{{template "toggle-parc-btn" .}}</td>
+    </tr>
+    {{end}}
+  </tbody>
+</table>
+
+{{if and (not .DespesasBasicas) (not .DespesasCartao) (not .DespesasVR) (not .ParcelamentosMes)}}
+<p class="muted">Nenhuma despesa cadastrada para este mês.</p>
+{{end}}
+
+<script>
+function filtrarPagamentos() {
+  const busca  = document.getElementById('pag-busca').value.toLowerCase();
+  const cat    = document.getElementById('pag-cat').value;
+  const status = document.getElementById('pag-status').value;
+  const rows   = document.querySelectorAll('#pag-table tbody tr');
+  let visible  = 0;
+  rows.forEach(tr => {
+    const nome   = (tr.dataset.nome || '').toLowerCase();
+    const trCat  = tr.dataset.cat || '';
+    const btn    = tr.querySelector('.btn-toggle');
+    const trStatus = btn ? (btn.classList.contains('pago') ? 'pago' : 'pendente') : '';
+    const ok = (!busca || nome.includes(busca))
+            && (!cat    || trCat === cat)
+            && (!status || trStatus === status);
+    tr.style.display = ok ? '' : 'none';
+    if (ok) visible++;
+  });
+  document.getElementById('pag-count').textContent = visible + ' item(s)';
+  document.getElementById('pag-no-results').style.display = visible === 0 ? '' : 'none';
+}
+filtrarPagamentos();
+document.getElementById('pag-table').addEventListener('htmx:afterSwap', filtrarPagamentos);
+</script>
+
+<div id="sel-bar-pag" class="sel-bar">
+  <span class="sel-bar-info"></span>
+  <span class="sel-bar-total"></span>
+  <button type="button" class="outline secondary sel-bar-clear">✕ Limpar</button>
+</div>
+
+<script>
+initTableSort('pag-table');
+initSelecao({ tableId: 'pag-table', valorCol: 2, barId: 'sel-bar-pag', tipoValor: 'negativo' });
+</script>
+{{end}}

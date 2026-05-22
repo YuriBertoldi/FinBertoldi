@@ -1,15 +1,16 @@
 # FinBertoldi — Controle Financeiro Familiar
 
-Sistema de finanças pessoais multi-família com dashboard, investimentos, planejamento FIRE e controle de acesso por usuário.
+Sistema de finanças pessoais multi-família com dashboard, investimentos, planejamento FIRE, relatórios PDF e importação/exportação de dados.
 
 ## Stack
 
 | Camada | Tecnologia |
 |--------|-----------|
-| Backend | Go 1.22 — net/http + html/template (stdlib) |
-| Frontend | HTMX 1.9.12, Chart.js 4.4.1, CSS custom (dark/glassmorphism) |
+| Backend | Go 1.24 — net/http + html/template (stdlib) |
+| Frontend | HTMX 1.9.12 · Chart.js 4.4.1 · Pico CSS v2 · CSS custom (dark/glassmorphism) |
 | Banco | PostgreSQL 16 |
 | Auth | Sessões + bcrypt |
+| XLSX | excelize/v2 |
 | Infra | Docker Compose |
 
 ---
@@ -31,22 +32,27 @@ Acesse: **http://localhost:8080**
 
 > Troque a senha no primeiro acesso em Usuários.
 
-O schema do banco é criado e atualizado automaticamente no startup — não é necessário rodar SQL manualmente.
+O schema é criado e atualizado automaticamente no startup — não é necessário rodar SQL manualmente.
 
 ---
 
 ## Funcionalidades
 
-- **Dashboard** — saldo do mês, gráficos de receitas × despesas (Chart.js), histórico 6 meses
+- **Dashboard** — cards: Receitas, Despesas, Sobra, **Caixa** (Receitas − pago − investido/mês), Investido/mês, Total Investido; gráficos receitas × despesas (Chart.js), histórico 6 meses
 - **Despesas** — fixas/recorrentes + parcelamentos de cartão com toggle pago/mês
-- **Receitas** — recorrentes e únicas
-- **Investimentos** — por instituição/tipo, totais por categoria, histórico
-- **Reserva de Emergência** — histórico de saldo, meta de 6× e 12× despesa mensal
-- **Empréstimos** — devo / emprestei, quitação total ou parcial com histórico de pagamentos
+- **Pagamentos do Mês** — página dedicada para acompanhar o que foi pago/pendente no mês; filtros por categoria e status; abate do Caixa conforme pagamentos registrados
+- **Receitas** — recorrentes e únicas; edição inline de cada registro
+- **Investimentos** — por instituição/tipo, totais por categoria, histórico de aportes; edição inline de cada aporte
+- **Reserva de Emergência** — funciona como **conta corrente**: lançamentos de depósito (+) e retirada (−) com data e notas; saldo = Σdepósitos − Σretiradas; depósitos contam como "investido no mês" para o Caixa; edição inline de cada lançamento
+- **Empréstimos** — devo / me devem, quitação total ou parcial com histórico de pagamentos
 - **Planejamento FIRE** — taxa de poupança, metas FIRE (3%/3.5%/4%), projeção de juros compostos
 - **Cadastros** — categorias (com cor e grupo) e cartões de crédito por família
-- **Minha Família** — gerenciar membros, redefinir senhas, controle de acesso por tela por usuário
+- **Minha Família** — gerenciar membros, redefinir senhas, controle de acesso por tela
 - **Usuários / Famílias** — administração global (admin only)
+- **Relatórios PDF** — botão "📄 Relatório" em cada tela; gera HTML otimizado para impressão/PDF via `Ctrl+P`
+- **Importar / Exportar** — XLSX multi-aba com todos os dados; download de modelo em branco
+- **Seleção e totalização** — checkboxes em todas as tabelas com barra flutuante de soma
+- **Ordenação** — clique no cabeçalho de qualquer coluna para ordenar
 - **Tema dark/light** + **ocultar valores** (botão olho na sidebar)
 
 ### Controle de acesso
@@ -54,8 +60,8 @@ O schema do banco é criado e atualizado automaticamente no startup — não é 
 | Perfil | Permissões |
 |--------|-----------|
 | Admin global | Acesso total; gerencia todas as famílias |
-| Admin de família | Gerencia membros da própria família; pode bloquear telas por usuário |
-| Usuário comum | Acesso às telas liberadas pelo admin da família; pode alterar só a própria senha |
+| Admin de família | Gerencia membros da própria família; bloqueia telas por usuário |
+| Usuário comum | Acesso às telas liberadas; altera só a própria senha |
 
 ---
 
@@ -63,73 +69,86 @@ O schema do banco é criado e atualizado automaticamente no startup — não é 
 
 ```
 finBertoldi/
-├── main.go              # Wiring: App struct, rotas, startup
-├── handlers.go          # Handlers HTTP (camada de apresentacao)
-├── db.go                # Queries SQL + sistema de migrations (camada de dados)
-├── models.go            # Structs de dominio
-├── auth.go              # Sessoes, bcrypt, middlewares
-├── auth_test.go         # Testes unitarios — auth
-├── helpers_test.go      # Testes unitarios — helpers
-├── integration_test.go  # Testes de integracao (requer PostgreSQL)
-├── Dockerfile           # Multi-stage build: golang:1.22 → alpine
-├── docker-compose.yml   # Ambiente de desenvolvimento
-├── docker-compose.prod.yml  # Producao (Oracle Cloud)
-├── .env.prod.example    # Template de variaveis de ambiente
-├── migrations/
-│   └── schema.sql       # Schema de referencia (documentacao)
-├── scripts/
-│   └── setup-oracle.sh  # Provisionamento do servidor Oracle Cloud
+├── main.go                          # Wiring: todas as rotas + startup
+├── go.mod / go.sum
+├── Dockerfile                       # Multi-stage: golang:1.24 → alpine
+├── docker-compose.yml               # Desenvolvimento local
+├── docker-compose.prod.yml          # Produção (Oracle Cloud)
+├── .env.prod.example                # Template de variáveis de ambiente
+├── internal/
+│   ├── models/
+│   │   └── models.go                # Structs de domínio e page data
+│   ├── store/
+│   │   ├── store.go                 # Queries PostgreSQL + RunMigrations()
+│   │   ├── store_test.go            # Testes unitários
+│   │   └── integration_test.go      # Testes de integração (build tag: integration)
+│   ├── auth/
+│   │   ├── auth.go                  # Middlewares + sessões + bcrypt
+│   │   └── auth_test.go             # Testes unitários
+│   └── handler/
+│       ├── handler.go               # Handlers HTTP + InitTemplates() + helpers
+│       ├── reports.go               # Handlers relatórios PDF (5 telas)
+│       ├── importexport.go          # Import/Export XLSX
+│       └── handler_test.go          # Testes unitários
 ├── static/
-│   └── app.css          # Design system completo
+│   └── app.css                      # Design system completo
 └── templates/
-    ├── base.html        # Layout base + sidebar + JS utilitarios
+    ├── base.html                    # Layout base + sidebar + JS utilitários (initTableSort, initSelecao, initTableFilter)
     ├── login.html
     ├── dashboard.html
     ├── despesas.html
-    ├── emprestimos.html
+    ├── pagamentos.html              # Pagamentos do Mês (página dedicada)
     ├── receitas.html
     ├── investimentos.html
+    ├── emprestimos.html
     ├── planejamento.html
     ├── cadastros.html
     ├── minha-familia.html
     ├── usuarios.html
-    └── familias.html
+    ├── familias.html
+    ├── importexport.html            # Importar / Exportar XLSX
+    ├── relatorio-base.html          # Layout base dos relatórios PDF
+    ├── relatorio-dashboard.html
+    ├── relatorio-despesas.html
+    ├── relatorio-receitas.html
+    ├── relatorio-investimentos.html
+    └── relatorio-emprestimos.html
 ```
-
-### Camadas do backend (todos `package main`)
-
-| Arquivo | Responsabilidade |
-|---------|-----------------|
-| `main.go` | Inicialização, App struct, registro de rotas |
-| `models.go` | Structs de domínio e page data |
-| `db.go` | Queries PostgreSQL + `runMigrations()` |
-| `auth.go` | Middleware `protected`, `adminOnly`, `familyAdminOnly`, `screenProtected` |
-| `handlers.go` | Um handler por rota, template rendering |
 
 ---
 
-## Migrations
+## Importar / Exportar
 
-O schema é versionado internamente em `db.go` (slice `migrations`). Ao subir, `runMigrations()`:
+Acesse `/dados` (sidebar: **📊 Importar / Exportar**).
 
-1. Cria a tabela `schema_migrations` se não existir
-2. Para cada migration, verifica se já foi aplicada
-3. Executa em transação as que estão pendentes
-4. Registra a versão aplicada
+| Ação | Descrição |
+|------|-----------|
+| **Exportar meus dados** | Baixa XLSX com todos os dados atuais em 5 abas |
+| **Baixar modelo em branco** | XLSX com cabeçalhos + linha de exemplo para preencher |
+| **Importar** | Faz upload de XLSX no mesmo formato; **adiciona** aos dados existentes |
 
-Para adicionar uma nova alteração de schema, basta acrescentar ao slice:
+**Formato das abas:**
 
-```go
-{
-    version: 9,
-    name:    "descricao_da_mudanca",
-    stmts: []string{
-        `ALTER TABLE tabela ADD COLUMN IF NOT EXISTS nova_coluna TYPE`,
-    },
-},
-```
+| Aba | Colunas |
+|-----|---------|
+| Despesas Fixas | Nome · Valor · Categoria · Ativa (S/N) |
+| Parcelamentos | Descrição · Cartão · Valor Parcela · Parcela Atual · Total Parcelas · Data Início |
+| Receitas | Descrição · Valor · Data · Tipo · Recorrente (S/N) |
+| Investimentos | Instituição · Tipo · Valor · Data · Notas |
+| Empréstimos | Pessoa · Valor · Direção (devo/me_devem) · Data · Notas |
 
-O schema de referência completo está em `migrations/schema.sql`.
+---
+
+## Relatórios PDF
+
+Cada tela principal tem um botão **📄 Relatório** que abre uma página otimizada para impressão. Use `Ctrl+P` → **Salvar como PDF** no navegador.
+
+Rotas disponíveis:
+- `GET /relatorio/dashboard?mes=YYYY-MM`
+- `GET /relatorio/despesas`
+- `GET /relatorio/receitas`
+- `GET /relatorio/investimentos`
+- `GET /relatorio/emprestimos`
 
 ---
 
@@ -145,42 +164,37 @@ O schema de referência completo está em `migrations/schema.sql`.
 | `DB_NAME` | `fincontrol` | Nome do banco |
 | `PORT` | `8080` | Porta HTTP |
 
-Copie `.env.prod.example` para `.env.prod` e preencha antes de subir em produção.
-
 ---
 
 ## Testes
 
 ```bash
-# Unitarios (sem banco)
+# Unitários (sem banco, <1s)
 go test ./...
 
-# Integracao (requer PostgreSQL rodando)
+# Integração (requer PostgreSQL rodando)
 docker compose up postgres -d
 go test -tags=integration ./...
 ```
+
+Ver `TESTES.md` para detalhes completos.
 
 ---
 
 ## Deploy — Oracle Cloud
 
-```bash
-# Enviar arquivos
-scp -i ~/Downloads/ssh-key-2026-05-19.key -r . ubuntu@141.148.34.13:/home/ubuntu/finBertoldi/
+**Servidor:** `157.151.131.79` (VM.Standard.E2.1.Micro — Always Free)
 
-# No servidor
-ssh -i ~/Downloads/ssh-key-2026-05-19.key ubuntu@141.148.34.13
-cd /home/ubuntu/finBertoldi
-cp .env.prod.example .env.prod  # editar com senhas reais
-docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
+```powershell
+# Enviar e rebuildar (PowerShell)
+scp -i C:/Go/finBertoldi/Oracle/ssh-key-2026-05-22.key -r C:/Go/finBertoldi ubuntu@157.151.131.79:/home/ubuntu/
+ssh -i C:/Go/finBertoldi/Oracle/ssh-key-2026-05-22.key ubuntu@157.151.131.79 "cd /home/ubuntu/finBertoldi && docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build"
 ```
 
-### Atualizar producao
-
 ```bash
-# Windows (PowerShell)
-scp -i "$env:USERPROFILE\Downloads\ssh-key-2026-05-19.key" arquivo ubuntu@141.148.34.13:/home/ubuntu/finBertoldi/
+# Logs
+docker logs finbertoldi-app-1 --tail 50 -f
 
-# No servidor
-docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
+# Acessar banco
+docker exec -it finbertoldi-postgres-1 psql -U fincontrol -d fincontrol
 ```

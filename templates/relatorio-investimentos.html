@@ -1,0 +1,88 @@
+{{define "relatorio-content"}}
+<div class="summary-grid">
+  <div class="summary-card">
+    <div class="label">Total Investido</div>
+    <div class="value">{{.TotalGeral}}</div>
+  </div>
+  <div class="summary-card">
+    <div class="label">Reserva de Emergência</div>
+    <div class="value">{{.ReservaEM}}</div>
+  </div>
+  <div class="summary-card green">
+    <div class="label">Patrimônio Total</div>
+    <div class="value">{{.Patrimonio}}</div>
+  </div>
+</div>
+
+<div class="section-title">Investimentos por Tipo</div>
+<table>
+  <thead>
+    <tr>
+      <th>Tipo</th>
+      <th class="num">Total</th>
+    </tr>
+  </thead>
+  <tbody>
+    {{range $tipo, $valor := .Totais}}
+    <tr>
+      <td>{{$tipo}}</td>
+      <td class="num">{{$valor}}</td>
+    </tr>
+    {{end}}
+    <tr class="total-row">
+      <td>Total Geral</td>
+      <td class="num">{{.TotalGeral}}</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="section-title">Lançamentos de Investimentos ({{len .Investimentos}} registros)</div>
+<table>
+  <thead>
+    <tr>
+      <th>Instituição</th>
+      <th>Tipo</th>
+      <th>Data</th>
+      <th>Notas</th>
+      <th class="num">Valor</th>
+    </tr>
+  </thead>
+  <tbody>
+    {{range .Investimentos}}
+    <tr>
+      <td>{{.Instituicao}}</td>
+      <td>{{.Tipo}}</td>
+      <td>{{.Data.Format "02/01/2006"}}</td>
+      <td>{{.Notas}}</td>
+      <td class="num">{{.Valor}}</td>
+    </tr>
+    {{end}}
+  </tbody>
+</table>
+
+{{if .HistoricoReserva}}
+<div class="section-title">Histórico da Reserva de Emergência ({{len .HistoricoReserva}} registros)</div>
+<table>
+  <thead>
+    <tr>
+      <th>Data</th>
+      <th>Notas</th>
+      <th class="num">Valor</th>
+    </tr>
+  </thead>
+  <tbody>
+    {{range .HistoricoReserva}}
+    <tr>
+      <td>{{.Data.Format "02/01/2006"}}</td>
+      <td>{{.Notas}}</td>
+      <td class="num">{{.Valor}}</td>
+    </tr>
+    {{end}}
+    <tr class="total-row">
+      <td colspan="2">Total Reserva</td>
+      <td class="num">{{.ReservaEM}}</td>
+    </tr>
+  </tbody>
+</table>
+{{end}}
+{{end}}

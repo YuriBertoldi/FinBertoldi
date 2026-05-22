@@ -120,6 +120,7 @@
 </div>
 
 <script>
+  initTableSort('table-cats');
   initTableFilter({
     tableId: 'table-cats',
     searchId: 'fc-busca',
@@ -320,6 +321,7 @@
 <script>
   // Filtro Cartões
   if (document.getElementById('fct-busca')) {
+    initTableSort('table-cartoes');
     populateSelectFromCol('fct-bandeira', 'table-cartoes', 2);
     initTableFilter({
       tableId: 'table-cartoes',

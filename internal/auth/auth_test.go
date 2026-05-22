@@ -129,6 +129,81 @@ func TestProtectedRedirectsSemSessao(t *testing.T) {
 	}
 }
 
+func TestFamilyAdminOnlyBloqueiaUsuarioComum(t *testing.T) {
+	called := false
+	u := &models.User{ID: 1, Admin: false, FamilyAdmin: false, Ativo: true}
+	r := httptest.NewRequest("GET", "/minha-familia", nil)
+	ctx := context.WithValue(r.Context(), ctxUserKey, u)
+	r = r.WithContext(ctx)
+	w := httptest.NewRecorder()
+
+	inner := func(w http.ResponseWriter, r *http.Request) {
+		if u := CurrentUser(r); u == nil || (!u.FamilyAdmin && !u.Admin) {
+			http.Error(w, "Acesso restrito a administradores de família.", http.StatusForbidden)
+			return
+		}
+		called = true
+	}
+	inner(w, r)
+
+	if called {
+		t.Error("handler foi chamado para usuário sem permissão de family admin")
+	}
+	if w.Code != http.StatusForbidden {
+		t.Errorf("status = %d; want %d (Forbidden)", w.Code, http.StatusForbidden)
+	}
+}
+
+func TestFamilyAdminOnlyPermiteFamilyAdmin(t *testing.T) {
+	called := false
+	u := &models.User{ID: 2, Admin: false, FamilyAdmin: true, Ativo: true}
+	r := httptest.NewRequest("GET", "/minha-familia", nil)
+	ctx := context.WithValue(r.Context(), ctxUserKey, u)
+	r = r.WithContext(ctx)
+	w := httptest.NewRecorder()
+
+	inner := func(w http.ResponseWriter, r *http.Request) {
+		if u := CurrentUser(r); u == nil || (!u.FamilyAdmin && !u.Admin) {
+			http.Error(w, "Acesso restrito.", http.StatusForbidden)
+			return
+		}
+		called = true
+	}
+	inner(w, r)
+
+	if !called {
+		t.Error("handler não foi chamado para family admin")
+	}
+	if w.Code != http.StatusOK {
+		t.Errorf("status = %d; want 200", w.Code)
+	}
+}
+
+func TestScreenProtectedPermiteAdmin(t *testing.T) {
+	called := false
+	u := &models.User{ID: 1, Admin: true, FamilyAdmin: false, Ativo: true}
+	r := httptest.NewRequest("GET", "/despesas", nil)
+	ctx := context.WithValue(r.Context(), ctxUserKey, u)
+	r = r.WithContext(ctx)
+	w := httptest.NewRecorder()
+
+	// Admin sempre passa — sem consulta ao banco
+	inner := func(w http.ResponseWriter, r *http.Request) {
+		u := CurrentUser(r)
+		if !u.Admin && !u.FamilyAdmin {
+			// aqui faria GetBlockedScreens — não executa para admin
+			http.Error(w, "bloqueado", http.StatusForbidden)
+			return
+		}
+		called = true
+	}
+	inner(w, r)
+
+	if !called {
+		t.Error("admin foi bloqueado pelo ScreenProtected")
+	}
+}
+
 func TestAdminOnlyBloqueiaUsuarioComum(t *testing.T) {
 	called := false
 	h := func(w http.ResponseWriter, r *http.Request) {

@@ -1,8 +1,11 @@
 package handler
 
 import (
+	"net/http/httptest"
 	"testing"
 	"time"
+
+	"fincontrol/internal/models"
 )
 
 func TestFormatBRL(t *testing.T) {
@@ -40,6 +43,9 @@ func TestParseFloat(t *testing.T) {
 		{"", 0},
 		{"abc", 0},
 		{"0", 0},
+		{"223.05", 223.05},   // float padrão do excelize (dot decimal)
+		{"1234.56", 1234.56}, // float padrão sem milhar
+		{"807", 807},
 	}
 	for _, c := range cases {
 		got := parseFloat(c.in)
@@ -96,6 +102,85 @@ func TestMesDisplay(t *testing.T) {
 		if got != c.want {
 			t.Errorf("mesDisplay(%q) = %q; want %q", c.in, got, c.want)
 		}
+	}
+}
+
+func TestMesFromRequest(t *testing.T) {
+	// mês válido via query param
+	r := httptest.NewRequest("GET", "/?mes=2026-03", nil)
+	mes, mesStr := mesFromRequest(r)
+	if mesStr != "2026-03" {
+		t.Errorf("mesStr = %q; want '2026-03'", mesStr)
+	}
+	if mes.Year() != 2026 || mes.Month() != 3 || mes.Day() != 1 {
+		t.Errorf("mes = %v; want 2026-03-01", mes)
+	}
+
+	// sem param → mês atual
+	r2 := httptest.NewRequest("GET", "/", nil)
+	_, mesStr2 := mesFromRequest(r2)
+	want := time.Now().Format("2006-01")
+	if mesStr2 != want {
+		t.Errorf("sem param: mesStr = %q; want %q", mesStr2, want)
+	}
+
+	// param inválido → fallback para mês atual
+	r3 := httptest.NewRequest("GET", "/?mes=invalido", nil)
+	_, mesStr3 := mesFromRequest(r3)
+	if mesStr3 != want {
+		t.Errorf("param inválido: mesStr = %q; want %q", mesStr3, want)
+	}
+}
+
+func TestBoolStr(t *testing.T) {
+	if got := boolStr(true); got != "S" {
+		t.Errorf("boolStr(true) = %q; want 'S'", got)
+	}
+	if got := boolStr(false); got != "N" {
+		t.Errorf("boolStr(false) = %q; want 'N'", got)
+	}
+}
+
+func TestParseBool(t *testing.T) {
+	cases := []struct {
+		in   string
+		want bool
+	}{
+		{"S", true},
+		{"s", true},
+		{"SIM", true},
+		{"sim", true},
+		{"TRUE", true},
+		{"true", true},
+		{"1", true},
+		{"N", false},
+		{"NAO", false},
+		{"FALSE", false},
+		{"0", false},
+		{"", false},
+	}
+	for _, c := range cases {
+		got := parseBool(c.in)
+		if got != c.want {
+			t.Errorf("parseBool(%q) = %v; want %v", c.in, got, c.want)
+		}
+	}
+}
+
+func TestStrRow(t *testing.T) {
+	row := []string{"  alpha  ", "beta", ""}
+	if got := str(row, 0); got != "alpha" {
+		t.Errorf("str(row,0) = %q; want 'alpha' (sem espaços)", got)
+	}
+	if got := str(row, 1); got != "beta" {
+		t.Errorf("str(row,1) = %q; want 'beta'", got)
+	}
+	if got := str(row, 2); got != "" {
+		t.Errorf("str(row,2) = %q; want ''", got)
+	}
+	// índice fora do range
+	if got := str(row, 10); got != "" {
+		t.Errorf("str(row,10) = %q; want ''", got)
 	}
 }
 
@@ -178,6 +263,47 @@ func TestFireCalculo(t *testing.T) {
 	}
 	if fire333 := despesaAnual * 33.3; !prox(fire333, 1998000) {
 		t.Errorf("FIRE 33.3x = %.2f; want 1998000", fire333)
+	}
+}
+
+// Testa cálculo dos cards do dashboard (calcResumo).
+func TestCalcResumo(t *testing.T) {
+	basicas := []models.DespesaMes{
+		{Valor: 500, Pago: true},
+		{Valor: 300, Pago: false},
+	}
+	cartao := []models.DespesaMes{
+		{Valor: 200, Pago: true},
+	}
+	vr := []models.DespesaMes{}
+	parcs := []models.Parcelamento{
+		{ValorParcela: 150, Pago: false},
+	}
+
+	resumo := calcResumo(basicas, cartao, vr, parcs, 5000, 20000, 1000)
+
+	// TotalDespesas = 500 + 300 + 200 + 150 = 1150
+	if resumo.TotalDespesas != 1150 {
+		t.Errorf("TotalDespesas = %.2f; want 1150", resumo.TotalDespesas)
+	}
+	// TotalPago = 500 + 200 = 700
+	if resumo.TotalPago != 700 {
+		t.Errorf("TotalPago = %.2f; want 700", resumo.TotalPago)
+	}
+	// TotalPendente = 300 + 150 = 450
+	if resumo.TotalPendente != 450 {
+		t.Errorf("TotalPendente = %.2f; want 450", resumo.TotalPendente)
+	}
+	// Sobra = 5000 - 1150 = 3850
+	if resumo.Sobra != 3850 {
+		t.Errorf("Sobra = %.2f; want 3850", resumo.Sobra)
+	}
+	// Caixa = Receitas - Pago - InvestidoNoMes = 5000 - 700 - 1000 = 3300
+	if resumo.Caixa != 3300 {
+		t.Errorf("Caixa = %.2f; want 3300 (5000 - 700 - 1000)", resumo.Caixa)
+	}
+	if resumo.TotalInvestido != 20000 {
+		t.Errorf("TotalInvestido = %.2f; want 20000", resumo.TotalInvestido)
 	}
 }
 

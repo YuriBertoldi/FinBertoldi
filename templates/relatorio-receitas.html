@@ -1,0 +1,44 @@
+{{define "relatorio-content"}}
+<div class="summary-grid">
+  <div class="summary-card">
+    <div class="label">Total de Registros</div>
+    <div class="value">{{len .Receitas}}</div>
+  </div>
+  <div class="summary-card">
+    <div class="label">Receitas Recorrentes</div>
+    <div class="value">{{.TotalRecorrente}}</div>
+  </div>
+  <div class="summary-card green">
+    <div class="label">Total Geral</div>
+    <div class="value">{{.Total}}</div>
+  </div>
+</div>
+
+<div class="section-title">Receitas ({{len .Receitas}} registros)</div>
+<table>
+  <thead>
+    <tr>
+      <th>Descrição</th>
+      <th>Tipo</th>
+      <th>Data</th>
+      <th>Recorrente</th>
+      <th class="num">Valor</th>
+    </tr>
+  </thead>
+  <tbody>
+    {{range .Receitas}}
+    <tr>
+      <td>{{.Descricao}}</td>
+      <td>{{.Tipo}}</td>
+      <td>{{.Data.Format "02/01/2006"}}</td>
+      <td>{{if .Recorrente}}<span class="badge badge-blue">Sim</span>{{else}}<span class="badge badge-gray">Não</span>{{end}}</td>
+      <td class="num">{{.Valor}}</td>
+    </tr>
+    {{end}}
+    <tr class="total-row">
+      <td colspan="4">Total</td>
+      <td class="num">{{.Total}}</td>
+    </tr>
+  </tbody>
+</table>
+{{end}}

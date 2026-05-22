@@ -1,0 +1,70 @@
+{{define "relatorio-base"}}<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{.Title}} — FinBertoldi</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 13px; color: #1a1a2e; background: #fff; }
+  .no-print { margin: 16px; display: flex; gap: 10px; align-items: center; }
+  .btn-print { background: #2d6a4f; color: #fff; border: none; padding: 8px 20px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+  .btn-print:hover { background: #1b4332; }
+  .btn-back { background: transparent; color: #2d6a4f; border: 1px solid #2d6a4f; padding: 8px 20px; border-radius: 6px; cursor: pointer; font-size: 13px; text-decoration: none; display: inline-block; }
+  .report { max-width: 900px; margin: 0 auto; padding: 24px 32px; }
+  .report-header { border-bottom: 2px solid #1a1a2e; padding-bottom: 12px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: flex-end; }
+  .report-header h1 { font-size: 20px; font-weight: 700; color: #1a1a2e; }
+  .report-header .meta { text-align: right; color: #555; font-size: 11px; line-height: 1.6; }
+  .report-header .meta strong { color: #1a1a2e; font-size: 13px; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+  th { background: #1a1a2e; color: #fff; padding: 7px 10px; text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .5px; }
+  td { padding: 7px 10px; border-bottom: 1px solid #e0e0e0; vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  tr:nth-child(even) { background: #f9f9fb; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .total-row td { font-weight: 700; background: #f0f4f0; border-top: 2px solid #1a1a2e; }
+  .section-title { font-size: 14px; font-weight: 600; color: #2d6a4f; margin: 20px 0 8px; padding-bottom: 4px; border-bottom: 1px solid #2d6a4f; }
+  .summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 24px; }
+  .summary-card { border: 1px solid #e0e0e0; border-radius: 8px; padding: 12px 16px; }
+  .summary-card .label { font-size: 11px; color: #777; text-transform: uppercase; letter-spacing: .5px; }
+  .summary-card .value { font-size: 18px; font-weight: 700; color: #1a1a2e; margin-top: 4px; }
+  .summary-card.green .value { color: #2d6a4f; }
+  .summary-card.red .value { color: #c0392b; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; }
+  .badge-green { background: #d4edda; color: #155724; }
+  .badge-gray { background: #e9ecef; color: #495057; }
+  .badge-red { background: #f8d7da; color: #721c24; }
+  .badge-blue { background: #d1ecf1; color: #0c5460; }
+  .footer { margin-top: 32px; padding-top: 12px; border-top: 1px solid #ddd; text-align: center; font-size: 11px; color: #999; }
+  @media print {
+    .no-print { display: none !important; }
+    body { font-size: 11px; }
+    .report { max-width: 100%; padding: 0; }
+    th { background: #000 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    tr:nth-child(even) { background: #f5f5f5 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .summary-card { break-inside: avoid; }
+    table { break-inside: auto; }
+    tr { break-inside: avoid; }
+    .section-title { break-after: avoid; }
+  }
+</style>
+</head>
+<body>
+<div class="no-print">
+  <button class="btn-print" onclick="window.print()">Imprimir / Salvar PDF</button>
+  <a class="btn-back" href="javascript:history.back()">Voltar</a>
+</div>
+<div class="report">
+  <div class="report-header">
+    <h1>{{.Title}}</h1>
+    <div class="meta">
+      <strong>{{.FamilyNome}}</strong><br>
+      {{if .MesDisplay}}Período: {{.MesDisplay}}<br>{{end}}
+      Gerado em: {{.GeradoEm}}
+    </div>
+  </div>
+  {{template "relatorio-content" .}}
+  <div class="footer">FinBertoldi — Sistema de controle financeiro familiar</div>
+</div>
+</body>
+</html>{{end}}

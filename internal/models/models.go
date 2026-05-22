@@ -54,6 +54,8 @@ type Parcelamento struct {
 	Ativo         bool
 	Restantes     int
 	ValorRestante float64
+	Pago          bool
+	Mes           string
 }
 
 type Receita struct {
@@ -80,6 +82,7 @@ type ReservaEM struct {
 	ID       int
 	Valor    float64
 	Data     time.Time
+	Tipo     string // "deposito" ou "retirada"
 	Notas    string
 	CriadoEm time.Time
 }
@@ -131,16 +134,24 @@ type BasePage struct {
 	BlockedScreens []string
 }
 
+// DashboardResumo contém apenas os totais dos cards — usado também no OOB swap do toggle.
+type DashboardResumo struct {
+	TotalReceitas  float64
+	TotalDespesas  float64
+	Sobra          float64
+	Caixa          float64
+	TotalInvestido float64
+	TotalPago      float64
+	TotalPendente  float64
+}
+
 type DashboardData struct {
 	BasePage
+	DashboardResumo
 	Mes             string
 	MesDisplay      string
 	MesPrev         string
 	MesNext         string
-	TotalReceitas   float64
-	TotalDespesas   float64
-	Sobra           float64
-	TotalInvestido  float64
 	ReservaEM       float64
 	DespesasBasicas []DespesaMes
 	DespesasCartao  []DespesaMes
@@ -160,11 +171,19 @@ type MesResumo struct {
 
 type DespesasPage struct {
 	BasePage
-	TabAtivo      string
-	Despesas      []DespesaFixa
-	Parcelamentos []Parcelamento
-	Categorias    []Categoria
-	Cartoes       []Cartao
+	TabAtivo        string
+	Despesas        []DespesaFixa
+	Parcelamentos   []Parcelamento
+	Categorias      []Categoria
+	Cartoes         []Cartao
+	MesStr           string
+	MesDisplay       string
+	MesPrev          string
+	MesNext          string
+	DespesasBasicas  []DespesaMes
+	DespesasCartao   []DespesaMes
+	DespesasVR       []DespesaMes
+	ParcelamentosMes []Parcelamento
 }
 
 type EmprestimosPage struct {
@@ -219,6 +238,24 @@ type MeuTimePage struct {
 type LoginPage struct {
 	Title string
 	Erro  string
+}
+
+type ImportResultado struct {
+	Despesas      int
+	Parcelamentos int
+	Receitas      int
+	Investimentos int
+	Emprestimos   int
+}
+
+func (r ImportResultado) Total() int {
+	return r.Despesas + r.Parcelamentos + r.Receitas + r.Investimentos + r.Emprestimos
+}
+
+type ImportExportPage struct {
+	BasePage
+	Resultado *ImportResultado
+	Erro      string
 }
 
 type PlanejamentoPage struct {

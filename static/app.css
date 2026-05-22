@@ -369,6 +369,46 @@ body.has-sidebar {
   color: var(--text-muted);
   font-size: .9rem;
 }
+
+/* Barra de seleção flutuante */
+.sel-bar {
+  position: fixed;
+  bottom: 1.5rem;
+  left: 50%;
+  transform: translateX(-50%) translateY(120%);
+  transition: transform .25s cubic-bezier(.34,1.56,.64,1);
+  background: var(--bg-elev-2);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 8px 32px rgba(0,0,0,.4);
+  padding: .75rem 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  z-index: 200;
+  white-space: nowrap;
+  backdrop-filter: blur(12px);
+}
+.sel-bar.visible { transform: translateX(-50%) translateY(0); }
+.sel-bar-info { font-size: .85rem; color: var(--text-muted); }
+.sel-bar-total { font-size: 1.1rem; font-weight: 700; color: var(--color-receita); }
+.sel-bar-total.negativo { color: var(--color-despesa); }
+.sel-bar-clear { font-size: .8rem; padding: .3rem .7rem; }
+
+/* Ordenação de tabelas */
+thead th[title="Clique para ordenar"] { white-space: nowrap; }
+thead th[title="Clique para ordenar"]:hover { background: rgba(255,255,255,.06); }
+thead th.sort-asc,
+thead th.sort-desc { color: var(--color-sobra); }
+.sort-icon { font-size: .7em; opacity: .5; user-select: none; display: inline-block; }
+thead th.sort-asc .sort-icon,
+thead th.sort-desc .sort-icon { opacity: 1; }
+
+/* Checkbox nas tabelas */
+.col-check { width: 36px; text-align: center; padding-right: 0 !important; }
+.col-check input[type="checkbox"] { cursor: pointer; width: 16px; height: 16px; accent-color: var(--color-sobra); }
+tr.sel-row td { background: rgba(52,152,219,.15) !important; }
+tr.sel-row { outline: 1px solid rgba(52,152,219,.4); }
 @media (max-width: 600px) {
   .filter-bar { flex-direction: column; }
   .filter-bar input[type="search"],
@@ -476,16 +516,16 @@ h1, h2, h3, h4 {
    ==================================================== */
 .summary-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(175px, 1fr));
+  gap: .75rem;
   margin-bottom: 2rem;
 }
 
 .sum-card {
   display: flex;
   align-items: center;
-  gap: 1rem;
-  padding: 1.25rem 1.35rem;
+  gap: .75rem;
+  padding: 1rem 1.1rem;
   margin: 0;
   background: var(--bg-elev-1);
   backdrop-filter: blur(10px);
@@ -508,29 +548,37 @@ h1, h2, h3, h4 {
 }
 
 .sum-icon {
-  font-size: 1.75rem;
-  width: 48px; height: 48px;
+  font-size: 1.4rem;
+  width: 40px; height: 40px;
+  flex-shrink: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 12px;
+  border-radius: 10px;
   background: var(--accent-bg, rgba(39, 174, 96, 0.12));
 }
 
 .card-label {
   margin: 0;
-  font-size: .72rem;
+  font-size: .68rem;
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: .07em;
   font-weight: 600;
 }
 .card-value {
-  margin: .25rem 0 0;
-  font-size: 1.4rem;
+  margin: .2rem 0 0;
+  font-size: 1.2rem;
   font-weight: 700;
   color: var(--accent, var(--text-primary));
   letter-spacing: -0.02em;
+  word-break: break-word;
+}
+.card-sub {
+  margin: .15rem 0 0;
+  font-size: .65rem;
+  color: var(--text-muted);
+  font-weight: 500;
 }
 
 .card-receita   { --accent: var(--color-receita);   --accent-bg: rgba(39, 174, 96, 0.12); }
@@ -538,6 +586,7 @@ h1, h2, h3, h4 {
 .card-sobra     { --accent: var(--color-sobra);     --accent-bg: rgba(52, 152, 219, 0.12); }
 .card-negativo  { --accent: var(--color-negativo);  --accent-bg: rgba(231, 76, 60, 0.12); }
 .card-investido { --accent: var(--color-investido); --accent-bg: rgba(155, 89, 182, 0.12); }
+.card-caixa     { --accent: #f39c12;                --accent-bg: rgba(243, 156, 18, 0.12); }
 
 /* ====================================================
    DASHBOARD GRID & SECTIONS
@@ -732,6 +781,17 @@ button.secondary {
 button.outline:hover {
   border-color: var(--color-receita) !important;
   color: var(--color-receita) !important;
+}
+
+/* Agrupador de botões no page-header */
+.page-actions {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+}
+.page-actions button,
+.page-actions [role="button"] {
+  margin: 0 !important;
 }
 
 /* Botões de ação compactos (editar, excluir, etc.) */
@@ -1465,15 +1525,25 @@ dialog::backdrop {
     align-items: flex-start;
   }
   .page-header > button,
-  .page-header > [data-open-dialog] {
+  .page-header > [data-open-dialog],
+  .page-header > .page-actions {
+    width: 100%;
+  }
+  .page-header .page-actions {
+    flex-direction: column;
+  }
+  .page-header .page-actions button,
+  .page-header .page-actions [role="button"] {
     width: 100%;
   }
 
-  /* Summary cards: 2 colunas */
+  /* Summary cards: 2 colunas no mobile */
   .summary-grid {
     grid-template-columns: 1fr 1fr;
-    gap: .75rem;
+    gap: .5rem;
   }
+  .sum-card { padding: .75rem .9rem; gap: .6rem; }
+  .sum-icon { width: 34px; height: 34px; font-size: 1.1rem; }
 
   /* Dialogs: largura máxima reduzida */
   dialog {

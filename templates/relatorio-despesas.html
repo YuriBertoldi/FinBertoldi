@@ -1,0 +1,74 @@
+{{define "relatorio-content"}}
+<div class="summary-grid">
+  <div class="summary-card">
+    <div class="label">Despesas Fixas</div>
+    <div class="value">{{.TotalFixas}}</div>
+  </div>
+  <div class="summary-card">
+    <div class="label">Parcelamentos</div>
+    <div class="value">{{.TotalParc}}</div>
+  </div>
+  <div class="summary-card red">
+    <div class="label">Total Despesas</div>
+    <div class="value">{{.Total}}</div>
+  </div>
+</div>
+
+<div class="section-title">Despesas Fixas ({{len .Despesas}} registros)</div>
+<table>
+  <thead>
+    <tr>
+      <th>Nome</th>
+      <th>Categoria</th>
+      <th>Grupo</th>
+      <th>Status</th>
+      <th class="num">Valor</th>
+    </tr>
+  </thead>
+  <tbody>
+    {{range .Despesas}}
+    <tr>
+      <td>{{.Nome}}</td>
+      <td>{{.Categoria}}</td>
+      <td>{{.Grupo}}</td>
+      <td>{{if .Ativa}}<span class="badge badge-green">Ativa</span>{{else}}<span class="badge badge-gray">Inativa</span>{{end}}</td>
+      <td class="num">{{.Valor}}</td>
+    </tr>
+    {{end}}
+    <tr class="total-row">
+      <td colspan="4">Total Despesas Fixas</td>
+      <td class="num">{{.TotalFixas}}</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="section-title">Parcelamentos ({{len .Parcelamentos}} registros)</div>
+<table>
+  <thead>
+    <tr>
+      <th>Descrição</th>
+      <th>Cartão</th>
+      <th>Progresso</th>
+      <th>Status</th>
+      <th class="num">Parcela</th>
+      <th class="num">Restante</th>
+    </tr>
+  </thead>
+  <tbody>
+    {{range .Parcelamentos}}
+    <tr>
+      <td>{{.Descricao}}</td>
+      <td>{{.Cartao}}</td>
+      <td>{{.ParcelaAtual}}x{{.TotalParcelas}}</td>
+      <td>{{if .Ativo}}<span class="badge badge-green">Ativo</span>{{else}}<span class="badge badge-gray">Finalizado</span>{{end}}</td>
+      <td class="num">{{.ValorParcela}}</td>
+      <td class="num">{{.ValorRestante}}</td>
+    </tr>
+    {{end}}
+    <tr class="total-row">
+      <td colspan="5">Total Parcelamentos (parcela vigente)</td>
+      <td class="num">{{.TotalParc}}</td>
+    </tr>
+  </tbody>
+</table>
+{{end}}

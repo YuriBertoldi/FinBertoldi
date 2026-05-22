@@ -1,41 +1,17 @@
 {{define "content"}}
 <!-- Navegação de mês -->
-<div class="mes-nav">
-  <a href="/?mes={{.MesPrev}}" role="button" class="outline secondary mes-btn">‹</a>
-  <h2 class="mes-titulo">{{.MesDisplay}}</h2>
-  <a href="/?mes={{.MesNext}}" role="button" class="outline secondary mes-btn">›</a>
+<div style="display:flex;align-items:center;justify-content:center;gap:.75rem;margin-bottom:2rem;flex-wrap:wrap">
+  <div class="mes-nav" style="margin:0">
+    <a href="/?mes={{.MesPrev}}" role="button" class="outline secondary mes-btn">‹</a>
+    <h2 class="mes-titulo">{{.MesDisplay}}</h2>
+    <a href="/?mes={{.MesNext}}" role="button" class="outline secondary mes-btn">›</a>
+  </div>
+  <button type="button" class="outline" style="margin:0" onclick="window.open('/relatorio/dashboard?mes={{.Mes}}','_blank')">📄 Relatório</button>
 </div>
 
 <!-- Cards de resumo -->
-<div class="summary-grid">
-  <article class="sum-card card-receita">
-    <div class="sum-icon">💵</div>
-    <div>
-      <p class="card-label">Receitas</p>
-      <p class="card-value">{{brl .TotalReceitas}}</p>
-    </div>
-  </article>
-  <article class="sum-card card-despesa">
-    <div class="sum-icon">💸</div>
-    <div>
-      <p class="card-label">Despesas</p>
-      <p class="card-value">{{brl .TotalDespesas}}</p>
-    </div>
-  </article>
-  <article class="sum-card {{if neg .Sobra}}card-negativo{{else}}card-sobra{{end}}">
-    <div class="sum-icon">{{if neg .Sobra}}⚠️{{else}}✅{{end}}</div>
-    <div>
-      <p class="card-label">Sobra</p>
-      <p class="card-value">{{brl .Sobra}}</p>
-    </div>
-  </article>
-  <article class="sum-card card-investido">
-    <div class="sum-icon">📈</div>
-    <div>
-      <p class="card-label">Investido</p>
-      <p class="card-value">{{brl .TotalInvestido}}</p>
-    </div>
-  </article>
+<div id="dash-resumo" class="summary-grid">
+  {{template "dash-resumo-cards" .}}
 </div>
 
 <div class="dash-grid">
@@ -262,4 +238,53 @@
     options: commonOpts
   });
 </script>
+{{end}}
+
+{{define "dash-resumo-cards"}}
+  <article class="sum-card card-receita">
+    <div class="sum-icon">💵</div>
+    <div>
+      <p class="card-label">Receitas</p>
+      <p class="card-value">{{brl .TotalReceitas}}</p>
+    </div>
+  </article>
+  <article class="sum-card card-despesa">
+    <div class="sum-icon">💸</div>
+    <div>
+      <p class="card-label">Despesas</p>
+      <p class="card-value">{{brl .TotalDespesas}}</p>
+      {{if gt .TotalPago 0.0}}
+      <p class="card-sub">✓ {{brl .TotalPago}} pago · {{brl .TotalPendente}} pendente</p>
+      {{end}}
+    </div>
+  </article>
+  <article class="sum-card {{if neg .Sobra}}card-negativo{{else}}card-sobra{{end}}">
+    <div class="sum-icon">{{if neg .Sobra}}⚠️{{else}}✅{{end}}</div>
+    <div>
+      <p class="card-label">Sobra</p>
+      <p class="card-value">{{brl .Sobra}}</p>
+    </div>
+  </article>
+  <article class="sum-card {{if neg .Caixa}}card-negativo{{else}}card-caixa{{end}}">
+    <div class="sum-icon">{{if neg .Caixa}}⚠️{{else}}💼{{end}}</div>
+    <div>
+      <p class="card-label">Caixa</p>
+      <p class="card-value">{{brl .Caixa}}</p>
+      <p class="card-sub">Receitas − pago − investido/mês</p>
+    </div>
+  </article>
+  <article class="sum-card card-investido">
+    <div class="sum-icon">📈</div>
+    <div>
+      <p class="card-label">Patrimônio</p>
+      <p class="card-value">{{brl .TotalInvestido}}</p>
+      <p class="card-sub">Aportes + Reserva EM</p>
+    </div>
+  </article>
+{{end}}
+
+{{define "dash-resumo-oob"}}
+<div id="dash-resumo" class="summary-grid" hx-swap-oob="outerHTML">
+  {{template "dash-resumo-cards" .}}
+</div>
 {{end}}

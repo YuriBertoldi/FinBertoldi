@@ -155,9 +155,10 @@ func TestIsolamento_Investimentos(t *testing.T) {
 func TestIsolamento_ReservaEM(t *testing.T) {
 	db := setupTestDB(t)
 	fA, fB := criarDuasFamilias(t, db)
+	hoje := time.Now()
 
-	AddReservaEM(db, fA, 20000, "Inicial A")
-	AddReservaEM(db, fB, 50000, "Inicial B")
+	AddReservaEM(db, fA, 20000, hoje, "deposito", "Inicial A")
+	AddReservaEM(db, fB, 50000, hoje, "deposito", "Inicial B")
 
 	vA, _ := GetReservaEM(db, fA)
 	vB, _ := GetReservaEM(db, fB)
@@ -167,6 +168,69 @@ func TestIsolamento_ReservaEM(t *testing.T) {
 	}
 	if vB != 50000 {
 		t.Errorf("reserva B = %.2f; want 50000", vB)
+	}
+}
+
+func TestReservaEM_SaldoContaCorrente(t *testing.T) {
+	db := setupTestDB(t)
+	fA, _ := criarDuasFamilias(t, db)
+	hoje := time.Now()
+
+	// Depósitos e retiradas — saldo = 30000 - 5000 + 10000 = 35000
+	AddReservaEM(db, fA, 30000, hoje, "deposito", "Aporte inicial")
+	AddReservaEM(db, fA, 5000, hoje, "retirada", "Emergência")
+	AddReservaEM(db, fA, 10000, hoje, "deposito", "Aporte extra")
+
+	saldo, _ := GetReservaEM(db, fA)
+	if saldo != 35000 {
+		t.Errorf("saldo = %.2f; want 35000 (30000 - 5000 + 10000)", saldo)
+	}
+}
+
+func TestReservaEM_Update(t *testing.T) {
+	db := setupTestDB(t)
+	fA, _ := criarDuasFamilias(t, db)
+	hoje := time.Now()
+
+	AddReservaEM(db, fA, 10000, hoje, "deposito", "original")
+
+	hist, _ := GetHistoricoReserva(db, fA)
+	if len(hist) != 1 {
+		t.Fatalf("esperado 1 registro, got %d", len(hist))
+	}
+	id := hist[0].ID
+
+	// Altera para retirada de 3000
+	if err := UpdateReservaEM(db, fA, id, 3000, hoje, "retirada", "corrigido"); err != nil {
+		t.Fatalf("UpdateReservaEM: %v", err)
+	}
+
+	saldo, _ := GetReservaEM(db, fA)
+	if saldo != -3000 {
+		t.Errorf("saldo após update = %.2f; want -3000", saldo)
+	}
+
+	hist2, _ := GetHistoricoReserva(db, fA)
+	if hist2[0].Tipo != "retirada" || hist2[0].Notas != "corrigido" {
+		t.Errorf("registro não atualizado: %+v", hist2[0])
+	}
+}
+
+func TestReservaEM_IsolamentoUpdate(t *testing.T) {
+	db := setupTestDB(t)
+	fA, fB := criarDuasFamilias(t, db)
+	hoje := time.Now()
+
+	AddReservaEM(db, fA, 10000, hoje, "deposito", "A")
+	hist, _ := GetHistoricoReserva(db, fA)
+	id := hist[0].ID
+
+	// Família B tenta alterar registro da família A
+	UpdateReservaEM(db, fB, id, 99999, hoje, "deposito", "HACKED")
+
+	hist2, _ := GetHistoricoReserva(db, fA)
+	if hist2[0].Valor != 10000 || hist2[0].Notas != "A" {
+		t.Errorf("VAZAMENTO: família B alterou reserva da A: %+v", hist2[0])
 	}
 }
 
@@ -539,6 +603,109 @@ func TestEmprestimo_TogglePago(t *testing.T) {
 	pago2, _ := ToggleEmprestimoPago(db, fA, id)
 	if pago2 {
 		t.Error("segundo toggle deveria desmarcar")
+	}
+}
+
+// ====================== CRUD INVESTIMENTOS E RECEITAS ======================
+
+func TestInvestimento_Update(t *testing.T) {
+	db := setupTestDB(t)
+	fA, _ := criarDuasFamilias(t, db)
+	hoje := time.Now()
+
+	CreateInvestimento(db, fA, "Rico", "Renda Fixa", 5000, hoje, "original")
+	list, _ := GetInvestimentos(db, fA)
+	if len(list) != 1 {
+		t.Fatalf("esperado 1, got %d", len(list))
+	}
+	id := list[0].ID
+
+	if err := UpdateInvestimento(db, fA, id, "INCO", "FII", 8000, hoje, "atualizado"); err != nil {
+		t.Fatalf("UpdateInvestimento: %v", err)
+	}
+
+	list2, _ := GetInvestimentos(db, fA)
+	if list2[0].Instituicao != "INCO" || list2[0].Tipo != "FII" || list2[0].Valor != 8000 || list2[0].Notas != "atualizado" {
+		t.Errorf("após update: %+v", list2[0])
+	}
+}
+
+func TestInvestimento_IsolamentoUpdate(t *testing.T) {
+	db := setupTestDB(t)
+	fA, fB := criarDuasFamilias(t, db)
+	hoje := time.Now()
+
+	CreateInvestimento(db, fA, "Rico", "Renda Fixa", 5000, hoje, "")
+	list, _ := GetInvestimentos(db, fA)
+	id := list[0].ID
+
+	UpdateInvestimento(db, fB, id, "HACK", "FII", 99999, hoje, "HACKED")
+
+	list2, _ := GetInvestimentos(db, fA)
+	if list2[0].Instituicao != "Rico" || list2[0].Valor != 5000 {
+		t.Errorf("VAZAMENTO: família B alterou investimento da A: %+v", list2[0])
+	}
+}
+
+func TestReceita_Update(t *testing.T) {
+	db := setupTestDB(t)
+	fA, _ := criarDuasFamilias(t, db)
+	hoje := time.Now()
+
+	CreateReceita(db, fA, "Salário", 5000, hoje, "Salário", true)
+	list, _ := GetReceitas(db, fA)
+	if len(list) != 1 {
+		t.Fatalf("esperado 1, got %d", len(list))
+	}
+	id := list[0].ID
+
+	if err := UpdateReceita(db, fA, id, "Freelance", 2000, hoje, "Freelance", false); err != nil {
+		t.Fatalf("UpdateReceita: %v", err)
+	}
+
+	list2, _ := GetReceitas(db, fA)
+	if list2[0].Descricao != "Freelance" || list2[0].Valor != 2000 || list2[0].Recorrente {
+		t.Errorf("após update: %+v", list2[0])
+	}
+}
+
+func TestReceita_IsolamentoUpdate(t *testing.T) {
+	db := setupTestDB(t)
+	fA, fB := criarDuasFamilias(t, db)
+	hoje := time.Now()
+
+	CreateReceita(db, fA, "Salário", 5000, hoje, "Salário", true)
+	list, _ := GetReceitas(db, fA)
+	id := list[0].ID
+
+	UpdateReceita(db, fB, id, "HACKED", 99999, hoje, "Outro", false)
+
+	list2, _ := GetReceitas(db, fA)
+	if list2[0].Descricao != "Salário" || list2[0].Valor != 5000 {
+		t.Errorf("VAZAMENTO: família B alterou receita da A: %+v", list2[0])
+	}
+}
+
+func TestGetInvestidoNoMes(t *testing.T) {
+	db := setupTestDB(t)
+	fA, _ := criarDuasFamilias(t, db)
+
+	mesAtual := time.Date(time.Now().Year(), time.Now().Month(), 1, 0, 0, 0, 0, time.UTC)
+	mesPassado := mesAtual.AddDate(0, -1, 0)
+
+	// Aporte no mês atual
+	CreateInvestimento(db, fA, "Rico", "Renda Fixa", 3000, mesAtual, "")
+	// Aporte no mês passado (não deve contar)
+	CreateInvestimento(db, fA, "INCO", "FII", 1000, mesPassado, "")
+	// Depósito reserva EM no mês atual
+	AddReservaEM(db, fA, 2000, mesAtual, "deposito", "reserva")
+	// Retirada reserva EM no mês atual (não conta como investido)
+	AddReservaEM(db, fA, 500, mesAtual, "retirada", "retirada")
+
+	total := GetInvestidoNoMes(db, fA, mesAtual)
+	// 3000 (invest) + 2000 (deposito reserva) = 5000
+	if total != 5000 {
+		t.Errorf("GetInvestidoNoMes = %.2f; want 5000 (3000 invest + 2000 reserva deposito)", total)
 	}
 }
 

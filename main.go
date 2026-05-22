@@ -42,6 +42,7 @@ func main() {
 	// Dashboard
 	mux.HandleFunc("GET /", auth.Protected(db, handler.HandleDashboard(db)))
 	mux.HandleFunc("POST /api/despesas/{id}/toggle-pago", auth.Protected(db, handler.HandleToggleDespesaPago(db)))
+	mux.HandleFunc("POST /api/parcelamentos/{id}/toggle-pago", auth.Protected(db, handler.HandleToggleParcelamentoPago(db)))
 
 	// Despesas
 	mux.HandleFunc("GET /despesas", auth.ScreenProtected(db, "despesas", handler.HandleDespesas(db)))
@@ -59,13 +60,19 @@ func main() {
 	// Receitas
 	mux.HandleFunc("GET /receitas", auth.ScreenProtected(db, "receitas", handler.HandleReceitas(db)))
 	mux.HandleFunc("POST /receitas", auth.ScreenProtected(db, "receitas", handler.HandleCreateReceita(db)))
+	mux.HandleFunc("POST /receitas/{id}/update", auth.ScreenProtected(db, "receitas", handler.HandleUpdateReceita(db)))
 	mux.HandleFunc("POST /receitas/{id}/delete", auth.ScreenProtected(db, "receitas", handler.HandleDeleteReceita(db)))
+
+	// Pagamentos do Mês
+	mux.HandleFunc("GET /pagamentos", auth.ScreenProtected(db, "despesas", handler.HandlePagamentos(db)))
 
 	// Investimentos
 	mux.HandleFunc("GET /investimentos", auth.ScreenProtected(db, "investimentos", handler.HandleInvestimentos(db)))
 	mux.HandleFunc("POST /investimentos", auth.ScreenProtected(db, "investimentos", handler.HandleCreateInvestimento(db)))
+	mux.HandleFunc("POST /investimentos/{id}/update", auth.ScreenProtected(db, "investimentos", handler.HandleUpdateInvestimento(db)))
 	mux.HandleFunc("POST /investimentos/{id}/delete", auth.ScreenProtected(db, "investimentos", handler.HandleDeleteInvestimento(db)))
 	mux.HandleFunc("POST /reserva-em", auth.ScreenProtected(db, "investimentos", handler.HandleAddReservaEM(db)))
+	mux.HandleFunc("POST /reserva-em/{id}/update", auth.ScreenProtected(db, "investimentos", handler.HandleUpdateReservaEM(db)))
 	mux.HandleFunc("POST /reserva-em/{id}/delete", auth.ScreenProtected(db, "investimentos", handler.HandleDeleteReservaEM(db)))
 
 	// Empréstimos
@@ -106,6 +113,19 @@ func main() {
 	mux.HandleFunc("POST /minha-familia/{id}/reset-senha", auth.FamilyAdminOnly(db, handler.HandleMeuTimeResetSenha(db)))
 	mux.HandleFunc("POST /minha-senha", auth.Protected(db, handler.HandleMinhaSenha(db)))
 	mux.HandleFunc("POST /minha-familia/{id}/permissoes/{tela}/toggle", auth.FamilyAdminOnly(db, handler.HandleToggleScreenPermission(db)))
+
+	// Importar / Exportar
+	mux.HandleFunc("GET /dados", auth.Protected(db, handler.HandleImportPage(db)))
+	mux.HandleFunc("GET /dados/modelo", auth.Protected(db, handler.HandleExportTemplate(db)))
+	mux.HandleFunc("GET /dados/exportar", auth.Protected(db, handler.HandleExport(db)))
+	mux.HandleFunc("POST /dados/importar", auth.Protected(db, handler.HandleImport(db)))
+
+	// Relatórios
+	mux.HandleFunc("GET /relatorio/dashboard", auth.Protected(db, handler.HandleRelatorioDashboard(db)))
+	mux.HandleFunc("GET /relatorio/despesas", auth.ScreenProtected(db, "despesas", handler.HandleRelatorioDespesas(db)))
+	mux.HandleFunc("GET /relatorio/receitas", auth.ScreenProtected(db, "receitas", handler.HandleRelatorioReceitas(db)))
+	mux.HandleFunc("GET /relatorio/investimentos", auth.ScreenProtected(db, "investimentos", handler.HandleRelatorioInvestimentos(db)))
+	mux.HandleFunc("GET /relatorio/emprestimos", auth.ScreenProtected(db, "emprestimos", handler.HandleRelatorioEmprestimos(db)))
 
 	// Famílias (admin only)
 	mux.HandleFunc("GET /familias", auth.AdminOnly(db, handler.HandleFamilias(db)))

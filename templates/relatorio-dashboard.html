@@ -1,0 +1,129 @@
+{{define "relatorio-content"}}
+<div class="summary-grid">
+  <div class="summary-card green">
+    <div class="label">Receitas</div>
+    <div class="value">{{.TotalReceitas}}</div>
+  </div>
+  <div class="summary-card red">
+    <div class="label">Despesas</div>
+    <div class="value">{{.TotalDespesas}}</div>
+  </div>
+  <div class="summary-card {{if ge .Sobra 0.0}}green{{else}}red{{end}}">
+    <div class="label">Sobra do Mês</div>
+    <div class="value">{{.Sobra}}</div>
+  </div>
+</div>
+
+<div class="summary-grid">
+  <div class="summary-card">
+    <div class="label">Total Investido</div>
+    <div class="value">{{.TotalInvestido}}</div>
+  </div>
+  <div class="summary-card">
+    <div class="label">Reserva de Emergência</div>
+    <div class="value">{{.ReservaEM}}</div>
+  </div>
+  <div class="summary-card">
+    <div class="label">Taxa de Poupança</div>
+    <div class="value">{{.TaxaPoupanca}}</div>
+  </div>
+</div>
+
+{{if .DespesasBasicas}}
+<div class="section-title">Despesas Básicas</div>
+<table>
+  <thead>
+    <tr>
+      <th>Nome</th>
+      <th>Categoria</th>
+      <th>Pago</th>
+      <th class="num">Valor</th>
+    </tr>
+  </thead>
+  <tbody>
+    {{range .DespesasBasicas}}
+    <tr>
+      <td>{{.Nome}}</td>
+      <td>{{.Categoria}}</td>
+      <td>{{if .Pago}}<span class="badge badge-green">Sim</span>{{else}}<span class="badge badge-gray">Não</span>{{end}}</td>
+      <td class="num">{{.Valor}}</td>
+    </tr>
+    {{end}}
+  </tbody>
+</table>
+{{end}}
+
+{{if .DespesasCartao}}
+<div class="section-title">Despesas Cartão</div>
+<table>
+  <thead>
+    <tr>
+      <th>Nome</th>
+      <th>Categoria</th>
+      <th>Pago</th>
+      <th class="num">Valor</th>
+    </tr>
+  </thead>
+  <tbody>
+    {{range .DespesasCartao}}
+    <tr>
+      <td>{{.Nome}}</td>
+      <td>{{.Categoria}}</td>
+      <td>{{if .Pago}}<span class="badge badge-green">Sim</span>{{else}}<span class="badge badge-gray">Não</span>{{end}}</td>
+      <td class="num">{{.Valor}}</td>
+    </tr>
+    {{end}}
+  </tbody>
+</table>
+{{end}}
+
+{{if .Parcelamentos}}
+<div class="section-title">Parcelamentos Vigentes</div>
+<table>
+  <thead>
+    <tr>
+      <th>Descrição</th>
+      <th>Cartão</th>
+      <th>Progresso</th>
+      <th class="num">Parcela</th>
+    </tr>
+  </thead>
+  <tbody>
+    {{range .Parcelamentos}}
+    <tr>
+      <td>{{.Descricao}}</td>
+      <td>{{.Cartao}}</td>
+      <td>{{.ParcelaAtual}}x{{.TotalParcelas}}</td>
+      <td class="num">{{.ValorParcela}}</td>
+    </tr>
+    {{end}}
+  </tbody>
+</table>
+{{end}}
+
+{{if .Historico}}
+<div class="section-title">Histórico dos Últimos 6 Meses</div>
+<table>
+  <thead>
+    <tr>
+      <th>Mês</th>
+      <th class="num">Receitas</th>
+      <th class="num">Despesas</th>
+      <th class="num">Sobra</th>
+      <th class="num">Investido</th>
+    </tr>
+  </thead>
+  <tbody>
+    {{range .Historico}}
+    <tr>
+      <td>{{.MesLabel}}</td>
+      <td class="num">{{.Receitas}}</td>
+      <td class="num">{{.Despesas}}</td>
+      <td class="num">{{.Sobra}}</td>
+      <td class="num">{{.Investido}}</td>
+    </tr>
+    {{end}}
+  </tbody>
+</table>
+{{end}}
+{{end}}

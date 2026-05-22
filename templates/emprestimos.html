@@ -1,7 +1,10 @@
 {{define "content"}}
 <div class="page-header">
   <h2>🤝 Empréstimos</h2>
-  <button data-open-dialog="dialog-novo-emp">+ Registrar</button>
+  <div class="page-actions">
+    <button type="button" class="outline" onclick="window.open('/relatorio/emprestimos','_blank')">📄 Relatório</button>
+    <button data-open-dialog="dialog-novo-emp">+ Registrar</button>
+  </div>
 </div>
 
 <p class="hint">💡 Registre valores que você deve ou que te devem. Use <strong>Quitar parcial</strong> para abater parte do saldo sem precisar relançar.</p>
@@ -44,6 +47,7 @@
   <table id="table-emp">
     <thead>
       <tr>
+        <th class="col-check"><input type="checkbox" title="Selecionar todos"></th>
         <th>Pessoa</th>
         <th>Direção</th>
         <th>Valor Original</th>
@@ -58,6 +62,7 @@
     <tbody>
       {{range .Emprestimos}}
       <tr class="{{if .Pago}}inativa{{end}}">
+        <td class="col-check"><input type="checkbox" class="row-check"></td>
         <td><strong>{{.Pessoa}}</strong></td>
         <td>
           {{if eq .Direcao "devo"}}
@@ -189,16 +194,24 @@
   </article>
 </dialog>
 
+<div id="sel-bar-emp" class="sel-bar">
+  <span class="sel-bar-info"></span>
+  <span class="sel-bar-total"></span>
+  <button type="button" class="outline secondary sel-bar-clear">✕ Limpar</button>
+</div>
+
 <script>
+  initTableSort('table-emp');
   initTableFilter({
     tableId: 'table-emp',
     searchId: 'se-busca',
     filters: [
-      { id: 'se-direcao', col: 1 },
-      { id: 'se-status',  col: 7 }
+      { id: 'se-direcao', col: 2 },
+      { id: 'se-status',  col: 8 }
     ],
     countId: 'se-count',
     noResultsId: 'se-no-results'
   });
+  initSelecao({ tableId: 'table-emp', valorCol: 3, barId: 'sel-bar-emp', tipoValor: 'negativo' });
 </script>
 {{end}}

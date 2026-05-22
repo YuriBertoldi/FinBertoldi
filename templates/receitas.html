@@ -1,7 +1,10 @@
 {{define "content"}}
 <div class="page-header">
   <h2>Receitas</h2>
-  <button data-open-dialog="dialog-nova-receita">+ Nova Receita</button>
+  <div class="page-actions">
+    <button type="button" class="outline" onclick="window.open('/relatorio/receitas','_blank')">📄 Relatório</button>
+    <button data-open-dialog="dialog-nova-receita">+ Nova Receita</button>
+  </div>
 </div>
 
 <div class="filter-bar">
@@ -30,6 +33,7 @@
   <table id="table-receitas">
     <thead>
       <tr>
+        <th class="col-check"><input type="checkbox" id="chk-rec-all" title="Selecionar todos"></th>
         <th>Descrição</th>
         <th>Tipo</th>
         <th>Valor</th>
@@ -41,6 +45,7 @@
     <tbody>
       {{range .Receitas}}
       <tr>
+        <td class="col-check"><input type="checkbox" class="row-check"></td>
         <td>{{.Descricao}}</td>
         <td><span class="badge badge-receita">{{.Tipo}}</span></td>
         <td class="valor-positivo">{{brl .Valor}}</td>
@@ -53,30 +58,81 @@
           {{end}}
         </td>
         <td class="actions">
+          <button data-open-dialog="dialog-edit-rec-{{.ID}}" class="btn-action" title="Editar">✏️</button>
           <form method="POST" action="/receitas/{{.ID}}/delete" style="display:inline"
                 onsubmit="return confirm('Excluir {{.Descricao}}?')">
             <button type="submit" class="btn-action danger" title="Excluir">🗑️</button>
           </form>
         </td>
       </tr>
+
+      <!-- Dialog editar receita -->
+      <dialog id="dialog-edit-rec-{{.ID}}">
+        <article>
+          <header>
+            <button data-close-dialog aria-label="Fechar"></button>
+            <h3>Editar Receita</h3>
+          </header>
+          <form method="POST" action="/receitas/{{.ID}}/update">
+            <label>Descrição
+              <input type="text" name="descricao" value="{{.Descricao}}" required autofocus>
+            </label>
+            <div class="grid">
+              <label>Valor (R$)
+                <input type="text" name="valor" value="{{.Valor}}" required>
+              </label>
+              <label>Data
+                <input type="date" name="data" value="{{dateInput .Data}}" required>
+              </label>
+            </div>
+            <label>Tipo
+              <select name="tipo">
+                <option value="Salário" {{if eq .Tipo "Salário"}}selected{{end}}>Salário</option>
+                <option value="Freelance" {{if eq .Tipo "Freelance"}}selected{{end}}>Freelance</option>
+                <option value="Investimento" {{if eq .Tipo "Investimento"}}selected{{end}}>Renda de Investimento</option>
+                <option value="Bônus" {{if eq .Tipo "Bônus"}}selected{{end}}>Bônus / 13º</option>
+                <option value="Horas Extras" {{if eq .Tipo "Horas Extras"}}selected{{end}}>Horas Extras</option>
+                <option value="Outro" {{if eq .Tipo "Outro"}}selected{{end}}>Outro</option>
+              </select>
+            </label>
+            <label class="check-row">
+              <input type="checkbox" name="recorrente" {{if .Recorrente}}checked{{end}}>
+              <span>🔁 <strong>Recorrente</strong> — entra em todos os meses automaticamente</span>
+            </label>
+            <footer>
+              <button data-close-dialog type="button" class="secondary">Cancelar</button>
+              <button type="submit">Salvar</button>
+            </footer>
+          </form>
+        </article>
+      </dialog>
+
       {{else}}
-      <tr><td colspan="6" class="muted center">Nenhuma receita cadastrada.</td></tr>
+      <tr><td colspan="7" class="muted center">Nenhuma receita cadastrada.</td></tr>
       {{end}}
     </tbody>
   </table>
 </div>
 
+<div id="sel-bar-rec" class="sel-bar">
+  <span class="sel-bar-info"></span>
+  <span class="sel-bar-total"></span>
+  <button type="button" class="outline secondary sel-bar-clear">✕ Limpar</button>
+</div>
+
 <script>
+  initTableSort('table-receitas');
   initTableFilter({
     tableId: 'table-receitas',
     searchId: 'fr-busca',
     filters: [
-      { id: 'fr-tipo', col: 1 },
-      { id: 'fr-freq', col: 4 }
+      { id: 'fr-tipo', col: 2 },
+      { id: 'fr-freq', col: 5 }
     ],
     countId: 'fr-count',
     noResultsId: 'fr-no-results'
   });
+  initSelecao({ tableId: 'table-receitas', valorCol: 3, barId: 'sel-bar-rec', tipoValor: 'positivo' });
 </script>
 
 <!-- Dialog nova receita -->

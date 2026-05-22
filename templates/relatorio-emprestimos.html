@@ -1,0 +1,54 @@
+{{define "relatorio-content"}}
+<div class="summary-grid">
+  <div class="summary-card red">
+    <div class="label">Total que Devo</div>
+    <div class="value">{{.TotalDevo}}</div>
+  </div>
+  <div class="summary-card green">
+    <div class="label">Total a Receber</div>
+    <div class="value">{{.TotalAReceber}}</div>
+  </div>
+  <div class="summary-card">
+    <div class="label">Total de Registros</div>
+    <div class="value">{{len .Emprestimos}}</div>
+  </div>
+</div>
+
+<div class="section-title">Empréstimos em Aberto</div>
+<table>
+  <thead>
+    <tr>
+      <th>Pessoa</th>
+      <th>Direção</th>
+      <th>Data</th>
+      <th>Status</th>
+      <th>Notas</th>
+      <th class="num">Valor Original</th>
+      <th class="num">Valor Pago</th>
+      <th class="num">Restante</th>
+    </tr>
+  </thead>
+  <tbody>
+    {{range .Emprestimos}}
+    <tr>
+      <td>{{.Pessoa}}</td>
+      <td>{{if eq .Direcao "devo"}}<span class="badge badge-red">Devo</span>{{else}}<span class="badge badge-green">Me devem</span>{{end}}</td>
+      <td>{{.Data.Format "02/01/2006"}}</td>
+      <td>{{if .Pago}}<span class="badge badge-gray">Quitado</span>{{else}}<span class="badge badge-blue">Em aberto</span>{{end}}</td>
+      <td>{{.Notas}}</td>
+      <td class="num">{{.Valor}}</td>
+      <td class="num">{{.ValorPago}}</td>
+      <td class="num">{{.ValorRestante}}</td>
+    </tr>
+    {{end}}
+    <tr class="total-row">
+      <td colspan="7">Total em Aberto (devo)</td>
+      <td class="num">{{.TotalDevo}}</td>
+    </tr>
+    <tr class="total-row">
+      <td colspan="7">Total em Aberto (a receber)</td>
+      <td class="num">{{.TotalAReceber}}</td>
+    </tr>
+  </tbody>
+</table>
+{{end}}
