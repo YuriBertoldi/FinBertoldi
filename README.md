@@ -180,21 +180,3 @@ go test -tags=integration ./...
 Ver `TESTES.md` para detalhes completos.
 
 ---
-
-## Deploy — Oracle Cloud
-
-**Servidor:** `157.151.131.79` (VM.Standard.E2.1.Micro — Always Free)
-
-```powershell
-# Enviar e rebuildar (PowerShell)
-scp -i C:/Go/finBertoldi/Oracle/ssh-key-2026-05-22.key -r C:/Go/finBertoldi ubuntu@157.151.131.79:/home/ubuntu/
-ssh -i C:/Go/finBertoldi/Oracle/ssh-key-2026-05-22.key ubuntu@157.151.131.79 "cd /home/ubuntu/finBertoldi && docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build"
-```
-
-```bash
-# Logs
-docker logs finbertoldi-app-1 --tail 50 -f
-
-# Acessar banco
-docker exec -it finbertoldi-postgres-1 psql -U fincontrol -d fincontrol
-```
