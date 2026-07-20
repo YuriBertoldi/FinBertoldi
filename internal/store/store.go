@@ -253,16 +253,18 @@ func GetParcelamentosVigentesNoMes(db *sql.DB, fid int, mes time.Time) ([]models
 	mesStr := mes.Format("2006-01")
 	rows, err := db.Query(`
 		SELECT p.id, p.descricao, p.cartao, p.valor_parcela, p.total_parcelas, p.data_inicio, p.ativo,
-		       (EXTRACT(YEAR  FROM $1::date) - EXTRACT(YEAR  FROM p.data_inicio)) * 12
-		     + (EXTRACT(MONTH FROM $1::date) - EXTRACT(MONTH FROM p.data_inicio)) + 1 AS parcela_mes,
+		       p.parcela_atual
+		     + (EXTRACT(YEAR  FROM $1::date) - EXTRACT(YEAR  FROM p.data_inicio)) * 12
+		     + (EXTRACT(MONTH FROM $1::date) - EXTRACT(MONTH FROM p.data_inicio)) AS parcela_mes,
 		       COALESCE(pm.pago, false) AS pago
 		FROM parcelamentos p
 		LEFT JOIN parcelamentos_mes pm ON pm.parcelamento_id = p.id AND pm.mes = $1
 		WHERE p.ativo = true
 		  AND p.family_id = $2
 		  AND p.data_inicio <= $1::date
-		  AND (EXTRACT(YEAR  FROM $1::date) - EXTRACT(YEAR  FROM p.data_inicio)) * 12
-		    + (EXTRACT(MONTH FROM $1::date) - EXTRACT(MONTH FROM p.data_inicio)) + 1 <= p.total_parcelas
+		  AND p.parcela_atual
+		    + (EXTRACT(YEAR  FROM $1::date) - EXTRACT(YEAR  FROM p.data_inicio)) * 12
+		    + (EXTRACT(MONTH FROM $1::date) - EXTRACT(MONTH FROM p.data_inicio)) <= p.total_parcelas
 		ORDER BY p.descricao`, mes, fid)
 	if err != nil {
 		return nil, err
@@ -290,13 +292,18 @@ func AutoFinalizarParcelamentos(db *sql.DB, fid int) error {
 	_, err := db.Exec(`
 		UPDATE parcelamentos SET ativo = false
 		WHERE ativo = true AND family_id = $1
-		  AND (EXTRACT(YEAR  FROM NOW()) - EXTRACT(YEAR  FROM data_inicio)) * 12
-		    + (EXTRACT(MONTH FROM NOW()) - EXTRACT(MONTH FROM data_inicio)) + 1 > total_parcelas`, fid)
+		  AND parcela_atual
+		    + (EXTRACT(YEAR  FROM NOW()) - EXTRACT(YEAR  FROM data_inicio)) * 12
+		    + (EXTRACT(MONTH FROM NOW()) - EXTRACT(MONTH FROM data_inicio)) > total_parcelas`, fid)
 	return err
 }
 
 func GetParcelamentos(db *sql.DB, fid int, apenasAtivos bool) ([]models.Parcelamento, error) {
-	q := `SELECT id, descricao, cartao, valor_parcela, parcela_atual, total_parcelas, data_inicio, ativo
+	q := `SELECT id, descricao, cartao, valor_parcela, parcela_atual, total_parcelas, data_inicio, ativo,
+	       LEAST(parcela_atual
+	         + (EXTRACT(YEAR FROM NOW()) - EXTRACT(YEAR FROM data_inicio))::int * 12
+	         + (EXTRACT(MONTH FROM NOW()) - EXTRACT(MONTH FROM data_inicio))::int,
+	         total_parcelas) AS parcela_hoje
 	      FROM parcelamentos WHERE family_id = $1`
 	if apenasAtivos {
 		q += ` AND ativo = true`
@@ -311,8 +318,10 @@ func GetParcelamentos(db *sql.DB, fid int, apenasAtivos bool) ([]models.Parcelam
 	var list []models.Parcelamento
 	for rows.Next() {
 		var p models.Parcelamento
+		var parcelaHoje int
 		rows.Scan(&p.ID, &p.Descricao, &p.Cartao, &p.ValorParcela,
-			&p.ParcelaAtual, &p.TotalParcelas, &p.DataInicio, &p.Ativo)
+			&p.ParcelaAtual, &p.TotalParcelas, &p.DataInicio, &p.Ativo, &parcelaHoje)
+		p.ParcelaAtual = parcelaHoje
 		p.Restantes = p.TotalParcelas - p.ParcelaAtual
 		if p.Restantes < 0 {
 			p.Restantes = 0
