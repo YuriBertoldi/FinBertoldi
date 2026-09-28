@@ -96,6 +96,13 @@ func main() {
 	mux.HandleFunc("POST /cadastros/cartoes/{id}/delete", auth.ScreenProtected(db, "cadastros", handler.HandleDeleteCartao(db)))
 	mux.HandleFunc("POST /cadastros/cartoes/{id}/toggle-ativo", auth.ScreenProtected(db, "cadastros", handler.HandleToggleCartaoAtivo(db)))
 
+	// Pluggy integration (admin only)
+	mux.HandleFunc("POST /cadastros/pluggy/config", auth.AdminOnly(db, handler.HandleSavePluggyConfig(db)))
+	mux.HandleFunc("POST /cadastros/pluggy/connect-token", auth.AdminOnly(db, handler.HandlePluggyConnectToken(db)))
+	mux.HandleFunc("POST /cadastros/pluggy/items", auth.AdminOnly(db, handler.HandlePluggyRegisterItem(db)))
+	mux.HandleFunc("POST /cadastros/pluggy/{item_id}/disconnect", auth.AdminOnly(db, handler.HandlePluggyDisconnect(db)))
+	mux.HandleFunc("POST /cadastros/pluggy/{item_id}/sync", auth.AdminOnly(db, handler.HandlePluggySync(db)))
+
 	// Usuários (admin only)
 	mux.HandleFunc("GET /usuarios", auth.AdminOnly(db, handler.HandleUsuarios(db)))
 	mux.HandleFunc("POST /usuarios", auth.AdminOnly(db, handler.HandleCreateUsuario(db)))
@@ -113,6 +120,14 @@ func main() {
 	mux.HandleFunc("POST /minha-familia/{id}/reset-senha", auth.FamilyAdminOnly(db, handler.HandleMeuTimeResetSenha(db)))
 	mux.HandleFunc("POST /minha-senha", auth.Protected(db, handler.HandleMinhaSenha(db)))
 	mux.HandleFunc("POST /minha-familia/{id}/permissoes/{tela}/toggle", auth.FamilyAdminOnly(db, handler.HandleToggleScreenPermission(db)))
+
+	// Transações Bancárias
+	mux.HandleFunc("GET /transacoes", auth.ScreenProtected(db, "transacoes", handler.HandleTransacoes(db)))
+	mux.HandleFunc("POST /transacoes/import-csv", auth.ScreenProtected(db, "transacoes", handler.HandleImportCSV(db)))
+	mux.HandleFunc("POST /transacoes/import-ofx", auth.ScreenProtected(db, "transacoes", handler.HandleImportOFX(db)))
+	mux.HandleFunc("POST /transacoes/{id}/converter", auth.ScreenProtected(db, "transacoes", handler.HandleTransacaoConverter(db)))
+	mux.HandleFunc("POST /transacoes/{id}/ignorar", auth.ScreenProtected(db, "transacoes", handler.HandleTransacaoIgnorar(db)))
+	mux.HandleFunc("POST /transacoes/{id}/categorizar", auth.ScreenProtected(db, "transacoes", handler.HandleTransacaoCategorizar(db)))
 
 	// Importar / Exportar
 	mux.HandleFunc("GET /dados", auth.Protected(db, handler.HandleImportPage(db)))

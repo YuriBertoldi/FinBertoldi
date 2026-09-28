@@ -1,0 +1,1526 @@
+openapi: 3.0.3
+info:
+  title: FinBertoldi API
+  description: |
+    API do sistema de controle financeiro familiar FinBertoldi.
+
+    A aplicacao principal (porta 8080) serve HTML via server-side rendering.
+    As rotas POST sao form submissions que retornam redirects (303).
+
+    O pluggy-service (porta 8081) expoe uma API REST JSON interna.
+  version: 1.0.0
+  contact:
+    name: FinBertoldi
+
+servers:
+  - url: http://localhost:8080
+    description: App principal (desenvolvimento)
+  - url: http://localhost:8081
+    description: Pluggy Service (desenvolvimento)
+  - url: http://<SERVER_IP>
+    description: Producao (ver PRODUCAO.md para IP)
+
+tags:
+  - name: Auth
+    description: Autenticacao e sessoes
+  - name: Dashboard
+    description: Dashboard principal
+  - name: Despesas
+    description: Despesas fixas e parcelamentos
+  - name: Receitas
+    description: Receitas
+  - name: Investimentos
+    description: Investimentos e reserva de emergencia
+  - name: Emprestimos
+    description: Emprestimos
+  - name: Planejamento
+    description: Planejamento FIRE
+  - name: Cadastros
+    description: Categorias e cartoes
+  - name: Transacoes
+    description: Transacoes bancarias (CSV/OFX/Pluggy)
+  - name: Pluggy Admin
+    description: Configuracao de integracao Pluggy (admin only)
+  - name: Import/Export
+    description: Importar e exportar dados XLSX
+  - name: Relatorios
+    description: Relatorios para impressao/PDF
+  - name: Usuarios
+    description: Gerenciamento de usuarios (admin only)
+  - name: Familias
+    description: Gerenciamento de familias (admin only)
+  - name: Minha Familia
+    description: Gerenciamento de membros (family admin)
+  - name: Pluggy Service
+    description: API interna do microservico Pluggy (porta 8081)
+
+paths:
+  # ==================== AUTH ====================
+  /login:
+    get:
+      tags: [Auth]
+      summary: Tela de login
+      responses:
+        '200':
+          description: Pagina HTML de login
+    post:
+      tags: [Auth]
+      summary: Processar login
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [email, senha]
+              properties:
+                email:
+                  type: string
+                  example: usuario@exemplo.com
+                senha:
+                  type: string
+      responses:
+        '303':
+          description: Redirect para dashboard (sucesso) ou login (erro)
+
+  /logout:
+    post:
+      tags: [Auth]
+      summary: Encerrar sessao
+      responses:
+        '303':
+          description: Redirect para login
+
+  # ==================== DASHBOARD ====================
+  /:
+    get:
+      tags: [Dashboard]
+      summary: Dashboard principal
+      security: [cookieAuth: []]
+      parameters:
+        - name: mes
+          in: query
+          schema:
+            type: string
+            example: "2026-09"
+          description: Mes no formato YYYY-MM (default = mes atual)
+      responses:
+        '200':
+          description: Pagina HTML do dashboard
+
+  /api/despesas/{id}/toggle-pago:
+    post:
+      tags: [Dashboard]
+      summary: Toggle pago/nao pago de despesa no dashboard
+      security: [cookieAuth: []]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: HTML parcial (HTMX swap)
+
+  /api/parcelamentos/{id}/toggle-pago:
+    post:
+      tags: [Dashboard]
+      summary: Toggle pago/nao pago de parcelamento no dashboard
+      security: [cookieAuth: []]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: HTML parcial (HTMX swap)
+
+  # ==================== DESPESAS ====================
+  /despesas:
+    get:
+      tags: [Despesas]
+      summary: Listar despesas fixas
+      security: [cookieAuth: []]
+      parameters:
+        - name: mes
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Pagina HTML de despesas
+    post:
+      tags: [Despesas]
+      summary: Criar despesa fixa
+      security: [cookieAuth: []]
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [nome, valor, categoria]
+              properties:
+                nome:
+                  type: string
+                valor:
+                  type: string
+                  description: Valor no formato BR (1.234,56)
+                categoria:
+                  type: string
+                grupo:
+                  type: string
+                  enum: [basica, cartao, vr]
+      responses:
+        '303':
+          description: Redirect para /despesas
+
+  /despesas/{id}/update:
+    post:
+      tags: [Despesas]
+      summary: Atualizar despesa fixa
+      security: [cookieAuth: []]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '303':
+          description: Redirect para /despesas
+
+  /despesas/{id}/delete:
+    post:
+      tags: [Despesas]
+      summary: Excluir despesa fixa
+      security: [cookieAuth: []]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '303':
+          description: Redirect para /despesas
+
+  /despesas/{id}/toggle-ativa:
+    post:
+      tags: [Despesas]
+      summary: Ativar/desativar despesa fixa
+      security: [cookieAuth: []]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '303':
+          description: Redirect para /despesas
+
+  # ==================== PARCELAMENTOS ====================
+  /parcelamentos:
+    get:
+      tags: [Despesas]
+      summary: Listar parcelamentos
+      security: [cookieAuth: []]
+      responses:
+        '200':
+          description: Pagina HTML de parcelamentos
+    post:
+      tags: [Despesas]
+      summary: Criar parcelamento
+      security: [cookieAuth: []]
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [descricao, valor_parcela, total_parcelas, data_inicio]
+              properties:
+                descricao:
+                  type: string
+                cartao:
+                  type: string
+                valor_parcela:
+                  type: string
+                total_parcelas:
+                  type: integer
+                data_inicio:
+                  type: string
+                  format: date
+      responses:
+        '303':
+          description: Redirect para /despesas
+
+  /parcelamentos/{id}/update:
+    post:
+      tags: [Despesas]
+      summary: Atualizar parcelamento
+      security: [cookieAuth: []]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '303':
+          description: Redirect
+
+  /parcelamentos/{id}/delete:
+    post:
+      tags: [Despesas]
+      summary: Excluir parcelamento
+      security: [cookieAuth: []]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '303':
+          description: Redirect
+
+  /pagamentos:
+    get:
+      tags: [Despesas]
+      summary: Pagamentos do mes
+      security: [cookieAuth: []]
+      parameters:
+        - name: mes
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Pagina HTML de pagamentos
+
+  # ==================== RECEITAS ====================
+  /receitas:
+    get:
+      tags: [Receitas]
+      summary: Listar receitas
+      security: [cookieAuth: []]
+      parameters:
+        - name: mes
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Pagina HTML de receitas
+    post:
+      tags: [Receitas]
+      summary: Criar receita
+      security: [cookieAuth: []]
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [descricao, valor, data, tipo]
+              properties:
+                descricao:
+                  type: string
+                valor:
+                  type: string
+                data:
+                  type: string
+                  format: date
+                tipo:
+                  type: string
+                recorrente:
+                  type: string
+                  enum: ["S", "N"]
+      responses:
+        '303':
+          description: Redirect para /receitas
+
+  /receitas/{id}/update:
+    post:
+      tags: [Receitas]
+      summary: Atualizar receita
+      security: [cookieAuth: []]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '303':
+          description: Redirect
+
+  /receitas/{id}/delete:
+    post:
+      tags: [Receitas]
+      summary: Excluir receita
+      security: [cookieAuth: []]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '303':
+          description: Redirect
+
+  # ==================== INVESTIMENTOS ====================
+  /investimentos:
+    get:
+      tags: [Investimentos]
+      summary: Listar investimentos
+      security: [cookieAuth: []]
+      responses:
+        '200':
+          description: Pagina HTML de investimentos
+    post:
+      tags: [Investimentos]
+      summary: Criar investimento
+      security: [cookieAuth: []]
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [instituicao, tipo, valor, data]
+              properties:
+                instituicao:
+                  type: string
+                tipo:
+                  type: string
+                valor:
+                  type: string
+                data:
+                  type: string
+                  format: date
+                notas:
+                  type: string
+      responses:
+        '303':
+          description: Redirect
+
+  /investimentos/{id}/update:
+    post:
+      tags: [Investimentos]
+      summary: Atualizar investimento
+      security: [cookieAuth: []]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '303':
+          description: Redirect
+
+  /investimentos/{id}/delete:
+    post:
+      tags: [Investimentos]
+      summary: Excluir investimento
+      security: [cookieAuth: []]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '303':
+          description: Redirect
+
+  /reserva-em:
+    post:
+      tags: [Investimentos]
+      summary: Adicionar lancamento na reserva de emergencia
+      security: [cookieAuth: []]
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [valor, data, tipo]
+              properties:
+                valor:
+                  type: string
+                data:
+                  type: string
+                  format: date
+                tipo:
+                  type: string
+                  enum: [deposito, retirada]
+                notas:
+                  type: string
+      responses:
+        '303':
+          description: Redirect
+
+  /reserva-em/{id}/update:
+    post:
+      tags: [Investimentos]
+      summary: Atualizar lancamento da reserva
+      security: [cookieAuth: []]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '303':
+          description: Redirect
+
+  /reserva-em/{id}/delete:
+    post:
+      tags: [Investimentos]
+      summary: Excluir lancamento da reserva
+      security: [cookieAuth: []]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '303':
+          description: Redirect
+
+  # ==================== EMPRESTIMOS ====================
+  /emprestimos:
+    get:
+      tags: [Emprestimos]
+      summary: Listar emprestimos
+      security: [cookieAuth: []]
+      responses:
+        '200':
+          description: Pagina HTML de emprestimos
+    post:
+      tags: [Emprestimos]
+      summary: Criar emprestimo
+      security: [cookieAuth: []]
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [pessoa, valor, direcao, data]
+              properties:
+                pessoa:
+                  type: string
+                valor:
+                  type: string
+                direcao:
+                  type: string
+                  enum: [devo, me_devem]
+                data:
+                  type: string
+                  format: date
+                notas:
+                  type: string
+      responses:
+        '303':
+          description: Redirect
+
+  /emprestimos/{id}/delete:
+    post:
+      tags: [Emprestimos]
+      summary: Excluir emprestimo
+      security: [cookieAuth: []]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '303':
+          description: Redirect
+
+  /emprestimos/{id}/toggle-pago:
+    post:
+      tags: [Emprestimos]
+      summary: Quitar/reabrir emprestimo
+      security: [cookieAuth: []]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '303':
+          description: Redirect
+
+  /emprestimos/{id}/pagamento:
+    post:
+      tags: [Emprestimos]
+      summary: Pagamento parcial de emprestimo
+      security: [cookieAuth: []]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [valor]
+              properties:
+                valor:
+                  type: string
+      responses:
+        '303':
+          description: Redirect
+
+  # ==================== PLANEJAMENTO ====================
+  /planejamento:
+    get:
+      tags: [Planejamento]
+      summary: Planejamento FIRE
+      security: [cookieAuth: []]
+      responses:
+        '200':
+          description: Pagina HTML de planejamento FIRE
+
+  # ==================== CADASTROS ====================
+  /cadastros:
+    get:
+      tags: [Cadastros]
+      summary: Cadastros auxiliares (categorias, cartoes, integracao)
+      security: [cookieAuth: []]
+      parameters:
+        - name: tab
+          in: query
+          schema:
+            type: string
+            enum: [categorias, cartoes, integracao]
+            default: categorias
+          description: Tab ativa. "integracao" so disponivel para admin.
+      responses:
+        '200':
+          description: Pagina HTML de cadastros
+
+  /cadastros/categorias:
+    post:
+      tags: [Cadastros]
+      summary: Criar categoria
+      security: [cookieAuth: []]
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [nome, grupo]
+              properties:
+                nome:
+                  type: string
+                grupo:
+                  type: string
+                  enum: [basica, cartao, vr]
+                cor:
+                  type: string
+                  example: "#607d8b"
+      responses:
+        '303':
+          description: Redirect
+
+  /cadastros/categorias/{id}/update:
+    post:
+      tags: [Cadastros]
+      summary: Atualizar categoria
+      security: [cookieAuth: []]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '303':
+          description: Redirect
+
+  /cadastros/categorias/{id}/delete:
+    post:
+      tags: [Cadastros]
+      summary: Excluir categoria
+      security: [cookieAuth: []]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '303':
+          description: Redirect
+
+  /cadastros/categorias/{id}/toggle-ativa:
+    post:
+      tags: [Cadastros]
+      summary: Ativar/desativar categoria
+      security: [cookieAuth: []]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '303':
+          description: Redirect
+
+  /cadastros/cartoes:
+    post:
+      tags: [Cadastros]
+      summary: Criar cartao
+      security: [cookieAuth: []]
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [nome]
+              properties:
+                nome:
+                  type: string
+                bandeira:
+                  type: string
+                  enum: [Visa, Mastercard, Elo, Amex, "Debito", PIX]
+                limite:
+                  type: string
+                cor:
+                  type: string
+      responses:
+        '303':
+          description: Redirect
+
+  /cadastros/cartoes/{id}/update:
+    post:
+      tags: [Cadastros]
+      summary: Atualizar cartao
+      security: [cookieAuth: []]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '303':
+          description: Redirect
+
+  /cadastros/cartoes/{id}/delete:
+    post:
+      tags: [Cadastros]
+      summary: Excluir cartao
+      security: [cookieAuth: []]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '303':
+          description: Redirect
+
+  /cadastros/cartoes/{id}/toggle-ativo:
+    post:
+      tags: [Cadastros]
+      summary: Ativar/desativar cartao
+      security: [cookieAuth: []]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '303':
+          description: Redirect
+
+  # ==================== TRANSACOES BANCARIAS ====================
+  /transacoes:
+    get:
+      tags: [Transacoes]
+      summary: Listar transacoes bancarias
+      security: [cookieAuth: []]
+      parameters:
+        - name: mes
+          in: query
+          schema:
+            type: string
+          description: Mes no formato YYYY-MM
+        - name: origem
+          in: query
+          schema:
+            type: string
+            enum: [csv, ofx, pluggy]
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pendente, categorizada, convertida, ignorada]
+        - name: banco
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Pagina HTML de transacoes
+
+  /transacoes/import-csv:
+    post:
+      tags: [Transacoes]
+      summary: Importar extrato CSV
+      security: [cookieAuth: []]
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [arquivo]
+              properties:
+                arquivo:
+                  type: string
+                  format: binary
+                  description: Arquivo CSV com colunas data, descricao, valor
+                banco:
+                  type: string
+                  description: Nome do banco (opcional)
+      responses:
+        '200':
+          description: Pagina com resultado da importacao
+
+  /transacoes/import-ofx:
+    post:
+      tags: [Transacoes]
+      summary: Importar extrato OFX
+      security: [cookieAuth: []]
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [arquivo]
+              properties:
+                arquivo:
+                  type: string
+                  format: binary
+                  description: Arquivo OFX/QFX
+                banco:
+                  type: string
+                  description: Nome do banco (override)
+      responses:
+        '200':
+          description: Pagina com resultado da importacao
+
+  /transacoes/{id}/converter:
+    post:
+      tags: [Transacoes]
+      summary: Converter transacao em despesa ou receita
+      security: [cookieAuth: []]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [destino]
+              properties:
+                destino:
+                  type: string
+                  enum: [despesa, receita]
+                categoria:
+                  type: string
+                  description: Categoria (se destino=despesa)
+                tipo:
+                  type: string
+                  description: Tipo de receita (se destino=receita)
+      responses:
+        '303':
+          description: Redirect para /transacoes
+
+  /transacoes/{id}/ignorar:
+    post:
+      tags: [Transacoes]
+      summary: Ignorar transacao
+      security: [cookieAuth: []]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '303':
+          description: Redirect para /transacoes
+
+  /transacoes/{id}/categorizar:
+    post:
+      tags: [Transacoes]
+      summary: Categorizar transacao
+      security: [cookieAuth: []]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [categoria]
+              properties:
+                categoria:
+                  type: string
+      responses:
+        '303':
+          description: Redirect para /transacoes
+
+  # ==================== PLUGGY ADMIN ====================
+  /cadastros/pluggy/config:
+    post:
+      tags: [Pluggy Admin]
+      summary: Salvar configuracao Pluggy
+      description: Requer admin global. Salva credenciais e URL do servico.
+      security: [cookieAuth: []]
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                client_id:
+                  type: string
+                client_secret:
+                  type: string
+                service_url:
+                  type: string
+                  example: http://pluggy-service:8081
+                ativo:
+                  type: string
+                  enum: ["on"]
+      responses:
+        '303':
+          description: Redirect para /cadastros?tab=integracao
+
+  /cadastros/pluggy/connect-token:
+    post:
+      tags: [Pluggy Admin]
+      summary: Gerar token para Pluggy Connect Widget
+      description: Proxy para pluggy-service. Retorna JSON com accessToken.
+      security: [cookieAuth: []]
+      responses:
+        '200':
+          description: Token gerado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accessToken:
+                    type: string
+        '502':
+          description: Pluggy service indisponivel
+
+  /cadastros/pluggy/items:
+    post:
+      tags: [Pluggy Admin]
+      summary: Registrar item Pluggy conectado
+      description: Chamado apos sucesso do Connect Widget. Registra o item e dispara sync inicial.
+      security: [cookieAuth: []]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [item_id]
+              properties:
+                item_id:
+                  type: string
+                  description: ID do item retornado pelo Connect Widget
+      responses:
+        '200':
+          description: Item registrado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+
+  /cadastros/pluggy/{item_id}/disconnect:
+    post:
+      tags: [Pluggy Admin]
+      summary: Desconectar banco
+      description: Remove o item da tabela pluggy_items.
+      security: [cookieAuth: []]
+      parameters:
+        - name: item_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '303':
+          description: Redirect para /cadastros?tab=integracao
+
+  /cadastros/pluggy/{item_id}/sync:
+    post:
+      tags: [Pluggy Admin]
+      summary: Forcar sincronizacao de transacoes
+      description: Proxy para pluggy-service. Forca sync imediato do item.
+      security: [cookieAuth: []]
+      parameters:
+        - name: item_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '303':
+          description: Redirect para /cadastros?tab=integracao
+
+  # ==================== IMPORT/EXPORT ====================
+  /dados:
+    get:
+      tags: [Import/Export]
+      summary: Pagina de importar/exportar
+      security: [cookieAuth: []]
+      responses:
+        '200':
+          description: Pagina HTML
+
+  /dados/exportar:
+    get:
+      tags: [Import/Export]
+      summary: Exportar dados em XLSX
+      description: Download de arquivo XLSX com 5 abas (despesas, parcelamentos, receitas, investimentos, emprestimos)
+      security: [cookieAuth: []]
+      responses:
+        '200':
+          description: Arquivo XLSX
+          content:
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema:
+                type: string
+                format: binary
+
+  /dados/modelo:
+    get:
+      tags: [Import/Export]
+      summary: Baixar modelo XLSX em branco
+      security: [cookieAuth: []]
+      responses:
+        '200':
+          description: Arquivo XLSX modelo
+          content:
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema:
+                type: string
+                format: binary
+
+  /dados/importar:
+    post:
+      tags: [Import/Export]
+      summary: Importar dados de XLSX
+      security: [cookieAuth: []]
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [arquivo]
+              properties:
+                arquivo:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Pagina com resultado da importacao
+
+  # ==================== RELATORIOS ====================
+  /relatorio/dashboard:
+    get:
+      tags: [Relatorios]
+      summary: Relatorio do dashboard
+      security: [cookieAuth: []]
+      parameters:
+        - name: mes
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: HTML otimizado para impressao
+
+  /relatorio/despesas:
+    get:
+      tags: [Relatorios]
+      summary: Relatorio de despesas
+      security: [cookieAuth: []]
+      responses:
+        '200':
+          description: HTML otimizado para impressao
+
+  /relatorio/receitas:
+    get:
+      tags: [Relatorios]
+      summary: Relatorio de receitas
+      security: [cookieAuth: []]
+      responses:
+        '200':
+          description: HTML otimizado para impressao
+
+  /relatorio/investimentos:
+    get:
+      tags: [Relatorios]
+      summary: Relatorio de investimentos
+      security: [cookieAuth: []]
+      responses:
+        '200':
+          description: HTML otimizado para impressao
+
+  /relatorio/emprestimos:
+    get:
+      tags: [Relatorios]
+      summary: Relatorio de emprestimos
+      security: [cookieAuth: []]
+      responses:
+        '200':
+          description: HTML otimizado para impressao
+
+  # ==================== USUARIOS (admin only) ====================
+  /usuarios:
+    get:
+      tags: [Usuarios]
+      summary: Listar usuarios
+      security: [cookieAuth: []]
+      responses:
+        '200':
+          description: Pagina HTML de usuarios
+    post:
+      tags: [Usuarios]
+      summary: Criar usuario
+      security: [cookieAuth: []]
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [nome, email, senha, family_id]
+              properties:
+                nome:
+                  type: string
+                email:
+                  type: string
+                senha:
+                  type: string
+                family_id:
+                  type: integer
+      responses:
+        '303':
+          description: Redirect
+
+  /usuarios/{id}/toggle-admin:
+    post:
+      tags: [Usuarios]
+      summary: Toggle admin global
+      security: [cookieAuth: []]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '303':
+          description: Redirect
+
+  /usuarios/{id}/toggle-family-admin:
+    post:
+      tags: [Usuarios]
+      summary: Toggle admin de familia
+      security: [cookieAuth: []]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '303':
+          description: Redirect
+
+  /usuarios/{id}/toggle-ativo:
+    post:
+      tags: [Usuarios]
+      summary: Ativar/desativar usuario
+      security: [cookieAuth: []]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '303':
+          description: Redirect
+
+  /usuarios/{id}/reset-senha:
+    post:
+      tags: [Usuarios]
+      summary: Resetar senha de usuario
+      security: [cookieAuth: []]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '303':
+          description: Redirect
+
+  /usuarios/{id}/delete:
+    post:
+      tags: [Usuarios]
+      summary: Excluir usuario
+      security: [cookieAuth: []]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '303':
+          description: Redirect
+
+  /usuarios/{id}/family:
+    post:
+      tags: [Usuarios]
+      summary: Mudar familia do usuario
+      security: [cookieAuth: []]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [family_id]
+              properties:
+                family_id:
+                  type: integer
+      responses:
+        '303':
+          description: Redirect
+
+  # ==================== FAMILIAS (admin only) ====================
+  /familias:
+    get:
+      tags: [Familias]
+      summary: Listar familias
+      security: [cookieAuth: []]
+      responses:
+        '200':
+          description: Pagina HTML de familias
+    post:
+      tags: [Familias]
+      summary: Criar familia
+      security: [cookieAuth: []]
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [nome]
+              properties:
+                nome:
+                  type: string
+      responses:
+        '303':
+          description: Redirect
+
+  /familias/{id}/rename:
+    post:
+      tags: [Familias]
+      summary: Renomear familia
+      security: [cookieAuth: []]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '303':
+          description: Redirect
+
+  /familias/{id}/delete:
+    post:
+      tags: [Familias]
+      summary: Excluir familia
+      security: [cookieAuth: []]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '303':
+          description: Redirect
+
+  # ==================== MINHA FAMILIA ====================
+  /minha-familia:
+    get:
+      tags: [Minha Familia]
+      summary: Gerenciar membros da familia
+      security: [cookieAuth: []]
+      responses:
+        '200':
+          description: Pagina HTML
+    post:
+      tags: [Minha Familia]
+      summary: Criar membro na familia
+      security: [cookieAuth: []]
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [nome, email, senha]
+              properties:
+                nome:
+                  type: string
+                email:
+                  type: string
+                senha:
+                  type: string
+      responses:
+        '303':
+          description: Redirect
+
+  /minha-familia/{id}/toggle-ativo:
+    post:
+      tags: [Minha Familia]
+      summary: Ativar/desativar membro
+      security: [cookieAuth: []]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '303':
+          description: Redirect
+
+  /minha-familia/{id}/reset-senha:
+    post:
+      tags: [Minha Familia]
+      summary: Resetar senha de membro
+      security: [cookieAuth: []]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '303':
+          description: Redirect
+
+  /minha-familia/{id}/permissoes/{tela}/toggle:
+    post:
+      tags: [Minha Familia]
+      summary: Bloquear/desbloquear tela para membro
+      security: [cookieAuth: []]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: tela
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [despesas, receitas, investimentos, emprestimos, planejamento, cadastros, transacoes]
+      responses:
+        '303':
+          description: Redirect
+
+  /minha-senha:
+    post:
+      tags: [Minha Familia]
+      summary: Alterar propria senha
+      security: [cookieAuth: []]
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [nova_senha]
+              properties:
+                nova_senha:
+                  type: string
+      responses:
+        '303':
+          description: Redirect
+
+  # ==================== PLUGGY SERVICE (porta 8081) ====================
+  /api/pluggy/status:
+    get:
+      tags: [Pluggy Service]
+      summary: Health check do microservico
+      servers:
+        - url: http://localhost:8081
+      responses:
+        '200':
+          description: Servico online
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+
+  /api/pluggy/connect-token:
+    post:
+      tags: [Pluggy Service]
+      summary: Gerar connect token Pluggy
+      servers:
+        - url: http://localhost:8081
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                clientUserId:
+                  type: string
+      responses:
+        '200':
+          description: Token gerado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accessToken:
+                    type: string
+
+  /api/pluggy/webhook:
+    post:
+      tags: [Pluggy Service]
+      summary: Webhook da Pluggy
+      description: Recebe eventos item/created e item/updated
+      servers:
+        - url: http://localhost:8081
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                event:
+                  type: string
+                  enum: [item/created, item/updated]
+                id:
+                  type: string
+                  description: ID do item
+      responses:
+        '200':
+          description: Webhook processado
+
+  /api/pluggy/items:
+    post:
+      tags: [Pluggy Service]
+      summary: Registrar item conectado
+      servers:
+        - url: http://localhost:8081
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [itemId, familyId]
+              properties:
+                itemId:
+                  type: string
+                familyId:
+                  type: integer
+                connectorName:
+                  type: string
+      responses:
+        '200':
+          description: Item registrado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+
+  /api/pluggy/sync/{item_id}:
+    post:
+      tags: [Pluggy Service]
+      summary: Forcar sync de um item
+      servers:
+        - url: http://localhost:8081
+      parameters:
+        - name: item_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Sync concluido
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  synced:
+                    type: integer
+                    description: Numero de novas transacoes
+
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: session
+      description: Cookie de sessao HTTP-only (token hex 64 chars)

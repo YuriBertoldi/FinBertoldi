@@ -193,11 +193,25 @@ type EmprestimosPage struct {
 	TotalAReceber float64
 }
 
+type IntegracaoConfig struct {
+	ID           int
+	Integracao   string // "pluggy", "belvo", etc
+	ClientID     string
+	ClientSecret string
+	ServiceURL   string
+	Ativo        bool
+}
+
 type CadastrosPage struct {
 	BasePage
-	TabAtivo   string
-	Categorias []Categoria
-	Cartoes    []Cartao
+	TabAtivo      string
+	Categorias    []Categoria
+	Cartoes       []Cartao
+	PluggyConfig  *IntegracaoConfig
+	PluggyContas  []PluggyItem
+	PluggyStatus  string // "online", "offline", "nao_configurado"
+	PluggyErro    string
+	PluggySucesso string
 }
 
 type ReceitasPage struct {
@@ -238,6 +252,60 @@ type MeuTimePage struct {
 type LoginPage struct {
 	Title string
 	Erro  string
+}
+
+// --- Transações Bancárias ---
+
+type TransacaoBanco struct {
+	ID           int
+	Data         time.Time
+	Descricao    string
+	Valor        float64
+	Tipo         string // "debito" ou "credito"
+	Categoria    string
+	Origem       string // "csv", "ofx", "pluggy"
+	Banco        string
+	FitID        string
+	Status       string // "pendente", "categorizada", "convertida", "ignorada"
+	DespesaID    *int
+	ReceitaID    *int
+	PluggyItemID string
+	CriadoEm     time.Time
+}
+
+type PluggyItem struct {
+	ID            int
+	FamilyID      int
+	ItemID        string
+	ConnectorName string
+	Status        string
+	LastSync      *time.Time
+	CriadoEm      time.Time
+}
+
+type TransacoesPage struct {
+	BasePage
+	Transacoes    []TransacaoBanco
+	Categorias    []Categoria
+	Contas        []PluggyItem
+	TotalEntradas float64
+	TotalSaidas   float64
+	Filtros       TransacoesFiltros
+	Resultado     *ImportBancoResultado
+	Erro          string
+}
+
+type TransacoesFiltros struct {
+	Mes    string
+	Origem string
+	Status string
+	Banco  string
+}
+
+type ImportBancoResultado struct {
+	Total     int
+	Novos     int
+	Duplicados int
 }
 
 type ImportResultado struct {

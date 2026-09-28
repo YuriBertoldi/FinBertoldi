@@ -1,6 +1,6 @@
 # FinBertoldi — Controle Financeiro Familiar
 
-Sistema de finanças pessoais multi-família com dashboard, investimentos, planejamento FIRE, relatórios PDF e importação/exportação de dados.
+Sistema de financas pessoais multi-familia com dashboard, investimentos, planejamento FIRE, relatorios PDF, importacao/exportacao de dados e integracao bancaria automatica.
 
 ## Stack
 
@@ -9,15 +9,17 @@ Sistema de finanças pessoais multi-família com dashboard, investimentos, plane
 | Backend | Go 1.24 — net/http + html/template (stdlib) |
 | Frontend | HTMX 1.9.12 · Chart.js 4.4.1 · Pico CSS v2 · CSS custom (dark/glassmorphism) |
 | Banco | PostgreSQL 16 |
-| Auth | Sessões + bcrypt |
+| Auth | Sessoes + bcrypt |
 | XLSX | excelize/v2 |
-| Infra | Docker Compose |
+| OFX | ofxgo (parser de extratos bancarios) |
+| Integracao | Pluggy API (microservico separado) |
+| Infra | Docker Compose (3 containers) |
 
 ---
 
 ## Rodando localmente
 
-**Pré-requisito:** Docker + Docker Compose
+**Pre-requisito:** Docker + Docker Compose
 
 ```bash
 docker compose up --build -d
@@ -25,43 +27,71 @@ docker compose up --build -d
 
 Acesse: **http://localhost:8080**
 
-| Campo | Valor padrão |
-|-------|-------------|
-| E-mail | `admin@finbertoldi.com` |
-| Senha | `admin123` |
+O schema e criado e atualizado automaticamente no startup (12 migrations idempotentes).
 
-> Troque a senha no primeiro acesso em Usuários.
+> Credenciais de acesso padrao estao em `PRODUCAO.md` (ignorado pelo git). Crie o seu proprio `.env.prod` a partir de `.env.prod.example`.
 
-O schema é criado e atualizado automaticamente no startup — não é necessário rodar SQL manualmente.
+---
+
+## Arquitetura
+
+```
+                    ┌──────────────┐
+                    │   Browser    │
+                    │  (HTMX)     │
+                    └──────┬───────┘
+                           │ :8080
+                    ┌──────┴───────┐
+                    │   App (Go)   │
+                    │   main.go    │
+                    └──┬───────┬───┘
+                       │       │ proxy HTTP
+                ┌──────┴──┐ ┌──┴──────────────┐
+                │ Postgres │ │ Pluggy Service  │
+                │  :5432   │ │   :8081 (Go)    │
+                └──────────┘ └────────┬────────┘
+                                      │ HTTPS
+                               ┌──────┴───────┐
+                               │  Pluggy API   │
+                               │ api.pluggy.ai │
+                               └──────────────┘
+```
+
+**3 containers Docker:**
+1. **app** — aplicacao principal Go (porta 8080)
+2. **postgres** — PostgreSQL 16 Alpine
+3. **pluggy-service** — microservico de integracao bancaria (porta 8081)
 
 ---
 
 ## Funcionalidades
 
-- **Dashboard** — cards: Receitas, Despesas, Sobra, **Caixa** (Receitas − pago − investido/mês), Investido/mês, Total Investido; gráficos receitas × despesas (Chart.js), histórico 6 meses
-- **Despesas** — fixas/recorrentes + parcelamentos de cartão com toggle pago/mês
-- **Pagamentos do Mês** — página dedicada para acompanhar o que foi pago/pendente no mês; filtros por categoria e status; abate do Caixa conforme pagamentos registrados
-- **Receitas** — recorrentes e únicas; edição inline de cada registro
-- **Investimentos** — por instituição/tipo, totais por categoria, histórico de aportes; edição inline de cada aporte
-- **Reserva de Emergência** — funciona como **conta corrente**: lançamentos de depósito (+) e retirada (−) com data e notas; saldo = Σdepósitos − Σretiradas; depósitos contam como "investido no mês" para o Caixa; edição inline de cada lançamento
-- **Empréstimos** — devo / me devem, quitação total ou parcial com histórico de pagamentos
-- **Planejamento FIRE** — taxa de poupança, metas FIRE (3%/3.5%/4%), projeção de juros compostos
-- **Cadastros** — categorias (com cor e grupo) e cartões de crédito por família
-- **Minha Família** — gerenciar membros, redefinir senhas, controle de acesso por tela
-- **Usuários / Famílias** — administração global (admin only)
-- **Relatórios PDF** — botão "📄 Relatório" em cada tela; gera HTML otimizado para impressão/PDF via `Ctrl+P`
-- **Importar / Exportar** — XLSX multi-aba com todos os dados; download de modelo em branco
-- **Seleção e totalização** — checkboxes em todas as tabelas com barra flutuante de soma
-- **Ordenação** — clique no cabeçalho de qualquer coluna para ordenar
-- **Tema dark/light** + **ocultar valores** (botão olho na sidebar)
+- **Dashboard** — cards: Receitas, Despesas, Sobra, Caixa, Investido/mes, Total Investido; graficos (Chart.js), historico 6 meses
+- **Despesas** — fixas/recorrentes + parcelamentos de cartao com toggle pago/mes
+- **Pagamentos do Mes** — pagina dedicada com filtros por categoria e status
+- **Receitas** — recorrentes e unicas; edicao inline
+- **Investimentos** — por instituicao/tipo, totais por categoria, edicao inline
+- **Reserva de Emergencia** — depositos e retiradas com saldo
+- **Emprestimos** — devo / me devem, quitacao total ou parcial
+- **Planejamento FIRE** — taxa de poupanca, metas FIRE, projecao de juros compostos
+- **Transacoes Bancarias** — importacao de extratos CSV e OFX; conversao para despesa/receita; deduplicacao por FitID
+- **Integracao Pluggy** — conexao automatica com bancos via widget; sync periodico (admin only)
+- **Cadastros** — categorias, cartoes, configuracao de integracao bancaria
+- **Minha Familia** — membros, senhas, controle de acesso por tela
+- **Usuarios / Familias** — administracao global (admin only)
+- **Relatorios PDF** — HTML otimizado para impressao via `Ctrl+P`
+- **Importar / Exportar** — XLSX multi-aba com todos os dados
+- **Selecao e totalizacao** — checkboxes com barra flutuante de soma
+- **Ordenacao** — clique no cabecalho de qualquer coluna
+- **Tema dark/light** + **ocultar valores**
 
 ### Controle de acesso
 
-| Perfil | Permissões |
+| Perfil | Permissoes |
 |--------|-----------|
-| Admin global | Acesso total; gerencia todas as famílias |
-| Admin de família | Gerencia membros da própria família; bloqueia telas por usuário |
-| Usuário comum | Acesso às telas liberadas; altera só a própria senha |
+| Admin global | Acesso total; gerencia familias; configura integracoes |
+| Admin de familia | Gerencia membros; bloqueia telas por usuario |
+| Usuario comum | Acesso as telas liberadas |
 
 ---
 
@@ -69,114 +99,107 @@ O schema é criado e atualizado automaticamente no startup — não é necessár
 
 ```
 finBertoldi/
-├── main.go                          # Wiring: todas as rotas + startup
-├── go.mod / go.sum
+├── main.go                          # Wiring: rotas + startup
 ├── Dockerfile                       # Multi-stage: golang:1.24 → alpine
 ├── docker-compose.yml               # Desenvolvimento local
-├── docker-compose.prod.yml          # Produção (Oracle Cloud)
-├── .env.prod.example                # Template de variáveis de ambiente
+├── docker-compose.prod.yml          # Producao
+├── .env.prod.example                # Template de variaveis de ambiente
 ├── internal/
-│   ├── models/
-│   │   └── models.go                # Structs de domínio e page data
-│   ├── store/
-│   │   ├── store.go                 # Queries PostgreSQL + RunMigrations()
-│   │   ├── store_test.go            # Testes unitários
-│   │   └── integration_test.go      # Testes de integração (build tag: integration)
-│   ├── auth/
-│   │   ├── auth.go                  # Middlewares + sessões + bcrypt
-│   │   └── auth_test.go             # Testes unitários
+│   ├── models/models.go             # Structs de dominio e page data
+│   ├── store/store.go               # Queries PostgreSQL + RunMigrations() (v1-v12)
+│   ├── auth/auth.go                 # Middlewares + sessoes + bcrypt
 │   └── handler/
-│       ├── handler.go               # Handlers HTTP + InitTemplates() + helpers
-│       ├── reports.go               # Handlers relatórios PDF (5 telas)
-│       ├── importexport.go          # Import/Export XLSX
-│       └── handler_test.go          # Testes unitários
-├── static/
-│   └── app.css                      # Design system completo
-└── templates/
-    ├── base.html                    # Layout base + sidebar + JS utilitários (initTableSort, initSelecao, initTableFilter)
-    ├── login.html
-    ├── dashboard.html
-    ├── despesas.html
-    ├── pagamentos.html              # Pagamentos do Mês (página dedicada)
-    ├── receitas.html
-    ├── investimentos.html
-    ├── emprestimos.html
-    ├── planejamento.html
-    ├── cadastros.html
-    ├── minha-familia.html
-    ├── usuarios.html
-    ├── familias.html
-    ├── importexport.html            # Importar / Exportar XLSX
-    ├── relatorio-base.html          # Layout base dos relatórios PDF
-    ├── relatorio-dashboard.html
-    ├── relatorio-despesas.html
-    ├── relatorio-receitas.html
-    ├── relatorio-investimentos.html
-    └── relatorio-emprestimos.html
+│       ├── handler.go               # Handlers HTTP + Pluggy admin
+│       ├── bankimport.go            # Parsers CSV/OFX + handlers transacoes
+│       ├── reports.go               # Relatorios PDF (5 telas)
+│       └── importexport.go          # Import/Export XLSX
+├── static/app.css                   # Design system
+├── templates/                       # Templates HTML (18 paginas)
+├── pluggy-service/                  # Microservico de integracao bancaria
+│   ├── main.go                      # HTTP server + sync scheduler
+│   ├── pluggy/client.go             # REST client Pluggy API
+│   ├── pluggy/models.go             # Structs API Pluggy
+│   └── sync/sync.go                 # Logica de sincronizacao
+└── documentacao/                    # Documentacao detalhada por modulo
+    ├── 01-visao-geral.md
+    ├── 02-models.md
+    ├── 03-store.md
+    ├── 04-auth.md
+    ├── 05-handler.md
+    ├── 06-pluggy-service.md
+    ├── 07-templates.md
+    ├── 08-rotas.md
+    ├── 09-banco-de-dados.md
+    ├── 10-deploy.md
+    └── swagger.yaml                 # Documentacao OpenAPI 3.0
 ```
 
 ---
 
-## Importar / Exportar
+## Integracao Bancaria
 
-Acesse `/dados` (sidebar: **📊 Importar / Exportar**).
+### Importacao Manual (CSV/OFX)
 
-| Ação | Descrição |
-|------|-----------|
-| **Exportar meus dados** | Baixa XLSX com todos os dados atuais em 5 abas |
-| **Baixar modelo em branco** | XLSX com cabeçalhos + linha de exemplo para preencher |
-| **Importar** | Faz upload de XLSX no mesmo formato; **adiciona** aos dados existentes |
+Na tela **Transacoes** (`/transacoes`):
+- **CSV**: upload com auto-deteccao de separador e formato BR
+- **OFX**: upload de arquivo OFX/QFX
+- Deduplicacao automatica por FitID
+- Conversao para despesa ou receita com um clique
 
-**Formato das abas:**
+### Integracao Automatica (Pluggy)
 
-| Aba | Colunas |
-|-----|---------|
-| Despesas Fixas | Nome · Valor · Categoria · Ativa (S/N) |
-| Parcelamentos | Descrição · Cartão · Valor Parcela · Parcela Atual · Total Parcelas · Data Início |
-| Receitas | Descrição · Valor · Data · Tipo · Recorrente (S/N) |
-| Investimentos | Instituição · Tipo · Valor · Data · Notas |
-| Empréstimos | Pessoa · Valor · Direção (devo/me_devem) · Data · Notas |
+Configuracao em **Cadastros** > tab **Integracao Bancaria** (admin only):
+1. Preencher credenciais Pluggy
+2. Ativar integracao e salvar
+3. Conectar banco via Pluggy Connect Widget
+4. Transacoes sincronizam automaticamente a cada 6h
 
 ---
 
-## Relatórios PDF
+## Variaveis de ambiente
 
-Cada tela principal tem um botão **📄 Relatório** que abre uma página otimizada para impressão. Use `Ctrl+P` → **Salvar como PDF** no navegador.
+### App principal
 
-Rotas disponíveis:
-- `GET /relatorio/dashboard?mes=YYYY-MM`
-- `GET /relatorio/despesas`
-- `GET /relatorio/receitas`
-- `GET /relatorio/investimentos`
-- `GET /relatorio/emprestimos`
-
----
-
-## Variáveis de ambiente
-
-| Variável | Padrão | Descrição |
+| Variavel | Padrao | Descricao |
 |----------|--------|-----------|
-| `DATABASE_URL` | *(montado a partir das abaixo)* | String de conexão completa (prioridade) |
+| `DATABASE_URL` | — | String de conexao completa (prioridade) |
 | `DB_HOST` | `localhost` | Host do PostgreSQL |
 | `DB_PORT` | `5432` | Porta |
-| `DB_USER` | `postgres` | Usuário |
+| `DB_USER` | `postgres` | Usuario |
 | `DB_PASS` | `postgres` | Senha |
 | `DB_NAME` | `fincontrol` | Nome do banco |
 | `PORT` | `8080` | Porta HTTP |
+| `SESSION_SECRET` | — | Chave para cookies de sessao |
+| `TZ` | `America/Sao_Paulo` | Timezone |
+
+### Pluggy Service
+
+| Variavel | Padrao | Descricao |
+|----------|--------|-----------|
+| `DATABASE_URL` | — | String de conexao PostgreSQL |
+| `PLUGGY_CLIENT_ID` | — | Client ID (opcional, le do banco) |
+| `PLUGGY_CLIENT_SECRET` | — | Client Secret (opcional, le do banco) |
+| `SYNC_INTERVAL` | `6h` | Intervalo de sync automatico |
+| `PORT` | `8081` | Porta HTTP |
 
 ---
 
 ## Testes
 
 ```bash
-# Unitários (sem banco, <1s)
+# Unitarios (sem banco, <1s)
 go test ./...
 
-# Integração (requer PostgreSQL rodando)
+# Integracao (requer PostgreSQL rodando)
 docker compose up postgres -d
 go test -tags=integration ./...
 ```
 
-Ver `TESTES.md` para detalhes completos.
-
 ---
+
+## Documentacao
+
+Documentacao detalhada por modulo em `documentacao/`.
+API documentada em formato OpenAPI 3.0 em `documentacao/swagger.yaml`.
+
+Dados de acesso e deploy em `PRODUCAO.md` (ignorado pelo git).

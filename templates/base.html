@@ -80,6 +80,12 @@
         <span class="nav-text">Empréstimos</span>
       </a>
       {{end}}
+      {{if not (contains .BlockedScreens "transacoes")}}
+      <a href="/transacoes" class="nav-item {{if eq .Active "transacoes"}}active{{end}}">
+        <span class="nav-ico">🏦</span>
+        <span class="nav-text">Transacoes</span>
+      </a>
+      {{end}}
 
       <p class="nav-section-label">Configurações</p>
       {{if not (contains .BlockedScreens "cadastros")}}

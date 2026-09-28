@@ -16,6 +16,11 @@
   <a href="/cadastros?tab=cartoes" class="tab-item {{if eq .TabAtivo "cartoes"}}active{{end}}">
     💳 Cartões
   </a>
+  {{if .CurrentUser.Admin}}
+  <a href="/cadastros?tab=integracao" class="tab-item {{if eq .TabAtivo "integracao"}}active{{end}}">
+    🏦 Integracao Bancaria
+  </a>
+  {{end}}
 </div>
 
 <!-- ===== TAB: CATEGORIAS ===== -->
@@ -335,6 +340,165 @@
     });
   }
 </script>
+{{end}}
+
+<!-- ===== TAB: INTEGRACAO BANCARIA ===== -->
+{{if eq .TabAtivo "integracao"}}
+
+{{if .PluggyErro}}
+<div class="alert alert-danger">{{.PluggyErro}}</div>
+{{end}}
+{{if .PluggySucesso}}
+<div class="alert alert-success">{{.PluggySucesso}}</div>
+{{end}}
+
+<!-- Credenciais Pluggy -->
+<div class="card">
+  <header>
+    <h3>Credenciais Pluggy</h3>
+    {{if eq .PluggyStatus "online"}}
+      <span class="badge badge-success">Online</span>
+    {{else if eq .PluggyStatus "offline"}}
+      <span class="badge badge-danger">Offline</span>
+    {{else}}
+      <span class="badge badge-warning">Nao configurado</span>
+    {{end}}
+  </header>
+  <form method="POST" action="/cadastros/pluggy/config">
+    <div class="grid">
+      <label>Client ID
+        <input type="text" name="client_id" value="{{if .PluggyConfig}}{{.PluggyConfig.ClientID}}{{end}}" placeholder="Seu Client ID da Pluggy">
+      </label>
+      <label>Client Secret
+        <input type="password" name="client_secret" value="{{if .PluggyConfig}}{{.PluggyConfig.ClientSecret}}{{end}}" placeholder="Seu Client Secret da Pluggy">
+      </label>
+    </div>
+    <div class="grid">
+      <label>URL do Servico
+        <input type="text" name="service_url" value="{{if .PluggyConfig}}{{.PluggyConfig.ServiceURL}}{{end}}" placeholder="http://pluggy-service:8081">
+      </label>
+      <label style="display:flex;align-items:center;gap:.5rem;margin-top:1.5rem">
+        <input type="checkbox" name="ativo" {{if and .PluggyConfig .PluggyConfig.Ativo}}checked{{end}}>
+        Integracao ativa
+      </label>
+    </div>
+    <footer>
+      <button type="submit">Salvar Configuracao</button>
+    </footer>
+  </form>
+</div>
+
+<!-- Conectar Banco -->
+{{if and .PluggyConfig .PluggyConfig.Ativo}}
+<div class="card" style="margin-top:1.5rem">
+  <header>
+    <h3>Conectar Banco</h3>
+  </header>
+  <p class="hint">Clique no botao abaixo para abrir o widget da Pluggy e conectar uma nova conta bancaria.</p>
+  <button id="btn-pluggy-connect" onclick="openPluggyConnect()">Conectar Novo Banco</button>
+</div>
+
+<!-- Contas Conectadas -->
+<div class="card" style="margin-top:1.5rem">
+  <header>
+    <h3>Contas Conectadas</h3>
+  </header>
+  <div class="table-responsive">
+    <table>
+      <thead>
+        <tr>
+          <th>Banco</th>
+          <th>Status</th>
+          <th>Ultima Sync</th>
+          <th>Acoes</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{range .PluggyContas}}
+        <tr>
+          <td><strong>{{.ConnectorName}}</strong></td>
+          <td>
+            {{if eq .Status "UPDATED"}}
+              <span class="badge badge-success">Atualizado</span>
+            {{else if eq .Status "UPDATING"}}
+              <span class="badge badge-warning">Atualizando...</span>
+            {{else}}
+              <span class="badge">{{.Status}}</span>
+            {{end}}
+          </td>
+          <td>
+            {{if .LastSync}}
+              {{.LastSync.Format "02/01/2006 15:04"}}
+            {{else}}
+              <span class="muted">Nunca</span>
+            {{end}}
+          </td>
+          <td class="actions">
+            <form method="POST" action="/cadastros/pluggy/{{.ItemID}}/sync" style="display:inline">
+              <button type="submit" class="btn-action" title="Sincronizar">🔄</button>
+            </form>
+            <form method="POST" action="/cadastros/pluggy/{{.ItemID}}/disconnect" style="display:inline"
+                  onsubmit="return confirm('Desconectar {{.ConnectorName}}?')">
+              <button type="submit" class="btn-action danger" title="Desconectar">🗑️</button>
+            </form>
+          </td>
+        </tr>
+        {{else}}
+        <tr><td colspan="4" class="muted center">Nenhum banco conectado.</td></tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script src="https://cdn.pluggy.ai/pluggy-connect/v2/pluggy-connect.js"></script>
+<script>
+function openPluggyConnect() {
+  const btn = document.getElementById('btn-pluggy-connect');
+  btn.disabled = true;
+  btn.textContent = 'Carregando...';
+
+  fetch('/cadastros/pluggy/connect-token', { method: 'POST' })
+    .then(r => r.json())
+    .then(data => {
+      if (!data.accessToken) {
+        alert('Erro ao obter token: ' + (data.error || 'desconhecido'));
+        btn.disabled = false;
+        btn.textContent = 'Conectar Novo Banco';
+        return;
+      }
+      const pluggyConnect = new PluggyConnect({
+        connectToken: data.accessToken,
+        onSuccess: (itemData) => {
+          fetch('/cadastros/pluggy/items', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ item_id: itemData.item.id })
+          }).then(() => {
+            window.location.href = '/cadastros?tab=integracao';
+          });
+        },
+        onError: (error) => {
+          console.error('Pluggy Connect error:', error);
+          btn.disabled = false;
+          btn.textContent = 'Conectar Novo Banco';
+        },
+        onClose: () => {
+          btn.disabled = false;
+          btn.textContent = 'Conectar Novo Banco';
+        }
+      });
+      pluggyConnect.init();
+    })
+    .catch(err => {
+      alert('Erro: ' + err.message);
+      btn.disabled = false;
+      btn.textContent = 'Conectar Novo Banco';
+    });
+}
+</script>
+{{end}}
+
 {{end}}
 
 {{end}}

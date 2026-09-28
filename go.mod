@@ -8,6 +8,8 @@ require (
 )
 
 require (
+	github.com/aclindsa/ofxgo v0.1.3 // indirect
+	github.com/aclindsa/xml v0.0.0-20201125035057-bbd5c9ec99ac // indirect
 	github.com/richardlehane/mscfb v1.0.6 // indirect
 	github.com/richardlehane/msoleps v1.0.6 // indirect
 	github.com/tiendc/go-deepcopy v1.7.2 // indirect

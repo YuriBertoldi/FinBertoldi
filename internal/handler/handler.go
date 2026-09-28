@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"html/template"
+	"io"
 	"log"
 	"net/http"
 	"strconv"
@@ -58,7 +59,7 @@ func buildFuncMap() template.FuncMap {
 
 // InitTemplates carrega e compila todos os templates.
 func InitTemplates() {
-	pages := []string{"dashboard", "despesas", "pagamentos", "receitas", "investimentos", "planejamento", "emprestimos", "usuarios", "familias", "cadastros", "minha-familia", "importexport"}
+	pages := []string{"dashboard", "despesas", "pagamentos", "receitas", "investimentos", "planejamento", "emprestimos", "usuarios", "familias", "cadastros", "minha-familia", "importexport", "transacoes"}
 	for _, page := range pages {
 		t := template.New("").Funcs(buildFuncMap())
 		template.Must(t.ParseFiles("templates/base.html", "templates/"+page+".html"))
@@ -764,17 +765,32 @@ func HandlePlanejamento(db *sql.DB) http.HandlerFunc {
 
 func HandleCadastros(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		fid := auth.CurrentUser(r).FamilyID
+		u := auth.CurrentUser(r)
+		fid := u.FamilyID
 		tab := r.URL.Query().Get("tab")
 		if tab == "" { tab = "categorias" }
 		categorias, _ := store.GetCategorias(db, fid)
 		cartoes, _ := store.GetCartoes(db, fid)
-		render(w, "cadastros", models.CadastrosPage{
+
+		page := models.CadastrosPage{
 			BasePage:   bp(db, r, "cadastros", "Cadastros"),
 			TabAtivo:   tab,
 			Categorias: categorias,
 			Cartoes:    cartoes,
-		})
+		}
+
+		if tab == "integracao" && u.Admin {
+			cfg, err := store.GetIntegracaoConfig(db, "pluggy")
+			if err == nil {
+				page.PluggyConfig = cfg
+				page.PluggyContas, _ = store.GetPluggyItems(db, fid)
+				page.PluggyStatus = pluggyHealthCheck(cfg.ServiceURL)
+			} else {
+				page.PluggyStatus = "nao_configurado"
+			}
+		}
+
+		render(w, "cadastros", page)
 	}
 }
 
@@ -1179,4 +1195,131 @@ func HandleMinhaSenha(db *sql.DB) http.HandlerFunc {
 		}
 		http.Redirect(w, r, "/minha-familia?ok=1", http.StatusSeeOther)
 	})
+}
+
+// ---------------------------------------------------------------------------
+// Pluggy Integration Admin Handlers
+// ---------------------------------------------------------------------------
+
+func pluggyHealthCheck(serviceURL string) string {
+	if serviceURL == "" {
+		return "nao_configurado"
+	}
+	client := &http.Client{Timeout: 3 * time.Second}
+	resp, err := client.Get(serviceURL + "/api/pluggy/status")
+	if err != nil || resp.StatusCode != http.StatusOK {
+		return "offline"
+	}
+	defer resp.Body.Close()
+	return "online"
+}
+
+func pluggyProxy(db *sql.DB, method, path string, body any) ([]byte, int, error) {
+	cfg, err := store.GetIntegracaoConfig(db, "pluggy")
+	if err != nil || !cfg.Ativo {
+		return nil, http.StatusServiceUnavailable, fmt.Errorf("pluggy nao configurado")
+	}
+
+	var reqBody io.Reader
+	if body != nil {
+		data, _ := json.Marshal(body)
+		reqBody = bytes.NewReader(data)
+	}
+
+	req, err := http.NewRequest(method, cfg.ServiceURL+path, reqBody)
+	if err != nil {
+		return nil, http.StatusInternalServerError, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, http.StatusBadGateway, fmt.Errorf("pluggy-service indisponivel: %w", err)
+	}
+	defer resp.Body.Close()
+
+	respBody, _ := io.ReadAll(resp.Body)
+	return respBody, resp.StatusCode, nil
+}
+
+func HandleSavePluggyConfig(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		r.ParseForm()
+		cfg := models.IntegracaoConfig{
+			Integracao:   "pluggy",
+			ClientID:     strings.TrimSpace(r.FormValue("client_id")),
+			ClientSecret: strings.TrimSpace(r.FormValue("client_secret")),
+			ServiceURL:   strings.TrimSpace(r.FormValue("service_url")),
+			Ativo:        r.FormValue("ativo") == "on",
+		}
+		if err := store.SaveIntegracaoConfig(db, cfg); err != nil {
+			log.Printf("Erro ao salvar config pluggy: %v", err)
+		}
+		http.Redirect(w, r, "/cadastros?tab=integracao", http.StatusSeeOther)
+	}
+}
+
+func HandlePluggyConnectToken(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		body, status, err := pluggyProxy(db, "POST", "/api/pluggy/connect-token", nil)
+		if err != nil {
+			http.Error(w, err.Error(), status)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(status)
+		w.Write(body)
+	}
+}
+
+func HandlePluggyRegisterItem(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		u := auth.CurrentUser(r)
+		var payload struct {
+			ItemID string `json:"item_id"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil || payload.ItemID == "" {
+			http.Error(w, "item_id obrigatorio", http.StatusBadRequest)
+			return
+		}
+
+		// Register item in pluggy-service
+		body, status, err := pluggyProxy(db, "POST", "/api/pluggy/items", map[string]any{
+			"item_id":   payload.ItemID,
+			"family_id": u.FamilyID,
+		})
+		if err != nil {
+			http.Error(w, err.Error(), status)
+			return
+		}
+
+		// Also save locally
+		store.CreatePluggyItem(db, u.FamilyID, payload.ItemID, "")
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(status)
+		w.Write(body)
+	}
+}
+
+func HandlePluggyDisconnect(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		u := auth.CurrentUser(r)
+		itemID := r.PathValue("item_id")
+		store.DeletePluggyItem(db, u.FamilyID, itemID)
+		http.Redirect(w, r, "/cadastros?tab=integracao", http.StatusSeeOther)
+	}
+}
+
+func HandlePluggySync(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		itemID := r.PathValue("item_id")
+		_, status, err := pluggyProxy(db, "POST", "/api/pluggy/sync/"+itemID, nil)
+		if err != nil {
+			http.Error(w, err.Error(), status)
+			return
+		}
+		http.Redirect(w, r, "/cadastros?tab=integracao", http.StatusSeeOther)
+	}
 }

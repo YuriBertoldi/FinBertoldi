@@ -805,6 +805,215 @@ func ToggleScreenPermission(db *sql.DB, userID int, tela string) (bool, error) {
 	return true, err
 }
 
+// --- Transações Bancárias ---
+
+func CreateTransacaoBancoBatch(db *sql.DB, fid int, txns []models.TransacaoBanco) (novos int, err error) {
+	tx, err := db.Begin()
+	if err != nil {
+		return 0, err
+	}
+	defer tx.Rollback()
+
+	for _, t := range txns {
+		if t.FitID != "" {
+			var exists bool
+			tx.QueryRow(`SELECT EXISTS(SELECT 1 FROM transacoes_banco WHERE family_id=$1 AND fit_id=$2)`,
+				fid, t.FitID).Scan(&exists)
+			if exists {
+				continue
+			}
+		}
+		_, err := tx.Exec(`INSERT INTO transacoes_banco
+			(family_id, data, descricao, valor, tipo, categoria, origem, banco, fit_id, status, pluggy_item_id)
+			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+			fid, t.Data, t.Descricao, t.Valor, t.Tipo, t.Categoria, t.Origem, t.Banco, t.FitID, "pendente", t.PluggyItemID)
+		if err != nil {
+			return novos, fmt.Errorf("insert transacao: %w", err)
+		}
+		novos++
+	}
+	return novos, tx.Commit()
+}
+
+func GetTransacoesBanco(db *sql.DB, fid int, mes, origem, status, banco string) ([]models.TransacaoBanco, error) {
+	q := `SELECT id, data, descricao, valor, tipo, categoria, origem, banco, fit_id, status,
+	             despesa_id, receita_id, pluggy_item_id, criado_em
+	      FROM transacoes_banco WHERE family_id=$1`
+	args := []any{fid}
+	n := 2
+	if mes != "" {
+		q += fmt.Sprintf(` AND TO_CHAR(data, 'YYYY-MM') = $%d`, n)
+		args = append(args, mes)
+		n++
+	}
+	if origem != "" {
+		q += fmt.Sprintf(` AND origem = $%d`, n)
+		args = append(args, origem)
+		n++
+	}
+	if status != "" {
+		q += fmt.Sprintf(` AND status = $%d`, n)
+		args = append(args, status)
+		n++
+	}
+	if banco != "" {
+		q += fmt.Sprintf(` AND banco = $%d`, n)
+		args = append(args, banco)
+		n++
+	}
+	q += ` ORDER BY data DESC, id DESC`
+	rows, err := db.Query(q, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var list []models.TransacaoBanco
+	for rows.Next() {
+		var t models.TransacaoBanco
+		rows.Scan(&t.ID, &t.Data, &t.Descricao, &t.Valor, &t.Tipo, &t.Categoria,
+			&t.Origem, &t.Banco, &t.FitID, &t.Status,
+			&t.DespesaID, &t.ReceitaID, &t.PluggyItemID, &t.CriadoEm)
+		list = append(list, t)
+	}
+	return list, nil
+}
+
+func ConverterTransacaoEmDespesa(db *sql.DB, fid, id int, categoria string) error {
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	var t models.TransacaoBanco
+	err = tx.QueryRow(`SELECT descricao, valor FROM transacoes_banco WHERE id=$1 AND family_id=$2`, id, fid).
+		Scan(&t.Descricao, &t.Valor)
+	if err != nil {
+		return fmt.Errorf("transacao não encontrada: %w", err)
+	}
+
+	var despesaID int
+	err = tx.QueryRow(`INSERT INTO despesas_fixas (family_id, nome, valor, categoria)
+		VALUES ($1,$2,$3,$4) RETURNING id`, fid, t.Descricao, abs(t.Valor), categoria).Scan(&despesaID)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(`UPDATE transacoes_banco SET status='convertida', despesa_id=$1, categoria=$2
+		WHERE id=$3 AND family_id=$4`, despesaID, categoria, id, fid)
+	if err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+func ConverterTransacaoEmReceita(db *sql.DB, fid, id int, tipo string) error {
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	var descricao string
+	var valor float64
+	var data time.Time
+	err = tx.QueryRow(`SELECT descricao, valor, data FROM transacoes_banco WHERE id=$1 AND family_id=$2`, id, fid).
+		Scan(&descricao, &valor, &data)
+	if err != nil {
+		return fmt.Errorf("transacao não encontrada: %w", err)
+	}
+
+	var receitaID int
+	err = tx.QueryRow(`INSERT INTO receitas (family_id, descricao, valor, data, tipo, recorrente)
+		VALUES ($1,$2,$3,$4,$5,false) RETURNING id`, fid, descricao, abs(valor), data, tipo).Scan(&receitaID)
+	if err != nil {
+		return err
+	}
+
+	_, err = tx.Exec(`UPDATE transacoes_banco SET status='convertida', receita_id=$1
+		WHERE id=$2 AND family_id=$3`, receitaID, id, fid)
+	if err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+func IgnorarTransacao(db *sql.DB, fid, id int) error {
+	_, err := db.Exec(`UPDATE transacoes_banco SET status='ignorada' WHERE id=$1 AND family_id=$2`, id, fid)
+	return err
+}
+
+func CategorizarTransacao(db *sql.DB, fid, id int, categoria string) error {
+	_, err := db.Exec(`UPDATE transacoes_banco SET categoria=$1, status='categorizada' WHERE id=$2 AND family_id=$3`,
+		categoria, id, fid)
+	return err
+}
+
+func GetPluggyItems(db *sql.DB, fid int) ([]models.PluggyItem, error) {
+	rows, err := db.Query(`SELECT id, family_id, item_id, connector_name, status, last_sync, criado_em
+		FROM pluggy_items WHERE family_id=$1 ORDER BY criado_em DESC`, fid)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var list []models.PluggyItem
+	for rows.Next() {
+		var p models.PluggyItem
+		rows.Scan(&p.ID, &p.FamilyID, &p.ItemID, &p.ConnectorName, &p.Status, &p.LastSync, &p.CriadoEm)
+		list = append(list, p)
+	}
+	return list, nil
+}
+
+func CreatePluggyItem(db *sql.DB, fid int, itemID, connectorName string) error {
+	_, err := db.Exec(`INSERT INTO pluggy_items (family_id, item_id, connector_name)
+		VALUES ($1,$2,$3) ON CONFLICT (item_id) DO NOTHING`, fid, itemID, connectorName)
+	return err
+}
+
+func UpdatePluggyItemSync(db *sql.DB, itemID string) error {
+	_, err := db.Exec(`UPDATE pluggy_items SET last_sync=NOW() WHERE item_id=$1`, itemID)
+	return err
+}
+
+func DeletePluggyItem(db *sql.DB, fid int, itemID string) error {
+	_, err := db.Exec(`DELETE FROM pluggy_items WHERE family_id=$1 AND item_id=$2`, fid, itemID)
+	return err
+}
+
+// --- Integracoes Config ---
+
+func GetIntegracaoConfig(db *sql.DB, integracao string) (*models.IntegracaoConfig, error) {
+	var c models.IntegracaoConfig
+	err := db.QueryRow(`SELECT id, integracao, client_id, client_secret, service_url, ativo
+		FROM integracoes_config WHERE integracao=$1`, integracao).
+		Scan(&c.ID, &c.Integracao, &c.ClientID, &c.ClientSecret, &c.ServiceURL, &c.Ativo)
+	if err != nil {
+		return nil, err
+	}
+	return &c, nil
+}
+
+func SaveIntegracaoConfig(db *sql.DB, c models.IntegracaoConfig) error {
+	_, err := db.Exec(`INSERT INTO integracoes_config (integracao, client_id, client_secret, service_url, ativo, atualizado_em)
+		VALUES ($1, $2, $3, $4, $5, NOW())
+		ON CONFLICT (integracao) DO UPDATE SET
+			client_id=EXCLUDED.client_id,
+			client_secret=EXCLUDED.client_secret,
+			service_url=EXCLUDED.service_url,
+			ativo=EXCLUDED.ativo,
+			atualizado_em=NOW()`,
+		c.Integracao, c.ClientID, c.ClientSecret, c.ServiceURL, c.Ativo)
+	return err
+}
+
+func abs(v float64) float64 {
+	if v < 0 {
+		return -v
+	}
+	return v
+}
+
 // --- Migrations ---
 
 type migration struct {
@@ -1057,6 +1266,59 @@ var migrations = []migration{
 		name:    "reserva_em_tipo",
 		stmts: []string{
 			`ALTER TABLE reserva_emergencia ADD COLUMN IF NOT EXISTS tipo VARCHAR(10) NOT NULL DEFAULT 'deposito'`,
+		},
+	},
+	{
+		version: 11,
+		name:    "transacoes_banco_e_pluggy_items",
+		stmts: []string{
+			`CREATE TABLE IF NOT EXISTS transacoes_banco (
+				id              SERIAL PRIMARY KEY,
+				family_id       INTEGER NOT NULL REFERENCES families(id),
+				data            DATE NOT NULL,
+				descricao       TEXT NOT NULL,
+				valor           NUMERIC(14,2) NOT NULL,
+				tipo            VARCHAR(10) NOT NULL,
+				categoria       VARCHAR(100) NOT NULL DEFAULT '',
+				origem          VARCHAR(20) NOT NULL,
+				banco           VARCHAR(100) NOT NULL DEFAULT '',
+				fit_id          VARCHAR(255) NOT NULL DEFAULT '',
+				status          VARCHAR(20) NOT NULL DEFAULT 'pendente',
+				despesa_id      INTEGER REFERENCES despesas_fixas(id),
+				receita_id      INTEGER REFERENCES receitas(id),
+				pluggy_item_id  VARCHAR(255) NOT NULL DEFAULT '',
+				criado_em       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+			)`,
+			`CREATE INDEX IF NOT EXISTS idx_transacoes_banco_family ON transacoes_banco(family_id)`,
+			`CREATE INDEX IF NOT EXISTS idx_transacoes_banco_fit_id ON transacoes_banco(family_id, fit_id)`,
+			`CREATE TABLE IF NOT EXISTS pluggy_items (
+				id              SERIAL PRIMARY KEY,
+				family_id       INTEGER NOT NULL REFERENCES families(id),
+				item_id         VARCHAR(255) NOT NULL UNIQUE,
+				connector_name  VARCHAR(255) NOT NULL DEFAULT '',
+				status          VARCHAR(50) NOT NULL DEFAULT 'active',
+				last_sync       TIMESTAMPTZ,
+				criado_em       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+			)`,
+			`CREATE INDEX IF NOT EXISTS idx_pluggy_items_family ON pluggy_items(family_id)`,
+		},
+	},
+	{
+		version: 12,
+		name:    "integracoes_config",
+		stmts: []string{
+			`CREATE TABLE IF NOT EXISTS integracoes_config (
+				id              SERIAL PRIMARY KEY,
+				integracao      VARCHAR(50) NOT NULL UNIQUE,
+				client_id       TEXT NOT NULL DEFAULT '',
+				client_secret   TEXT NOT NULL DEFAULT '',
+				service_url     TEXT NOT NULL DEFAULT '',
+				ativo           BOOLEAN NOT NULL DEFAULT false,
+				atualizado_em   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+			)`,
+			`INSERT INTO integracoes_config (integracao, service_url)
+			 VALUES ('pluggy', 'http://pluggy-service:8081')
+			 ON CONFLICT (integracao) DO NOTHING`,
 		},
 	},
 }

@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(go test:*)",
+      "WebSearch",
+      "WebFetch(domain:docs.pluggy.ai)",
+      "Bash(go get:*)",
+      "Bash(go build:*)",
+      "Bash(go mod:*)",
+      "Bash(scp -i C:/Go/finBertoldi/Oracle/ssh-key-2026-05-22.key ubuntu@157.151.131.79:/home/ubuntu/backup_fincontrol_20260927_223642.sql C:/Go/finBertoldi/backups/)"
+    ]
+  }
+}

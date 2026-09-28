@@ -1,0 +1,263 @@
+{{define "content"}}
+<div class="page-header">
+  <h2>Transacoes Bancarias</h2>
+  <div class="page-actions">
+    <button data-open-dialog="dialog-import-csv" class="outline">Importar CSV</button>
+    <button data-open-dialog="dialog-import-ofx" class="outline">Importar OFX</button>
+    {{if .Contas}}
+    <span class="badge badge-pluggy" title="Contas conectadas via Pluggy">Pluggy: {{len .Contas}} conta(s)</span>
+    {{end}}
+  </div>
+</div>
+
+{{if .Erro}}
+<div class="alert alert-erro">{{.Erro}}</div>
+{{end}}
+
+{{if .Resultado}}
+<div class="alert alert-ok">
+  <strong>Importacao concluida!</strong>
+  {{.Resultado.Novos}} nova(s) transacao(oes) importada(s).
+  {{if .Resultado.Duplicados}} {{.Resultado.Duplicados}} duplicata(s) ignorada(s).{{end}}
+  Total no arquivo: {{.Resultado.Total}}.
+</div>
+{{end}}
+
+<!-- Filtros -->
+<div class="filter-bar">
+  <form method="GET" action="/transacoes" class="txn-filters">
+    <input type="month" name="mes" value="{{.Filtros.Mes}}">
+    <select name="origem">
+      <option value="">Todas as origens</option>
+      <option value="csv" {{if eq .Filtros.Origem "csv"}}selected{{end}}>CSV</option>
+      <option value="ofx" {{if eq .Filtros.Origem "ofx"}}selected{{end}}>OFX</option>
+      <option value="pluggy" {{if eq .Filtros.Origem "pluggy"}}selected{{end}}>Pluggy</option>
+    </select>
+    <select name="status">
+      <option value="">Todos os status</option>
+      <option value="pendente" {{if eq .Filtros.Status "pendente"}}selected{{end}}>Pendente</option>
+      <option value="categorizada" {{if eq .Filtros.Status "categorizada"}}selected{{end}}>Categorizada</option>
+      <option value="convertida" {{if eq .Filtros.Status "convertida"}}selected{{end}}>Convertida</option>
+      <option value="ignorada" {{if eq .Filtros.Status "ignorada"}}selected{{end}}>Ignorada</option>
+    </select>
+    <button type="submit" class="btn-mini">Filtrar</button>
+  </form>
+</div>
+
+<!-- Resumo -->
+<div class="card-grid card-grid-3">
+  <div class="card card-resumo">
+    <div class="card-label">Entradas</div>
+    <div class="card-value valor-positivo">{{brl .TotalEntradas}}</div>
+  </div>
+  <div class="card card-resumo">
+    <div class="card-label">Saidas</div>
+    <div class="card-value valor-negativo">{{brl .TotalSaidas}}</div>
+  </div>
+  <div class="card card-resumo">
+    <div class="card-label">Transacoes</div>
+    <div class="card-value">{{len .Transacoes}}</div>
+  </div>
+</div>
+
+<!-- Tabela -->
+<div class="table-responsive">
+  <table>
+    <thead>
+      <tr>
+        <th>Data</th>
+        <th>Descricao</th>
+        <th>Valor</th>
+        <th>Origem</th>
+        <th>Banco</th>
+        <th>Status</th>
+        <th>Acoes</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{if not .Transacoes}}
+      <tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--text-muted)">Nenhuma transacao encontrada para os filtros selecionados.</td></tr>
+      {{end}}
+      {{range .Transacoes}}
+      <tr class="txn-row txn-{{.Status}}">
+        <td>{{date .Data}}</td>
+        <td>
+          {{.Descricao}}
+          {{if .Categoria}}<br><span class="badge badge-cat">{{.Categoria}}</span>{{end}}
+        </td>
+        <td class="{{if eq .Tipo "credito"}}valor-positivo{{else}}valor-negativo{{end}}" style="font-weight:600;white-space:nowrap">
+          {{brl .Valor}}
+        </td>
+        <td><span class="badge badge-origem-{{.Origem}}">{{.Origem}}</span></td>
+        <td>{{.Banco}}</td>
+        <td><span class="badge badge-status-{{.Status}}">{{.Status}}</span></td>
+        <td class="actions">
+          {{if eq .Status "pendente"}}
+            <button data-open-dialog="dialog-converter-{{.ID}}" class="btn-action" title="Converter">Converter</button>
+            <form method="POST" action="/transacoes/{{.ID}}/ignorar" style="display:inline">
+              <button type="submit" class="btn-action danger" title="Ignorar" onclick="return confirm('Ignorar esta transacao?')">Ignorar</button>
+            </form>
+          {{else if eq .Status "categorizada"}}
+            <button data-open-dialog="dialog-converter-{{.ID}}" class="btn-action" title="Converter">Converter</button>
+          {{else if eq .Status "convertida"}}
+            <span class="text-muted">Convertida</span>
+          {{else}}
+            <span class="text-muted">Ignorada</span>
+          {{end}}
+        </td>
+      </tr>
+
+      {{if or (eq .Status "pendente") (eq .Status "categorizada")}}
+      <!-- Dialog Converter -->
+      <dialog id="dialog-converter-{{.ID}}">
+        <article>
+          <header>
+            <button data-close-dialog aria-label="Fechar"></button>
+            <h3>Converter: {{.Descricao}}</h3>
+          </header>
+          <p>Valor: <strong>{{brl .Valor}}</strong> | Data: {{date .Data}}</p>
+          <div class="converter-tabs">
+            <!-- Tab Despesa -->
+            <details open>
+              <summary>Converter em Despesa</summary>
+              <form method="POST" action="/transacoes/{{.ID}}/converter">
+                <input type="hidden" name="destino" value="despesa">
+                <label>Categoria
+                  <select name="categoria" required>
+                    <option value="">Selecione...</option>
+                    {{range $.Categorias}}
+                    <option value="{{.Nome}}">{{.Nome}} ({{.Grupo}})</option>
+                    {{end}}
+                  </select>
+                </label>
+                <button type="submit">Converter em Despesa</button>
+              </form>
+            </details>
+            <!-- Tab Receita -->
+            <details>
+              <summary>Converter em Receita</summary>
+              <form method="POST" action="/transacoes/{{.ID}}/converter">
+                <input type="hidden" name="destino" value="receita">
+                <label>Tipo
+                  <select name="tipo" required>
+                    <option value="">Selecione...</option>
+                    <option value="Salario">Salario</option>
+                    <option value="Freelance">Freelance</option>
+                    <option value="Investimento">Investimento</option>
+                    <option value="Outros">Outros</option>
+                  </select>
+                </label>
+                <button type="submit">Converter em Receita</button>
+              </form>
+            </details>
+          </div>
+        </article>
+      </dialog>
+      {{end}}
+      {{end}}
+    </tbody>
+  </table>
+</div>
+
+<!-- Dialog Import CSV -->
+<dialog id="dialog-import-csv">
+  <article>
+    <header>
+      <button data-close-dialog aria-label="Fechar"></button>
+      <h3>Importar CSV</h3>
+    </header>
+    <p class="hint">O arquivo CSV deve conter as colunas: <strong>data</strong>, <strong>descricao</strong>, <strong>valor</strong>. Opcionalmente: <strong>categoria</strong>.</p>
+    <p class="hint">Formatos aceitos: datas DD/MM/AAAA ou AAAA-MM-DD, valores com virgula (1.234,56) ou ponto (1,234.56).</p>
+    <form method="POST" action="/transacoes/import-csv" enctype="multipart/form-data" class="import-form">
+      <label>Banco (opcional)
+        <input type="text" name="banco" placeholder="Ex: Nubank, Itau...">
+      </label>
+      <label for="csv-file" class="file-label">
+        <span class="file-icon">CSV</span>
+        <span class="file-text" id="csv-file-text">Clique para escolher o arquivo .csv</span>
+        <input type="file" id="csv-file" name="arquivo" accept=".csv,.txt" required onchange="document.getElementById('csv-file-text').textContent = this.files[0]?.name || 'Clique para escolher'">
+      </label>
+      <button type="submit">Importar CSV</button>
+    </form>
+  </article>
+</dialog>
+
+<!-- Dialog Import OFX -->
+<dialog id="dialog-import-ofx">
+  <article>
+    <header>
+      <button data-close-dialog aria-label="Fechar"></button>
+      <h3>Importar OFX</h3>
+    </header>
+    <p class="hint">Selecione um arquivo <strong>.ofx</strong> exportado do seu banco. O sistema detecta automaticamente o banco e as transacoes.</p>
+    <form method="POST" action="/transacoes/import-ofx" enctype="multipart/form-data" class="import-form">
+      <label>Banco (opcional, sobrescreve deteccao automatica)
+        <input type="text" name="banco" placeholder="Ex: Nubank, Itau...">
+      </label>
+      <label for="ofx-file" class="file-label">
+        <span class="file-icon">OFX</span>
+        <span class="file-text" id="ofx-file-text">Clique para escolher o arquivo .ofx</span>
+        <input type="file" id="ofx-file" name="arquivo" accept=".ofx,.qfx" required onchange="document.getElementById('ofx-file-text').textContent = this.files[0]?.name || 'Clique para escolher'">
+      </label>
+      <button type="submit">Importar OFX</button>
+    </form>
+  </article>
+</dialog>
+
+<style>
+.txn-filters {
+  display: flex;
+  gap: .5rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.txn-filters input, .txn-filters select {
+  margin: 0;
+  padding: .4rem .6rem;
+  font-size: .85rem;
+}
+.txn-row.txn-convertida { opacity: .55; }
+.txn-row.txn-ignorada { opacity: .4; text-decoration: line-through; }
+
+.badge-origem-csv { background: #3498db; color: #fff; }
+.badge-origem-ofx { background: #9b59b6; color: #fff; }
+.badge-origem-pluggy { background: #27ae60; color: #fff; }
+
+.badge-status-pendente { background: rgba(241,196,15,.2); color: #f1c40f; border: 1px solid rgba(241,196,15,.3); }
+.badge-status-categorizada { background: rgba(52,152,219,.2); color: #3498db; border: 1px solid rgba(52,152,219,.3); }
+.badge-status-convertida { background: rgba(39,174,96,.2); color: #27ae60; border: 1px solid rgba(39,174,96,.3); }
+.badge-status-ignorada { background: rgba(149,165,166,.2); color: #95a5a6; border: 1px solid rgba(149,165,166,.3); }
+
+.badge-cat { background: var(--bg-elev-2); font-size: .75rem; }
+.badge-pluggy { background: rgba(39,174,96,.15); color: #27ae60; border: 1px solid rgba(39,174,96,.3); padding: .3rem .7rem; border-radius: 8px; font-size: .8rem; }
+
+.converter-tabs details { margin-bottom: .75rem; }
+.converter-tabs summary { cursor: pointer; font-weight: 600; padding: .4rem 0; }
+.converter-tabs form { padding: .5rem 0; }
+
+.card-grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: .75rem; margin-bottom: 1.25rem; }
+.card-resumo { text-align: center; padding: 1rem; }
+.card-label { font-size: .8rem; color: var(--text-muted); margin-bottom: .25rem; }
+.card-value { font-size: 1.3rem; font-weight: 700; }
+
+.import-form { display: flex; flex-direction: column; gap: .75rem; }
+.file-label {
+  display: flex; align-items: center; gap: .75rem;
+  padding: .9rem 1.1rem;
+  background: var(--bg-input);
+  border: 1px dashed var(--border-mid);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: border-color .15s;
+}
+.file-label:hover { border-color: var(--color-receita); }
+.file-label input[type="file"] { display: none; }
+.file-icon { font-size: 1rem; font-weight: 700; padding: .2rem .5rem; background: var(--bg-elev-2); border-radius: 4px; }
+.file-text { font-size: .88rem; color: var(--text-secondary); }
+
+.alert { padding: .9rem 1.1rem; border-radius: var(--radius-sm); margin-bottom: 1.25rem; font-size: .9rem; }
+.alert-ok { background: rgba(39,174,96,.12); border: 1px solid rgba(39,174,96,.3); color: var(--text-primary); }
+.alert-erro { background: rgba(231,76,60,.12); border: 1px solid rgba(231,76,60,.3); color: var(--text-primary); }
+.text-muted { color: var(--text-muted); font-size: .8rem; }
+</style>
+{{end}}
