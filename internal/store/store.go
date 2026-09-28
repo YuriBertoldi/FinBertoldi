@@ -1,7 +1,9 @@
 package store
 
 import (
+	"crypto/rand"
 	"database/sql"
+	"encoding/hex"
 	"fmt"
 	"log"
 	"math"
@@ -1863,8 +1865,14 @@ func EnsureAdmin(db *sql.DB) error {
 		adminEmail = "admin@finbertoldi.com"
 	}
 	adminPass := os.Getenv("ADMIN_PASSWORD")
+	generated := false
 	if adminPass == "" {
-		adminPass = "admin123"
+		b := make([]byte, 8)
+		if _, err := rand.Read(b); err != nil {
+			return fmt.Errorf("gerar senha: %w", err)
+		}
+		adminPass = hex.EncodeToString(b)
+		generated = true
 	}
 	hash, err := bcrypt.GenerateFromPassword([]byte(adminPass), bcrypt.DefaultCost)
 	if err != nil {
@@ -1878,7 +1886,11 @@ func EnsureAdmin(db *sql.DB) error {
 		`INSERT INTO users (nome, email, senha_hash, admin, family_id) VALUES ('Admin', $1, $2, true, $3)`,
 		adminEmail, string(hash), familyID)
 	if err == nil {
-		log.Printf("Usuário admin criado: %s (altere a senha após o primeiro login)", adminEmail)
+		if generated {
+			log.Printf("Usuário admin criado: %s / %s (ANOTE ESTA SENHA — não será exibida novamente)", adminEmail, adminPass)
+		} else {
+			log.Printf("Usuário admin criado: %s", adminEmail)
+		}
 	}
 	return err
 }
