@@ -32,9 +32,14 @@ coverage.html
 pgdata/
 
 # Backups / dumps
+backups/
 *.bak
 *.dump
+*.sql
 *.sql.gz
+
+# Oracle Cloud / SSH
+Oracle/
 
 # OS
 .DS_Store
@@ -46,3 +51,6 @@ desktop.ini
 
 # Dados sensiveis de producao
 PRODUCAO.md
+
+# Claude Code (settings locais com IPs/paths)
+.claude/settings.local.json

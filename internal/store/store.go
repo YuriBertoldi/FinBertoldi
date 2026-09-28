@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"math"
 	"os"
 	"time"
 
@@ -256,7 +257,9 @@ func GetParcelamentosVigentesNoMes(db *sql.DB, fid int, mes time.Time) ([]models
 		       p.parcela_atual
 		     + (EXTRACT(YEAR  FROM $1::date) - EXTRACT(YEAR  FROM p.data_inicio)) * 12
 		     + (EXTRACT(MONTH FROM $1::date) - EXTRACT(MONTH FROM p.data_inicio)) AS parcela_mes,
-		       COALESCE(pm.pago, false) AS pago
+		       COALESCE(pm.pago, false) AS pago,
+		       p.financiamento, p.valor_original, p.taxa_juros, p.total_economizado,
+		       COALESCE(pm.antecipada, false), pm.valor_pago
 		FROM parcelamentos p
 		LEFT JOIN parcelamentos_mes pm ON pm.parcelamento_id = p.id AND pm.mes = $1
 		WHERE p.ativo = true
@@ -275,7 +278,9 @@ func GetParcelamentosVigentesNoMes(db *sql.DB, fid int, mes time.Time) ([]models
 		var p models.Parcelamento
 		var parcelaMes int
 		rows.Scan(&p.ID, &p.Descricao, &p.Cartao, &p.ValorParcela,
-			&p.TotalParcelas, &p.DataInicio, &p.Ativo, &parcelaMes, &p.Pago)
+			&p.TotalParcelas, &p.DataInicio, &p.Ativo, &parcelaMes, &p.Pago,
+			&p.Financiamento, &p.ValorOriginal, &p.TaxaJuros, &p.TotalEconomizado,
+			&p.Antecipada, &p.ValorPago)
 		p.ParcelaAtual = parcelaMes
 		p.Mes = mesStr
 		p.Restantes = p.TotalParcelas - parcelaMes
@@ -283,6 +288,9 @@ func GetParcelamentosVigentesNoMes(db *sql.DB, fid int, mes time.Time) ([]models
 			p.Restantes = 0
 		}
 		p.ValorRestante = float64(p.Restantes+1) * p.ValorParcela
+		if p.Financiamento && p.ValorOriginal > 0 {
+			p.TotalJuros = (p.ValorParcela * float64(p.TotalParcelas)) - p.ValorOriginal
+		}
 		list = append(list, p)
 	}
 	return list, nil
@@ -303,7 +311,8 @@ func GetParcelamentos(db *sql.DB, fid int, apenasAtivos bool) ([]models.Parcelam
 	       LEAST(parcela_atual
 	         + (EXTRACT(YEAR FROM NOW()) - EXTRACT(YEAR FROM data_inicio))::int * 12
 	         + (EXTRACT(MONTH FROM NOW()) - EXTRACT(MONTH FROM data_inicio))::int,
-	         total_parcelas) AS parcela_hoje
+	         total_parcelas) AS parcela_hoje,
+	       financiamento, valor_original, taxa_juros, total_economizado
 	      FROM parcelamentos WHERE family_id = $1`
 	if apenasAtivos {
 		q += ` AND ativo = true`
@@ -320,7 +329,8 @@ func GetParcelamentos(db *sql.DB, fid int, apenasAtivos bool) ([]models.Parcelam
 		var p models.Parcelamento
 		var parcelaHoje int
 		rows.Scan(&p.ID, &p.Descricao, &p.Cartao, &p.ValorParcela,
-			&p.ParcelaAtual, &p.TotalParcelas, &p.DataInicio, &p.Ativo, &parcelaHoje)
+			&p.ParcelaAtual, &p.TotalParcelas, &p.DataInicio, &p.Ativo, &parcelaHoje,
+			&p.Financiamento, &p.ValorOriginal, &p.TaxaJuros, &p.TotalEconomizado)
 		p.ParcelaAtual = parcelaHoje
 		p.Restantes = p.TotalParcelas - p.ParcelaAtual
 		if p.Restantes < 0 {
@@ -330,16 +340,19 @@ func GetParcelamentos(db *sql.DB, fid int, apenasAtivos bool) ([]models.Parcelam
 		if !p.Ativo {
 			p.ValorRestante = 0
 		}
+		if p.Financiamento && p.ValorOriginal > 0 {
+			p.TotalJuros = (p.ValorParcela * float64(p.TotalParcelas)) - p.ValorOriginal
+		}
 		list = append(list, p)
 	}
 	return list, nil
 }
 
-func CreateParcelamento(db *sql.DB, fid int, descricao, cartao string, valorParcela float64, parcelaAtual, totalParcelas int, dataInicio time.Time) error {
+func CreateParcelamento(db *sql.DB, fid int, descricao, cartao string, valorParcela float64, parcelaAtual, totalParcelas int, dataInicio time.Time, financiamento bool, valorOriginal, taxaJuros float64) error {
 	_, err := db.Exec(`
-		INSERT INTO parcelamentos (family_id, descricao, cartao, valor_parcela, parcela_atual, total_parcelas, data_inicio)
-		VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-		fid, descricao, cartao, valorParcela, parcelaAtual, totalParcelas, dataInicio)
+		INSERT INTO parcelamentos (family_id, descricao, cartao, valor_parcela, parcela_atual, total_parcelas, data_inicio, financiamento, valor_original, taxa_juros)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+		fid, descricao, cartao, valorParcela, parcelaAtual, totalParcelas, dataInicio, financiamento, valorOriginal, taxaJuros)
 	return err
 }
 
@@ -352,6 +365,155 @@ func UpdateParcelamento(db *sql.DB, fid, id, parcelaAtual int, ativo bool) error
 func DeleteParcelamento(db *sql.DB, fid, id int) error {
 	_, err := db.Exec(`DELETE FROM parcelamentos WHERE id=$1 AND family_id=$2`, id, fid)
 	return err
+}
+
+// DescontoRacional calcula o desconto racional composto (padrão brasileiro)
+// para pagamento antecipado de uma parcela.
+func DescontoRacional(valorParcela, taxaJurosMensal float64, mesesAntecipados int) (valorComDesconto, economia float64) {
+	if taxaJurosMensal <= 0 || mesesAntecipados <= 0 {
+		return valorParcela, 0
+	}
+	taxa := taxaJurosMensal / 100.0
+	fator := math.Pow(1+taxa, float64(mesesAntecipados))
+	valorComDesconto = math.Round(valorParcela/fator*100) / 100
+	economia = math.Round((valorParcela-valorComDesconto)*100) / 100
+	return
+}
+
+// GetAntecipacoesPreview retorna as parcelas disponíveis para antecipação com desconto calculado.
+func GetAntecipacoesPreview(db *sql.DB, fid, parcID int) ([]models.AntecipacaoPreview, error) {
+	var financiamento bool
+	var valorParcela, taxaJuros float64
+	var totalParcelas, parcelaAtual int
+	var dataInicio time.Time
+	err := db.QueryRow(`
+		SELECT financiamento, valor_parcela, taxa_juros, total_parcelas, parcela_atual, data_inicio
+		FROM parcelamentos WHERE id=$1 AND family_id=$2`, parcID, fid).
+		Scan(&financiamento, &valorParcela, &taxaJuros, &totalParcelas, &parcelaAtual, &dataInicio)
+	if err != nil {
+		return nil, err
+	}
+	if !financiamento {
+		return nil, fmt.Errorf("parcelamento não é financiamento")
+	}
+
+	// Calcular parcela atual baseada no mês corrente
+	now := time.Now()
+	parcelaHoje := parcelaAtual +
+		(now.Year()-dataInicio.Year())*12 +
+		int(now.Month()-dataInicio.Month())
+	if parcelaHoje > totalParcelas {
+		parcelaHoje = totalParcelas
+	}
+
+	// Buscar parcelas já pagas/antecipadas
+	pagas := map[int]bool{}
+	rows, err := db.Query(`
+		SELECT EXTRACT(YEAR FROM mes)::int * 12 + EXTRACT(MONTH FROM mes)::int
+		FROM parcelamentos_mes WHERE parcelamento_id=$1 AND (pago=true OR antecipada=true)`, parcID)
+	if err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var m int
+			rows.Scan(&m)
+			pagas[m] = true
+		}
+	}
+
+	var previews []models.AntecipacaoPreview
+	for i := parcelaHoje + 1; i <= totalParcelas; i++ {
+		// Verificar se já foi paga
+		mesParcela := dataInicio.AddDate(0, i-parcelaAtual, 0)
+		chave := mesParcela.Year()*12 + int(mesParcela.Month())
+		if pagas[chave] {
+			continue
+		}
+		mesesAntecipados := i - parcelaHoje
+		valorDesc, desconto := DescontoRacional(valorParcela, taxaJuros, mesesAntecipados)
+		previews = append(previews, models.AntecipacaoPreview{
+			ParcelaNum:       i,
+			MesesAntecipados: mesesAntecipados,
+			ValorOriginal:    valorParcela,
+			Desconto:         desconto,
+			ValorComDesconto: valorDesc,
+		})
+	}
+	return previews, nil
+}
+
+// AnteciparParcelas executa a antecipação de parcelas com desconto de juros.
+func AnteciparParcelas(db *sql.DB, fid, parcID, qtdParcelas int) (float64, error) {
+	previews, err := GetAntecipacoesPreview(db, fid, parcID)
+	if err != nil {
+		return 0, err
+	}
+	if qtdParcelas > len(previews) {
+		qtdParcelas = len(previews)
+	}
+	if qtdParcelas <= 0 {
+		return 0, fmt.Errorf("nenhuma parcela disponível para antecipação")
+	}
+
+	var parcelaAtual int
+	var dataInicio time.Time
+	db.QueryRow(`SELECT parcela_atual, data_inicio FROM parcelamentos WHERE id=$1`, parcID).
+		Scan(&parcelaAtual, &dataInicio)
+
+	tx, err := db.Begin()
+	if err != nil {
+		return 0, err
+	}
+
+	var totalEconomia float64
+	for i := 0; i < qtdParcelas; i++ {
+		p := previews[i]
+		mesParcela := dataInicio.AddDate(0, p.ParcelaNum-parcelaAtual, 0)
+		mesParcela = time.Date(mesParcela.Year(), mesParcela.Month(), 1, 0, 0, 0, 0, time.UTC)
+
+		_, err := tx.Exec(`
+			INSERT INTO parcelamentos_mes (parcelamento_id, mes, pago, pago_em, antecipada, valor_pago)
+			VALUES ($1, $2, true, NOW(), true, $3)
+			ON CONFLICT (parcelamento_id, mes)
+			DO UPDATE SET pago = true, pago_em = NOW(), antecipada = true, valor_pago = $3`,
+			parcID, mesParcela, p.ValorComDesconto)
+		if err != nil {
+			tx.Rollback()
+			return 0, err
+		}
+		totalEconomia += p.Desconto
+	}
+
+	// Atualizar total_economizado
+	_, err = tx.Exec(`
+		UPDATE parcelamentos SET total_economizado = total_economizado + $1 WHERE id = $2`,
+		totalEconomia, parcID)
+	if err != nil {
+		tx.Rollback()
+		return 0, err
+	}
+
+	// Verificar se todas as parcelas foram pagas → finalizar
+	var totalParcelas, totalPagas int
+	tx.QueryRow(`SELECT total_parcelas FROM parcelamentos WHERE id=$1`, parcID).Scan(&totalParcelas)
+	tx.QueryRow(`SELECT COUNT(*) FROM parcelamentos_mes WHERE parcelamento_id=$1 AND (pago=true OR antecipada=true)`, parcID).Scan(&totalPagas)
+
+	// Contar parcela atual (mês corrente) como potencialmente paga
+	now := time.Now()
+	parcelaHoje := parcelaAtual +
+		(now.Year()-dataInicio.Year())*12 +
+		int(now.Month()-dataInicio.Month())
+	parcelasRestantesSemPagar := totalParcelas - parcelaHoje - totalPagas
+	if totalPagas >= totalParcelas-parcelaHoje {
+		// Todas as futuras foram antecipadas
+		if parcelasRestantesSemPagar <= 0 {
+			tx.Exec(`UPDATE parcelamentos SET ativo = false WHERE id = $1`, parcID)
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return 0, err
+	}
+	return math.Round(totalEconomia*100) / 100, nil
 }
 
 // --- Receitas ---
@@ -949,6 +1111,278 @@ func CategorizarTransacao(db *sql.DB, fid, id int, categoria string) error {
 	return err
 }
 
+// VincularTransacaoDespesa vincula uma transação bancária a uma despesa existente
+func VincularTransacaoDespesa(db *sql.DB, fid, txnID, despesaID int) error {
+	_, err := db.Exec(`UPDATE transacoes_banco SET status='convertida', despesa_id=$1
+		WHERE id=$2 AND family_id=$3`, despesaID, txnID, fid)
+	return err
+}
+
+// VincularTransacaoReceita vincula uma transação bancária a uma receita existente
+func VincularTransacaoReceita(db *sql.DB, fid, txnID, receitaID int) error {
+	_, err := db.Exec(`UPDATE transacoes_banco SET status='convertida', receita_id=$1
+		WHERE id=$2 AND family_id=$3`, receitaID, txnID, fid)
+	return err
+}
+
+// MatchDespesa representa um match entre transação e despesa
+type MatchDespesa struct {
+	ID        int
+	Nome      string
+	Valor     float64
+	Categoria string
+	Score     int // 0-100
+}
+
+// MatchReceita representa um match entre transação e receita
+type MatchReceita struct {
+	ID        int
+	Descricao string
+	Valor     float64
+	Data      time.Time
+	Tipo      string
+	Score     int
+}
+
+// BuscarMatchesDespesas busca despesas que combinam com a transação por valor e nome
+func BuscarMatchesDespesas(db *sql.DB, fid int, valor float64, descricao string) ([]MatchDespesa, error) {
+	// Busca despesas com valor similar (±20%) e ativas
+	margem := valor * 0.20
+	rows, err := db.Query(`SELECT id, nome, valor, categoria
+		FROM despesas_fixas WHERE family_id=$1 AND ativa=true
+		AND valor BETWEEN $2 AND $3
+		ORDER BY ABS(valor - $4) ASC LIMIT 10`,
+		fid, valor-margem, valor+margem, valor)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var matches []MatchDespesa
+	for rows.Next() {
+		var m MatchDespesa
+		rows.Scan(&m.ID, &m.Nome, &m.Valor, &m.Categoria)
+		// Score: 100 se valor exato, diminui com diferença
+		diff := math.Abs(m.Valor-valor) / valor * 100
+		m.Score = 100 - int(diff)
+		if m.Score < 0 {
+			m.Score = 0
+		}
+		matches = append(matches, m)
+	}
+	return matches, nil
+}
+
+// BuscarMatchesReceitas busca receitas que combinam com a transação por valor e data
+func BuscarMatchesReceitas(db *sql.DB, fid int, valor float64, data time.Time) ([]MatchReceita, error) {
+	margem := valor * 0.20
+	rows, err := db.Query(`SELECT id, descricao, valor, data, tipo
+		FROM receitas WHERE family_id=$1
+		AND valor BETWEEN $2 AND $3
+		AND data BETWEEN $4 AND $5
+		ORDER BY ABS(valor - $6) ASC LIMIT 10`,
+		fid, valor-margem, valor+margem,
+		data.AddDate(0, 0, -5), data.AddDate(0, 0, 5), valor)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var matches []MatchReceita
+	for rows.Next() {
+		var m MatchReceita
+		rows.Scan(&m.ID, &m.Descricao, &m.Valor, &m.Data, &m.Tipo)
+		diff := math.Abs(m.Valor-valor) / valor * 100
+		m.Score = 100 - int(diff)
+		if m.Score < 0 {
+			m.Score = 0
+		}
+		matches = append(matches, m)
+	}
+	return matches, nil
+}
+
+// BuscarMatchesParcelamentos busca parcelas que combinam por valor no mês da transação
+func BuscarMatchesParcelamentos(db *sql.DB, fid int, valor float64, data time.Time) ([]MatchDespesa, error) {
+	mes := data.Format("2006-01")
+	margem := valor * 0.20
+	rows, err := db.Query(`SELECT p.id, p.descricao, p.valor_parcela, COALESCE(p.descricao,'')
+		FROM parcelamentos p
+		JOIN parcelamentos_mes pm ON pm.parcelamento_id = p.id AND pm.mes = $2
+		WHERE p.family_id=$1 AND pm.pago=false
+		AND p.valor_parcela BETWEEN $3 AND $4
+		ORDER BY ABS(p.valor_parcela - $5) ASC LIMIT 10`,
+		fid, mes, valor-margem, valor+margem, valor)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var matches []MatchDespesa
+	for rows.Next() {
+		var m MatchDespesa
+		rows.Scan(&m.ID, &m.Nome, &m.Valor, &m.Categoria)
+		diff := math.Abs(m.Valor-valor) / valor * 100
+		m.Score = 100 - int(diff)
+		if m.Score < 0 {
+			m.Score = 0
+		}
+		matches = append(matches, m)
+	}
+	return matches, nil
+}
+
+// DesvincularTransacao remove a vinculação de uma transação
+func DesvincularTransacao(db *sql.DB, fid, txnID int) error {
+	_, err := db.Exec(`UPDATE transacoes_banco SET status='pendente', despesa_id=NULL, receita_id=NULL
+		WHERE id=$1 AND family_id=$2`, txnID, fid)
+	return err
+}
+
+// AutoMatchTransacoes faz match automático de transações pendentes
+func AutoMatchTransacoes(db *sql.DB, fid int) (matched int, err error) {
+	txns, err := GetTransacoesBanco(db, fid, "", "", "pendente", "")
+	if err != nil {
+		return 0, err
+	}
+	for _, t := range txns {
+		if t.Tipo == "debito" {
+			matches, _ := BuscarMatchesDespesas(db, fid, t.Valor, t.Descricao)
+			if len(matches) > 0 && matches[0].Score >= 95 {
+				VincularTransacaoDespesa(db, fid, t.ID, matches[0].ID)
+				matched++
+				continue
+			}
+			pMatches, _ := BuscarMatchesParcelamentos(db, fid, t.Valor, t.Data)
+			if len(pMatches) > 0 && pMatches[0].Score >= 95 {
+				VincularTransacaoDespesa(db, fid, t.ID, pMatches[0].ID)
+				matched++
+			}
+		} else {
+			matches, _ := BuscarMatchesReceitas(db, fid, t.Valor, t.Data)
+			if len(matches) > 0 && matches[0].Score >= 95 {
+				VincularTransacaoReceita(db, fid, t.ID, matches[0].ID)
+				matched++
+			}
+		}
+	}
+	return matched, nil
+}
+
+// --- Password Reset ---
+
+func CreatePasswordReset(db *sql.DB, userID int, token string, expiry time.Time) error {
+	_, err := db.Exec(`INSERT INTO password_resets (user_id, token, expira_em) VALUES ($1, $2, $3)`,
+		userID, token, expiry)
+	return err
+}
+
+func GetPasswordReset(db *sql.DB, token string) (int, error) {
+	var userID int
+	err := db.QueryRow(`SELECT user_id FROM password_resets
+		WHERE token=$1 AND usado=false AND expira_em > NOW()`, token).Scan(&userID)
+	return userID, err
+}
+
+func UsePasswordReset(db *sql.DB, token string) error {
+	_, err := db.Exec(`UPDATE password_resets SET usado=true WHERE token=$1`, token)
+	return err
+}
+
+func UpdateUserPassword(db *sql.DB, userID int, hashedPassword string) error {
+	_, err := db.Exec(`UPDATE users SET senha_hash=$1 WHERE id=$2`, hashedPassword, userID)
+	return err
+}
+
+func GetUserIDByEmail(db *sql.DB, email string) (int, error) {
+	var id int
+	err := db.QueryRow(`SELECT id FROM users WHERE email=$1 AND ativo=true`, email).Scan(&id)
+	return id, err
+}
+
+// --- Integrações KV ---
+
+func SetIntegracaoKV(db *sql.DB, fid int, integracao, chave, valor string) error {
+	_, err := db.Exec(`INSERT INTO integracoes_kv (family_id, integracao, chave, valor)
+		VALUES ($1,$2,$3,$4) ON CONFLICT (family_id, integracao, chave) DO UPDATE SET valor=$4`,
+		fid, integracao, chave, valor)
+	return err
+}
+
+func GetIntegracaoKV(db *sql.DB, fid int, integracao, chave string) string {
+	var val string
+	db.QueryRow(`SELECT valor FROM integracoes_kv WHERE family_id=$1 AND integracao=$2 AND chave=$3`,
+		fid, integracao, chave).Scan(&val)
+	return val
+}
+
+func GetIntegracaoAtiva(db *sql.DB, fid int, integracao string) bool {
+	return GetIntegracaoKV(db, fid, integracao, "ativa") == "true"
+}
+
+func SetIntegracaoAtiva(db *sql.DB, fid int, integracao string, ativa bool) error {
+	v := "false"
+	if ativa {
+		v = "true"
+	}
+	return SetIntegracaoKV(db, fid, integracao, "ativa", v)
+}
+
+// --- Dados Econômicos ---
+
+func UpsertDadoEconomico(db *sql.DB, tipo string, valor float64, data time.Time, fonte string) error {
+	_, err := db.Exec(`INSERT INTO dados_economicos (tipo, valor, data, fonte)
+		VALUES ($1,$2,$3,$4) ON CONFLICT (tipo, data, fonte) DO UPDATE SET valor=$2`,
+		tipo, valor, data, fonte)
+	return err
+}
+
+func GetUltimoDadoEconomico(db *sql.DB, tipo string) (float64, error) {
+	var v float64
+	err := db.QueryRow(`SELECT valor FROM dados_economicos WHERE tipo=$1 ORDER BY data DESC LIMIT 1`, tipo).Scan(&v)
+	return v, err
+}
+
+func GetDadosEconomicos(db *sql.DB) models.DashboardIntegracoes {
+	var d models.DashboardIntegracoes
+	tipos := []struct {
+		nome string
+		dest **float64
+	}{
+		{"selic", &d.Selic}, {"cdi", &d.CDI}, {"ipca", &d.IPCA},
+		{"usd", &d.USD}, {"eur", &d.EUR}, {"btc", &d.BTC},
+	}
+	for _, t := range tipos {
+		v, err := GetUltimoDadoEconomico(db, t.nome)
+		if err == nil {
+			val := v
+			*t.dest = &val
+		}
+	}
+	return d
+}
+
+// --- Feriados ---
+
+func UpsertFeriado(db *sql.DB, data time.Time, nome, tipo string) error {
+	_, err := db.Exec(`INSERT INTO feriados (data, nome, tipo) VALUES ($1,$2,$3)
+		ON CONFLICT (data) DO UPDATE SET nome=$2, tipo=$3`, data, nome, tipo)
+	return err
+}
+
+func GetFeriadosAno(db *sql.DB, ano int) ([]models.Feriado, error) {
+	rows, err := db.Query(`SELECT data, nome, tipo FROM feriados
+		WHERE EXTRACT(YEAR FROM data) = $1 ORDER BY data`, ano)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var list []models.Feriado
+	for rows.Next() {
+		var f models.Feriado
+		rows.Scan(&f.Data, &f.Nome, &f.Tipo)
+		list = append(list, f)
+	}
+	return list, nil
+}
+
 func GetPluggyItems(db *sql.DB, fid int) ([]models.PluggyItem, error) {
 	rows, err := db.Query(`SELECT id, family_id, item_id, connector_name, status, last_sync, criado_em
 		FROM pluggy_items WHERE family_id=$1 ORDER BY criado_em DESC`, fid)
@@ -1321,6 +1755,60 @@ var migrations = []migration{
 			 ON CONFLICT (integracao) DO NOTHING`,
 		},
 	},
+	{
+		version: 13,
+		name:    "financiamento",
+		stmts: []string{
+			`ALTER TABLE parcelamentos ADD COLUMN IF NOT EXISTS financiamento BOOLEAN NOT NULL DEFAULT false`,
+			`ALTER TABLE parcelamentos ADD COLUMN IF NOT EXISTS valor_original NUMERIC(14,2) NOT NULL DEFAULT 0`,
+			`ALTER TABLE parcelamentos ADD COLUMN IF NOT EXISTS taxa_juros NUMERIC(8,4) NOT NULL DEFAULT 0`,
+			`ALTER TABLE parcelamentos ADD COLUMN IF NOT EXISTS total_economizado NUMERIC(14,2) NOT NULL DEFAULT 0`,
+			`ALTER TABLE parcelamentos_mes ADD COLUMN IF NOT EXISTS valor_pago NUMERIC(14,2)`,
+			`ALTER TABLE parcelamentos_mes ADD COLUMN IF NOT EXISTS antecipada BOOLEAN NOT NULL DEFAULT false`,
+		},
+	},
+	{
+		version: 14,
+		name: "password_resets",
+		stmts: []string{
+			`CREATE TABLE IF NOT EXISTS password_resets (
+				id SERIAL PRIMARY KEY,
+				user_id INTEGER NOT NULL REFERENCES users(id),
+				token VARCHAR(64) NOT NULL UNIQUE,
+				expira_em TIMESTAMP NOT NULL,
+				usado BOOLEAN DEFAULT FALSE,
+				criado_em TIMESTAMP DEFAULT NOW()
+			)`,
+		},
+	},
+	{
+		version: 15,
+		name: "integracoes_extras",
+		stmts: []string{
+			`CREATE TABLE IF NOT EXISTS dados_economicos (
+				id SERIAL PRIMARY KEY,
+				tipo VARCHAR(20) NOT NULL,
+				valor NUMERIC(18,6) NOT NULL,
+				data DATE NOT NULL,
+				fonte VARCHAR(30) NOT NULL,
+				criado_em TIMESTAMP DEFAULT NOW(),
+				UNIQUE(tipo, data, fonte)
+			)`,
+			`CREATE TABLE IF NOT EXISTS feriados (
+				data DATE NOT NULL,
+				nome VARCHAR(200) NOT NULL,
+				tipo VARCHAR(30) DEFAULT 'national',
+				PRIMARY KEY(data)
+			)`,
+			`CREATE TABLE IF NOT EXISTS integracoes_kv (
+				family_id INTEGER NOT NULL,
+				integracao VARCHAR(30) NOT NULL,
+				chave VARCHAR(50) NOT NULL,
+				valor TEXT NOT NULL DEFAULT '',
+				PRIMARY KEY(family_id, integracao, chave)
+			)`,
+		},
+	},
 }
 
 // RunMigrations executa as migrations pendentes registrando cada uma em schema_migrations.
@@ -1370,7 +1858,15 @@ func EnsureAdmin(db *sql.DB) error {
 	if count > 0 {
 		return nil
 	}
-	hash, err := bcrypt.GenerateFromPassword([]byte("admin123"), bcrypt.DefaultCost)
+	adminEmail := os.Getenv("ADMIN_EMAIL")
+	if adminEmail == "" {
+		adminEmail = "admin@finbertoldi.com"
+	}
+	adminPass := os.Getenv("ADMIN_PASSWORD")
+	if adminPass == "" {
+		adminPass = "admin123"
+	}
+	hash, err := bcrypt.GenerateFromPassword([]byte(adminPass), bcrypt.DefaultCost)
 	if err != nil {
 		return err
 	}
@@ -1379,10 +1875,10 @@ func EnsureAdmin(db *sql.DB) error {
 		return fmt.Errorf("família padrão não encontrada: %w", err)
 	}
 	_, err = db.Exec(
-		`INSERT INTO users (nome, email, senha_hash, admin, family_id) VALUES ('Admin', 'admin@finbertoldi.com', $1, true, $2)`,
-		string(hash), familyID)
+		`INSERT INTO users (nome, email, senha_hash, admin, family_id) VALUES ('Admin', $1, $2, true, $3)`,
+		adminEmail, string(hash), familyID)
 	if err == nil {
-		log.Println("Usuário admin criado: admin@finbertoldi.com / admin123")
+		log.Printf("Usuário admin criado: %s (altere a senha após o primeiro login)", adminEmail)
 	}
 	return err
 }

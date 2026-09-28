@@ -118,6 +118,28 @@
         Gerenciar →
       </a>
     </section>
+
+    {{if or .Integracoes.Selic .Integracoes.USD .Integracoes.Feriados}}
+    <section class="dash-section">
+      <h3 class="section-title">📡 Indicadores</h3>
+      <div class="indicadores-grid">
+        {{if .Integracoes.Selic}}<div class="ind-item"><span class="ind-label">Selic</span><span class="ind-valor">{{printf "%.2f" (deref .Integracoes.Selic)}}%</span></div>{{end}}
+        {{if .Integracoes.CDI}}<div class="ind-item"><span class="ind-label">CDI</span><span class="ind-valor">{{printf "%.2f" (deref .Integracoes.CDI)}}%</span></div>{{end}}
+        {{if .Integracoes.IPCA}}<div class="ind-item"><span class="ind-label">IPCA</span><span class="ind-valor">{{printf "%.2f" (deref .Integracoes.IPCA)}}%</span></div>{{end}}
+        {{if .Integracoes.USD}}<div class="ind-item"><span class="ind-label">USD</span><span class="ind-valor">R$ {{printf "%.2f" (deref .Integracoes.USD)}}</span></div>{{end}}
+        {{if .Integracoes.EUR}}<div class="ind-item"><span class="ind-label">EUR</span><span class="ind-valor">R$ {{printf "%.2f" (deref .Integracoes.EUR)}}</span></div>{{end}}
+        {{if .Integracoes.BTC}}<div class="ind-item"><span class="ind-label">BTC</span><span class="ind-valor">R$ {{printf "%.0f" (deref .Integracoes.BTC)}}</span></div>{{end}}
+      </div>
+      {{if .Integracoes.Feriados}}
+      <div class="feriados-list">
+        <p class="ind-label" style="margin-top:.75rem;margin-bottom:.25rem">Próximos feriados</p>
+        {{range .Integracoes.Feriados}}
+        <div class="feriado-item"><span>{{.Data.Format "02/01"}}</span><span>{{.Nome}}</span></div>
+        {{end}}
+      </div>
+      {{end}}
+    </section>
+    {{end}}
   </div>
 </div>
 
@@ -238,6 +260,16 @@
     options: commonOpts
   });
 </script>
+<style>
+.indicadores-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: .5rem; }
+.ind-item { background: var(--bg-elev-2); border-radius: var(--radius-sm); padding: .5rem .7rem; display: flex; flex-direction: column; gap: .15rem; }
+.ind-label { font-size: .72rem; color: var(--text-muted); font-weight: 500; text-transform: uppercase; letter-spacing: .03em; }
+.ind-valor { font-size: .95rem; font-weight: 600; color: var(--text-primary); }
+.feriados-list { display: flex; flex-direction: column; gap: .25rem; }
+.feriado-item { display: flex; gap: .5rem; font-size: .82rem; color: var(--text-secondary); }
+.feriado-item span:first-child { font-weight: 600; color: var(--text-primary); min-width: 3rem; }
+@media (max-width: 500px) { .indicadores-grid { grid-template-columns: repeat(2, 1fr); } }
+</style>
 {{end}}
 
 {{define "dash-resumo-cards"}}

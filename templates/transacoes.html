@@ -2,6 +2,9 @@
 <div class="page-header">
   <h2>Transacoes Bancarias</h2>
   <div class="page-actions">
+    <form method="POST" action="/transacoes/auto-match" style="display:inline">
+      <button type="submit" class="btn-auto-match" title="Buscar matches automaticos entre transacoes pendentes e despesas/receitas">Auto-Match</button>
+    </form>
     <button data-open-dialog="dialog-import-csv" class="outline">Importar CSV</button>
     <button data-open-dialog="dialog-import-ofx" class="outline">Importar OFX</button>
     {{if .Contas}}
@@ -93,14 +96,19 @@
         <td><span class="badge badge-status-{{.Status}}">{{.Status}}</span></td>
         <td class="actions">
           {{if eq .Status "pendente"}}
-            <button data-open-dialog="dialog-converter-{{.ID}}" class="btn-action" title="Converter">Converter</button>
+            <button data-open-dialog="dialog-converter-{{.ID}}" class="btn-action" title="Converter em nova despesa/receita">Criar</button>
+            <button data-open-dialog="dialog-vincular-{{.ID}}" class="btn-action outline" title="Vincular a despesa/receita existente">Vincular</button>
             <form method="POST" action="/transacoes/{{.ID}}/ignorar" style="display:inline">
               <button type="submit" class="btn-action danger" title="Ignorar" onclick="return confirm('Ignorar esta transacao?')">Ignorar</button>
             </form>
           {{else if eq .Status "categorizada"}}
-            <button data-open-dialog="dialog-converter-{{.ID}}" class="btn-action" title="Converter">Converter</button>
+            <button data-open-dialog="dialog-converter-{{.ID}}" class="btn-action" title="Converter">Criar</button>
+            <button data-open-dialog="dialog-vincular-{{.ID}}" class="btn-action outline" title="Vincular">Vincular</button>
           {{else if eq .Status "convertida"}}
-            <span class="text-muted">Convertida</span>
+            <span class="text-muted">Vinculada</span>
+            <form method="POST" action="/transacoes/{{.ID}}/desvincular" style="display:inline">
+              <button type="submit" class="btn-action danger btn-mini" title="Desvincular" onclick="return confirm('Desvincular?')">✕</button>
+            </form>
           {{else}}
             <span class="text-muted">Ignorada</span>
           {{end}}
@@ -113,13 +121,12 @@
         <article>
           <header>
             <button data-close-dialog aria-label="Fechar"></button>
-            <h3>Converter: {{.Descricao}}</h3>
+            <h3>Criar a partir de: {{.Descricao}}</h3>
           </header>
           <p>Valor: <strong>{{brl .Valor}}</strong> | Data: {{date .Data}}</p>
           <div class="converter-tabs">
-            <!-- Tab Despesa -->
             <details open>
-              <summary>Converter em Despesa</summary>
+              <summary>Criar Despesa</summary>
               <form method="POST" action="/transacoes/{{.ID}}/converter">
                 <input type="hidden" name="destino" value="despesa">
                 <label>Categoria
@@ -130,12 +137,11 @@
                     {{end}}
                   </select>
                 </label>
-                <button type="submit">Converter em Despesa</button>
+                <button type="submit">Criar Despesa</button>
               </form>
             </details>
-            <!-- Tab Receita -->
             <details>
-              <summary>Converter em Receita</summary>
+              <summary>Criar Receita</summary>
               <form method="POST" action="/transacoes/{{.ID}}/converter">
                 <input type="hidden" name="destino" value="receita">
                 <label>Tipo
@@ -147,9 +153,22 @@
                     <option value="Outros">Outros</option>
                   </select>
                 </label>
-                <button type="submit">Converter em Receita</button>
+                <button type="submit">Criar Receita</button>
               </form>
             </details>
+          </div>
+        </article>
+      </dialog>
+      <!-- Dialog Vincular -->
+      <dialog id="dialog-vincular-{{.ID}}">
+        <article>
+          <header>
+            <button data-close-dialog aria-label="Fechar"></button>
+            <h3>Vincular: {{.Descricao}}</h3>
+          </header>
+          <p>Valor: <strong>{{brl .Valor}}</strong> | Data: {{date .Data}} | Tipo: {{.Tipo}}</p>
+          <div hx-get="/api/transacoes/{{.ID}}/matches" hx-trigger="intersect once" hx-swap="innerHTML">
+            <p class="text-muted">Buscando matches...</p>
           </div>
         </article>
       </dialog>
@@ -259,5 +278,34 @@
 .alert-ok { background: rgba(39,174,96,.12); border: 1px solid rgba(39,174,96,.3); color: var(--text-primary); }
 .alert-erro { background: rgba(231,76,60,.12); border: 1px solid rgba(231,76,60,.3); color: var(--text-primary); }
 .text-muted { color: var(--text-muted); font-size: .8rem; }
+
+.btn-auto-match {
+  background: linear-gradient(135deg, #9b59b6, #8e44ad);
+  color: #fff;
+  border: none;
+  padding: .45rem .9rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: .85rem;
+  font-weight: 600;
+}
+.btn-auto-match:hover { opacity: .85; }
+
+.match-results { display: flex; flex-direction: column; gap: .5rem; }
+.match-results h4 { margin: .5rem 0 .25rem; font-size: .9rem; color: var(--text-secondary); }
+.match-item {
+  display: flex; align-items: center; gap: .75rem;
+  padding: .6rem .8rem;
+  background: var(--bg-elev-2);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-mid);
+}
+.match-nome { flex: 1; font-weight: 500; font-size: .88rem; }
+.match-valor { font-weight: 600; font-size: .88rem; white-space: nowrap; }
+.match-score {
+  font-size: .75rem; padding: .15rem .4rem;
+  background: rgba(39,174,96,.2); color: #27ae60;
+  border-radius: 4px;
+}
 </style>
 {{end}}

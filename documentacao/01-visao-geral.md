@@ -45,5 +45,39 @@ Sessoes em cookie HTTP-only com token aleatorio de 64 chars hex. Sessoes armazen
 | CSS Custom | app.css com glassmorphism + dark/light theme |
 | XLSX | excelize/v2 |
 | OFX | ofxgo |
-| Integracao | Pluggy API |
-| Infra | Docker Compose |
+| Integracao Bancaria | Pluggy API |
+| Indicadores BCB | API BCB (Selic, CDI, IPCA) |
+| Cotacoes | AwesomeAPI (USD, EUR, BTC) |
+| Feriados | BrasilAPI |
+| Alertas | Telegram Bot API |
+| Email | net/smtp (recuperacao de senha) |
+| Infra | Docker Compose + Caddy (HTTPS) |
+
+## Modulos do sistema
+
+```
+finBertoldi/
+├── main.go                          # Wiring: rotas + startup
+├── internal/
+│   ├── models/models.go             # Structs de dominio e page data
+│   ├── store/store.go               # Queries SQL + migrations (v1-v15)
+│   ├── auth/
+│   │   ├── auth.go                  # Sessoes, bcrypt, middlewares
+│   │   └── email.go                 # Envio de email SMTP (reset senha)
+│   ├── handler/
+│   │   ├── handler.go               # Handlers HTTP principais
+│   │   ├── bankimport.go            # Importacao CSV/OFX + conciliacao
+│   │   ├── reports.go               # Relatorios PDF
+│   │   └── importexport.go          # Import/Export XLSX
+│   └── integrations/
+│       ├── scheduler.go             # Scheduler periodico (goroutines)
+│       ├── bcb.go                   # API Banco Central (Selic/CDI/IPCA)
+│       ├── cotacoes.go              # AwesomeAPI (USD/EUR/BTC)
+│       ├── telegram.go              # Telegram Bot (alertas)
+│       ├── brasilapi.go             # BrasilAPI (feriados)
+│       └── sheets.go                # Google Sheets (export)
+├── templates/                       # Templates HTML (Go html/template)
+├── static/app.css                   # Design system CSS
+├── pluggy-service/                  # Microservico integracao bancaria Pluggy
+└── documentacao/                    # Documentacao detalhada
+```

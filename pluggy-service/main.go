@@ -109,8 +109,28 @@ func main() {
 		json.NewEncoder(w).Encode(map[string]string{"accessToken": token})
 	})
 
+	webhookToken := getEnv("WEBHOOK_TOKEN", "")
+	if webhookToken != "" {
+		log.Println("[config] webhook token configurado — validacao ativa")
+	} else {
+		log.Println("[config] WEBHOOK_TOKEN nao configurado — webhook sem validacao")
+	}
+
 	// Webhook from Pluggy
 	mux.HandleFunc("POST /api/pluggy/webhook", func(w http.ResponseWriter, r *http.Request) {
+		// Validar token se configurado
+		if webhookToken != "" {
+			token := r.URL.Query().Get("token")
+			if token == "" {
+				token = r.Header.Get("X-Webhook-Token")
+			}
+			if token != webhookToken {
+				log.Printf("[webhook] token invalido, rejeitando request de %s", r.RemoteAddr)
+				http.Error(w, "unauthorized", http.StatusUnauthorized)
+				return
+			}
+		}
+
 		var payload pluggy.WebhookPayload
 		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 			http.Error(w, "invalid payload", http.StatusBadRequest)

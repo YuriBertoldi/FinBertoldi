@@ -233,3 +233,67 @@ Configuracao de integracoes externas (generica).
 | atualizado_em | TIMESTAMPTZ | Data da ultima atualizacao |
 
 **Seed:** linha padrao com `integracao='pluggy'` e `service_url='http://pluggy-service:8081'`
+
+### password_resets (v14)
+Tokens de recuperacao de senha.
+
+| Coluna | Tipo | Descricao |
+|--------|------|-----------|
+| id | SERIAL PK | ID |
+| user_id | INTEGER FK users | Usuario |
+| token | VARCHAR(64) UNIQUE | Token hex |
+| expira_em | TIMESTAMP | Expiracao (1h) |
+| usado | BOOLEAN | Token ja utilizado |
+| criado_em | TIMESTAMP | Data de criacao |
+
+### dados_economicos (v15)
+Indicadores economicos coletados automaticamente.
+
+| Coluna | Tipo | Descricao |
+|--------|------|-----------|
+| id | SERIAL PK | ID |
+| tipo | VARCHAR(20) | selic, cdi, ipca, usd, eur, btc |
+| valor | NUMERIC(18,6) | Valor do indicador |
+| data | DATE | Data do indicador |
+| fonte | VARCHAR(30) | bcb, awesomeapi |
+| criado_em | TIMESTAMP | Data de coleta |
+
+**Unique:** `(tipo, data, fonte)`
+
+### feriados (v15)
+Feriados nacionais (BrasilAPI).
+
+| Coluna | Tipo | Descricao |
+|--------|------|-----------|
+| data | DATE PK | Data do feriado |
+| nome | VARCHAR(200) | Nome do feriado |
+| tipo | VARCHAR(30) | national |
+
+### integracoes_kv (v15)
+Configuracao de integracoes por familia (key-value).
+
+| Coluna | Tipo | Descricao |
+|--------|------|-----------|
+| family_id | INTEGER | Familia |
+| integracao | VARCHAR(30) | bcb, cotacoes, telegram, brasilapi, sheets |
+| chave | VARCHAR(50) | Nome da config (bot_token, chat_id, ativa, etc) |
+| valor | TEXT | Valor da config |
+
+**PK:** `(family_id, integracao, chave)`
+
+### parcelamentos (v13 — campos adicionais)
+Campos de financiamento adicionados na v13.
+
+| Coluna | Tipo | Descricao |
+|--------|------|-----------|
+| financiamento | BOOLEAN | E financiamento com juros |
+| valor_original | NUMERIC(14,2) | Valor original do bem |
+| taxa_juros | NUMERIC(8,4) | Taxa mensal % |
+| total_economizado | NUMERIC(14,2) | Total economizado com antecipacoes |
+
+### parcelamentos_mes (v13 — campos adicionais)
+
+| Coluna | Tipo | Descricao |
+|--------|------|-----------|
+| valor_pago | NUMERIC(14,2) | Valor efetivamente pago (null = cheio) |
+| antecipada | BOOLEAN | Parcela antecipada com desconto |

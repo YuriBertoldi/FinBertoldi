@@ -56,6 +56,22 @@ type Parcelamento struct {
 	ValorRestante float64
 	Pago          bool
 	Mes           string
+	// Financiamento
+	Financiamento    bool
+	ValorOriginal    float64
+	TaxaJuros        float64  // taxa mensal % (ex: 1.99)
+	TotalEconomizado float64
+	TotalJuros       float64  // calculado: (ValorParcela * TotalParcelas) - ValorOriginal
+	Antecipada       bool     // contexto parcelamentos_mes
+	ValorPago        *float64 // valor efetivamente pago (nil = valor_parcela cheio)
+}
+
+type AntecipacaoPreview struct {
+	ParcelaNum       int
+	MesesAntecipados int
+	ValorOriginal    float64
+	Desconto         float64
+	ValorComDesconto float64
 }
 
 type Receita struct {
@@ -158,6 +174,7 @@ type DashboardData struct {
 	DespesasVR      []DespesaMes
 	Parcelamentos   []Parcelamento
 	Historico       []MesResumo
+	Integracoes     DashboardIntegracoes
 }
 
 type MesResumo struct {
@@ -318,6 +335,57 @@ type ImportResultado struct {
 
 func (r ImportResultado) Total() int {
 	return r.Despesas + r.Parcelamentos + r.Receitas + r.Investimentos + r.Emprestimos
+}
+
+// --- Integrações ---
+
+type DadoEconomico struct {
+	ID        int
+	Tipo      string  // "selic", "cdi", "ipca", "usd", "eur", "btc"
+	Valor     float64
+	Data      time.Time
+	Fonte     string // "bcb", "awesomeapi"
+	CriadoEm  time.Time
+}
+
+type Feriado struct {
+	Data time.Time
+	Nome string
+	Tipo string // "national"
+}
+
+type IntegracaoStatus struct {
+	Nome       string // "bcb", "cotacoes", "telegram", "brasilapi", "sheets"
+	Label      string
+	Descricao  string
+	Ativa      bool
+	Campos     []IntegracaoCampo
+	StatusMsg  string
+}
+
+type IntegracaoCampo struct {
+	Nome        string
+	Label       string
+	Tipo        string // "text", "password", "textarea"
+	Valor       string
+	Placeholder string
+}
+
+type IntegracoesPage struct {
+	BasePage
+	Integracoes []IntegracaoStatus
+	Erro        string
+	Sucesso     string
+}
+
+type DashboardIntegracoes struct {
+	Selic    *float64
+	CDI      *float64
+	IPCA     *float64
+	USD      *float64
+	EUR      *float64
+	BTC      *float64
+	Feriados []Feriado
 }
 
 type ImportExportPage struct {

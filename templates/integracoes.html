@@ -1,0 +1,177 @@
+{{define "content"}}
+<div class="page-header">
+  <h2>Integracoes</h2>
+  <p class="page-subtitle">Ative e configure integrações gratuitas para enriquecer seu controle financeiro.</p>
+</div>
+
+{{if .Sucesso}}
+<div class="alert alert-ok">{{.Sucesso}}</div>
+{{end}}
+{{if .Erro}}
+<div class="alert alert-erro">{{.Erro}}</div>
+{{end}}
+
+<div class="integ-grid">
+  {{range .Integracoes}}
+  <div class="integ-card {{if .Ativa}}integ-ativa{{end}}">
+    <div class="integ-header">
+      <div class="integ-icon">
+        {{if eq .Nome "bcb"}}🏦{{end}}
+        {{if eq .Nome "cotacoes"}}💱{{end}}
+        {{if eq .Nome "telegram"}}✈️{{end}}
+        {{if eq .Nome "brasilapi"}}📅{{end}}
+        {{if eq .Nome "sheets"}}📊{{end}}
+      </div>
+      <div class="integ-info">
+        <h3>{{.Label}}</h3>
+        <p>{{.Descricao}}</p>
+      </div>
+      <span class="integ-badge {{if .Ativa}}badge-on{{else}}badge-off{{end}}">
+        {{if .Ativa}}Ativa{{else}}Inativa{{end}}
+      </span>
+    </div>
+
+    <form method="POST" action="/integracoes/{{.Nome}}" class="integ-form">
+      {{range .Campos}}
+      <label class="integ-field">
+        <span>{{.Label}}</span>
+        {{if eq .Tipo "textarea"}}
+        <textarea name="{{.Nome}}" placeholder="{{.Placeholder}}" rows="3">{{.Valor}}</textarea>
+        {{else}}
+        <input type="{{.Tipo}}" name="{{.Nome}}" value="{{.Valor}}" placeholder="{{.Placeholder}}">
+        {{end}}
+      </label>
+      {{end}}
+
+      <div class="integ-actions">
+        <label class="integ-toggle">
+          <input type="checkbox" name="ativa" {{if .Ativa}}checked{{end}}>
+          <span class="toggle-slider"></span>
+          <span class="toggle-label">{{if .Ativa}}Ativa{{else}}Inativa{{end}}</span>
+        </label>
+        <div class="integ-btns">
+          {{if .Ativa}}
+          <button type="button" class="btn-test" onclick="testarIntegracao('{{.Nome}}', this)">Testar</button>
+          {{end}}
+          <button type="submit" class="btn-save">Salvar</button>
+        </div>
+      </div>
+    </form>
+  </div>
+  {{end}}
+</div>
+
+<script>
+function testarIntegracao(nome, btn) {
+  btn.disabled = true;
+  btn.textContent = 'Testando...';
+  fetch('/integracoes/' + nome + '/testar', { method: 'POST' })
+    .then(r => r.json())
+    .then(data => {
+      if (data.status === 'ok') {
+        btn.textContent = 'OK!';
+        btn.style.background = '#27ae60';
+      } else {
+        btn.textContent = 'Erro';
+        btn.style.background = '#e74c3c';
+        alert(data.mensagem);
+      }
+      setTimeout(() => {
+        btn.disabled = false;
+        btn.textContent = 'Testar';
+        btn.style.background = '';
+      }, 3000);
+    })
+    .catch(() => {
+      btn.disabled = false;
+      btn.textContent = 'Testar';
+    });
+}
+</script>
+
+<style>
+.page-subtitle { color: var(--text-muted); font-size: .9rem; margin-top: -.5rem; }
+
+.integ-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+  gap: 1rem;
+}
+
+.integ-card {
+  background: var(--bg-elev-1);
+  border: 1px solid var(--border-mid);
+  border-radius: var(--radius-md);
+  padding: 1.25rem;
+  transition: border-color .2s;
+}
+.integ-card.integ-ativa { border-color: rgba(39,174,96,.4); }
+
+.integ-header {
+  display: flex;
+  align-items: flex-start;
+  gap: .75rem;
+  margin-bottom: 1rem;
+}
+.integ-icon { font-size: 1.8rem; line-height: 1; }
+.integ-info { flex: 1; }
+.integ-info h3 { margin: 0; font-size: 1rem; font-weight: 600; }
+.integ-info p { margin: .25rem 0 0; font-size: .82rem; color: var(--text-muted); }
+
+.integ-badge {
+  font-size: .72rem; padding: .2rem .5rem; border-radius: 6px; font-weight: 600; white-space: nowrap;
+}
+.badge-on { background: rgba(39,174,96,.15); color: #27ae60; }
+.badge-off { background: rgba(149,165,166,.15); color: #95a5a6; }
+
+.integ-form { display: flex; flex-direction: column; gap: .75rem; }
+
+.integ-field span { display: block; font-size: .78rem; font-weight: 500; color: var(--text-secondary); margin-bottom: .25rem; }
+.integ-field input, .integ-field textarea {
+  width: 100%; padding: .5rem .7rem; font-size: .85rem;
+  background: var(--bg-input); border: 1px solid var(--border-mid);
+  border-radius: var(--radius-sm); color: var(--text-primary);
+  font-family: inherit;
+}
+.integ-field textarea { resize: vertical; }
+
+.integ-actions {
+  display: flex; align-items: center; justify-content: space-between;
+  padding-top: .5rem; border-top: 1px solid var(--border-mid);
+}
+
+.integ-toggle { display: flex; align-items: center; gap: .5rem; cursor: pointer; }
+.integ-toggle input { display: none; }
+.toggle-slider {
+  width: 36px; height: 20px; background: #555; border-radius: 10px;
+  position: relative; transition: background .2s;
+}
+.toggle-slider::after {
+  content: ''; position: absolute; top: 2px; left: 2px;
+  width: 16px; height: 16px; background: #fff; border-radius: 50%;
+  transition: transform .2s;
+}
+.integ-toggle input:checked + .toggle-slider { background: #27ae60; }
+.integ-toggle input:checked + .toggle-slider::after { transform: translateX(16px); }
+.toggle-label { font-size: .82rem; color: var(--text-muted); }
+
+.integ-btns { display: flex; gap: .4rem; }
+.btn-test {
+  padding: .35rem .7rem; font-size: .8rem; border-radius: var(--radius-sm);
+  background: var(--bg-elev-2); border: 1px solid var(--border-mid);
+  color: var(--text-primary); cursor: pointer;
+}
+.btn-save {
+  padding: .35rem .7rem; font-size: .8rem; border-radius: var(--radius-sm);
+  background: #27ae60; border: none; color: #fff; cursor: pointer; font-weight: 500;
+}
+
+.alert { padding: .75rem 1rem; border-radius: var(--radius-sm); margin-bottom: 1rem; font-size: .88rem; }
+.alert-ok { background: rgba(39,174,96,.12); border: 1px solid rgba(39,174,96,.3); }
+.alert-erro { background: rgba(231,76,60,.12); border: 1px solid rgba(231,76,60,.3); }
+
+@media (max-width: 500px) {
+  .integ-grid { grid-template-columns: 1fr; }
+}
+</style>
+{{end}}

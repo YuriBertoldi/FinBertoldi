@@ -17,7 +17,7 @@ Camada de acesso a dados. Todas as queries SQL do sistema estao neste pacote. Ta
 1. `DATABASE_URL` (prioridade, usado em producao)
 2. Variaveis individuais: `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASS`, `DB_NAME`
 
-## Migrations (v1-v12)
+## Migrations (v1-v15)
 
 Executadas automaticamente no startup via `RunMigrations()`. Cada migration e registrada na tabela `schema_migrations` (version + nome + data de aplicacao). Idempotentes: se ja aplicada, e ignorada.
 
@@ -35,6 +35,9 @@ Executadas automaticamente no startup via `RunMigrations()`. Cada migration e re
 | 10 | screen_permissions | Controle de acesso por tela |
 | 11 | transacoes_banco_e_pluggy_items | Transacoes bancarias + itens Pluggy |
 | 12 | integracoes_config | Configuracao de integracoes externas |
+| 13 | financiamento | Campos de financiamento em parcelamentos |
+| 14 | password_resets | Tabela de tokens de reset de senha |
+| 15 | integracoes_extras | Dados economicos, feriados, integracoes KV |
 
 ## Funcoes por dominio
 
@@ -104,6 +107,38 @@ Executadas automaticamente no startup via `RunMigrations()`. Cada migration e re
 - `GetUserBySession(db, token)` — busca por sessao
 - `CreateSession(db, userID)` — cria sessao
 - `GetBlockedScreens(db, userID)` — telas bloqueadas
+
+## Testes
+
+### Conciliacao Bancaria
+- `VincularTransacaoDespesa(db, familyID, txnID, despesaID)` — vincula transacao a despesa existente
+- `VincularTransacaoReceita(db, familyID, txnID, receitaID)` — vincula transacao a receita existente
+- `DesvincularTransacao(db, familyID, txnID)` — remove vinculo
+- `BuscarMatchesDespesas(db, familyID, valor, data)` — busca despesas compativeis
+- `BuscarMatchesReceitas(db, familyID, valor, data)` — busca receitas compativeis
+- `AutoMatchTransacoes(db, familyID)` — match automatico por valor/data
+
+### Recuperacao de Senha
+- `CreatePasswordReset(db, userID, token, expiry)` — cria token de reset
+- `GetPasswordReset(db, token)` — busca token valido
+- `UsePasswordReset(db, token)` — marca como usado
+- `UpdateUserPassword(db, userID, hash)` — atualiza senha
+- `GetUserIDByEmail(db, email)` — busca user por email
+
+### Integracoes KV (por familia)
+- `SetIntegracaoKV(db, familyID, integracao, chave, valor)` — salva config
+- `GetIntegracaoKV(db, familyID, integracao, chave)` — busca config
+- `GetIntegracaoAtiva(db, familyID, integracao)` — verifica se ativa
+- `SetIntegracaoAtiva(db, familyID, integracao, ativa)` — ativa/desativa
+
+### Dados Economicos
+- `UpsertDadoEconomico(db, tipo, valor, data, fonte)` — insere/atualiza indicador
+- `GetUltimoDadoEconomico(db, tipo)` — ultimo valor de um tipo
+- `GetDadosEconomicos(db)` — retorna DashboardIntegracoes com todos indicadores
+
+### Feriados
+- `UpsertFeriado(db, data, nome, tipo)` — insere feriado
+- `GetFeriadosAno(db, ano)` — lista feriados do ano
 
 ## Testes
 

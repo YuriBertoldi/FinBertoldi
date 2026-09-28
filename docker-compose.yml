@@ -6,9 +6,11 @@ services:
     environment:
       DB_HOST: postgres
       DB_PORT: 5432
-      DB_USER: fincontrol
-      DB_PASS: fincontrol
-      DB_NAME: fincontrol
+      DB_USER: ${DB_USER:-fincontrol}
+      DB_PASS: ${DB_PASS:-fincontrol}
+      DB_NAME: ${DB_NAME:-fincontrol}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@localhost}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-changeme}
       TZ: America/Sao_Paulo
     depends_on:
       postgres:
@@ -18,12 +20,11 @@ services:
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: fincontrol
-      POSTGRES_PASSWORD: fincontrol
-      POSTGRES_DB: fincontrol
+      POSTGRES_USER: ${DB_USER:-fincontrol}
+      POSTGRES_PASSWORD: ${DB_PASS:-fincontrol}
+      POSTGRES_DB: ${DB_NAME:-fincontrol}
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ./migrations/schema.sql:/docker-entrypoint-initdb.d/schema.sql
     ports:
       - "5432:5432"
     healthcheck:
@@ -37,9 +38,10 @@ services:
     ports:
       - "8081:8081"
     environment:
-      DATABASE_URL: postgres://fincontrol:fincontrol@postgres:5432/fincontrol?sslmode=disable
+      DATABASE_URL: postgres://${DB_USER:-fincontrol}:${DB_PASS:-fincontrol}@postgres:5432/${DB_NAME:-fincontrol}?sslmode=disable
       PLUGGY_CLIENT_ID: ${PLUGGY_CLIENT_ID:-sandbox}
       PLUGGY_CLIENT_SECRET: ${PLUGGY_CLIENT_SECRET:-sandbox}
+      WEBHOOK_TOKEN: ${WEBHOOK_TOKEN:-dev-token}
       SYNC_INTERVAL: 6h
       PORT: 8081
       TZ: America/Sao_Paulo

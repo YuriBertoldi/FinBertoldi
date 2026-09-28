@@ -1,7 +1,7 @@
 # Modulo: auth
 
 **Pacote:** `internal/auth`
-**Arquivo:** `auth.go`
+**Arquivos:** `auth.go`, `email.go`
 
 ## Responsabilidade
 
@@ -67,3 +67,27 @@ Usuario Comum
 ## Testes
 
 `auth_test.go` — testa middlewares, geracao de token, manipulacao de cookies
+
+## Recuperacao de Senha (email.go)
+
+### `SendResetEmail(to, token, baseURL string) error`
+
+Envia email HTML com link de reset de senha via SMTP. Se SMTP nao configurado, loga o link no console (fallback para dev).
+
+**Variaveis de ambiente:**
+| Variavel | Descricao | Exemplo |
+|----------|-----------|---------|
+| `SMTP_HOST` | Servidor SMTP | smtp.gmail.com |
+| `SMTP_PORT` | Porta SMTP | 587 |
+| `SMTP_USER` | Usuario SMTP | user@gmail.com |
+| `SMTP_PASS` | Senha/app password | xxxx |
+| `SMTP_FROM` | Remetente | noreply@finbertoldi.com |
+
+### Fluxo de recuperacao
+
+1. Usuario acessa `/forgot-password` e informa email
+2. Sistema gera token hex de 64 chars com expiracao de 1h
+3. Token salvo em `password_resets` no banco
+4. Email enviado com link `/reset-senha?token=XXX`
+5. Usuario clica no link, define nova senha
+6. Token marcado como usado, senha atualizada com bcrypt

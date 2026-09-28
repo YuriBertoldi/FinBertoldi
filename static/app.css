@@ -920,6 +920,18 @@ button.outline:hover {
 .badge-receita    { background: rgba(39, 174, 96, .18);  color: #58d68d; }
 .badge-despesa    { background: rgba(231, 76, 60, .18);  color: #f1948a; }
 .badge-investido  { background: rgba(52, 152, 219, .18); color: #5dade2; }
+.badge-financ     { background: rgba(155, 89, 182, .18); color: #bb8fce; font-size: .7rem; }
+.badge-antecipada { background: rgba(39, 174, 96, .18);  color: #58d68d; font-size: .7rem; margin-left: .25rem; }
+
+.text-success { color: #58d68d !important; }
+.text-danger  { color: #f1948a !important; }
+[data-theme="light"] .text-success { color: #15803d !important; }
+[data-theme="light"] .text-danger  { color: #b91c1c !important; }
+
+.antecipar-resumo { margin-top: 1rem; padding: .75rem; background: var(--pico-card-background-color); border-radius: var(--pico-border-radius); }
+
+[data-theme="light"] .badge-financ     { background: #f3e8ff; color: #7e22ce; }
+[data-theme="light"] .badge-antecipada { background: #dcfce7; color: #15803d; }
 
 [data-theme="light"] .badge-grupo-basica  { background: #dbeafe; color: #1d4ed8; }
 [data-theme="light"] .badge-grupo-cartao  { background: #fef9c3; color: #a16207; }

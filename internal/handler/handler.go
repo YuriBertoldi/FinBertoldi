@@ -2,18 +2,22 @@ package handler
 
 import (
 	"bytes"
+	"crypto/rand"
 	"database/sql"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"html/template"
 	"io"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"time"
 
 	"fincontrol/internal/auth"
+	"fincontrol/internal/integrations"
 	"fincontrol/internal/models"
 	"fincontrol/internal/store"
 	"golang.org/x/crypto/bcrypt"
@@ -48,6 +52,10 @@ func buildFuncMap() template.FuncMap {
 			b, _ := json.Marshal(v)
 			return template.JS(b)
 		},
+		"deref": func(p *float64) float64 {
+			if p == nil { return 0 }
+			return *p
+		},
 		"contains": func(slice []string, s string) bool {
 			for _, v := range slice {
 				if v == s { return true }
@@ -59,7 +67,7 @@ func buildFuncMap() template.FuncMap {
 
 // InitTemplates carrega e compila todos os templates.
 func InitTemplates() {
-	pages := []string{"dashboard", "despesas", "pagamentos", "receitas", "investimentos", "planejamento", "emprestimos", "usuarios", "familias", "cadastros", "minha-familia", "importexport", "transacoes"}
+	pages := []string{"dashboard", "despesas", "pagamentos", "receitas", "investimentos", "planejamento", "emprestimos", "usuarios", "familias", "cadastros", "minha-familia", "importexport", "transacoes", "integracoes"}
 	for _, page := range pages {
 		t := template.New("").Funcs(buildFuncMap())
 		template.Must(t.ParseFiles("templates/base.html", "templates/"+page+".html"))
@@ -67,6 +75,10 @@ func InitTemplates() {
 	}
 	lt := template.Must(template.New("login").Funcs(buildFuncMap()).ParseFiles("templates/login.html"))
 	tmplPages["login"] = lt
+	fp := template.Must(template.New("forgot_password").Funcs(buildFuncMap()).ParseFiles("templates/forgot-password.html"))
+	tmplPages["forgot_password"] = fp
+	rp := template.Must(template.New("reset_password").Funcs(buildFuncMap()).ParseFiles("templates/reset-password.html"))
+	tmplPages["reset_password"] = rp
 	InitReportTemplates()
 }
 
@@ -209,6 +221,9 @@ func HandleLogin(db *sql.DB) http.HandlerFunc {
 			if r.URL.Query().Get("erro") != "" {
 				erro = "Email ou senha incorretos."
 			}
+			if r.URL.Query().Get("reset") != "" {
+				erro = "Senha alterada com sucesso! Faca login."
+			}
 			renderLogin(w, models.LoginPage{Title: "Login — FinBertoldi", Erro: erro})
 			return
 		}
@@ -243,6 +258,250 @@ func HandleLogout(db *sql.DB) http.HandlerFunc {
 		}
 		auth.ClearSessionCookie(w)
 		http.Redirect(w, r, "/login", http.StatusSeeOther)
+	}
+}
+
+// --- Recuperação de Senha ---
+
+func renderStandalone(w http.ResponseWriter, name string, data any) {
+	t, ok := tmplPages[name]
+	if !ok {
+		http.Error(w, "template não encontrado: "+name, http.StatusInternalServerError)
+		return
+	}
+	if err := t.ExecuteTemplate(w, name, data); err != nil {
+		log.Printf("%s template error: %v", name, err)
+	}
+}
+
+func HandleForgotPassword(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet {
+			msg := ""
+			if r.URL.Query().Get("ok") != "" {
+				msg = "Se o email estiver cadastrado, enviaremos um link de recuperacao."
+			}
+			renderStandalone(w, "forgot_password", map[string]string{"Msg": msg})
+			return
+		}
+		r.ParseForm()
+		email := strings.TrimSpace(r.FormValue("email"))
+
+		// Sempre redireciona com mensagem genérica (segurança)
+		userID, err := store.GetUserIDByEmail(db, email)
+		if err == nil && userID > 0 {
+			tokenBytes := make([]byte, 32)
+			rand.Read(tokenBytes)
+			token := hex.EncodeToString(tokenBytes)
+			expiry := time.Now().Add(1 * time.Hour)
+
+			if err := store.CreatePasswordReset(db, userID, token, expiry); err != nil {
+				log.Printf("[password-reset] erro ao criar token: %v", err)
+			} else {
+				baseURL := os.Getenv("BASE_URL")
+				if baseURL == "" {
+					baseURL = "http://localhost:8080"
+				}
+				if err := auth.SendResetEmail(email, token, baseURL); err != nil {
+					log.Printf("[password-reset] erro ao enviar email: %v", err)
+				}
+			}
+		}
+		http.Redirect(w, r, "/forgot-password?ok=1", http.StatusSeeOther)
+	}
+}
+
+func HandleResetPassword(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		token := r.URL.Query().Get("token")
+		if r.Method == http.MethodGet {
+			if token == "" {
+				renderStandalone(w, "reset_password", map[string]string{"Erro": "Link invalido."})
+				return
+			}
+			_, err := store.GetPasswordReset(db, token)
+			if err != nil {
+				renderStandalone(w, "reset_password", map[string]string{"Erro": "Link expirado ou invalido."})
+				return
+			}
+			renderStandalone(w, "reset_password", map[string]string{"Token": token})
+			return
+		}
+		r.ParseForm()
+		token = r.FormValue("token")
+		senha := r.FormValue("senha")
+		confirmar := r.FormValue("confirmar")
+
+		if senha != confirmar {
+			renderStandalone(w, "reset_password", map[string]string{"Token": token, "Erro": "As senhas nao coincidem."})
+			return
+		}
+		if len(senha) < 6 {
+			renderStandalone(w, "reset_password", map[string]string{"Token": token, "Erro": "A senha deve ter pelo menos 6 caracteres."})
+			return
+		}
+
+		userID, err := store.GetPasswordReset(db, token)
+		if err != nil {
+			renderStandalone(w, "reset_password", map[string]string{"Erro": "Link expirado ou invalido."})
+			return
+		}
+
+		hashed, err := bcrypt.GenerateFromPassword([]byte(senha), bcrypt.DefaultCost)
+		if err != nil {
+			renderStandalone(w, "reset_password", map[string]string{"Erro": "Erro interno."})
+			return
+		}
+
+		store.UpdateUserPassword(db, userID, string(hashed))
+		store.UsePasswordReset(db, token)
+
+		http.Redirect(w, r, "/login?reset=1", http.StatusSeeOther)
+	}
+}
+
+// --- Integrações ---
+
+func buildIntegracoesList(db *sql.DB, fid int) []models.IntegracaoStatus {
+	return []models.IntegracaoStatus{
+		{
+			Nome: "bcb", Label: "Banco Central (BCB)",
+			Descricao: "Taxas Selic, CDI e IPCA atualizadas automaticamente.",
+			Ativa:     store.GetIntegracaoAtiva(db, fid, "bcb"),
+		},
+		{
+			Nome: "cotacoes", Label: "Cotações (AwesomeAPI)",
+			Descricao: "Cotações do Dólar, Euro e Bitcoin em tempo real.",
+			Ativa:     store.GetIntegracaoAtiva(db, fid, "cotacoes"),
+		},
+		{
+			Nome: "telegram", Label: "Telegram Bot",
+			Descricao: "Receba alertas de vencimento e resumo semanal no Telegram.",
+			Ativa:     store.GetIntegracaoAtiva(db, fid, "telegram"),
+			Campos: []models.IntegracaoCampo{
+				{Nome: "bot_token", Label: "Bot Token", Tipo: "password", Valor: store.GetIntegracaoKV(db, fid, "telegram", "bot_token"), Placeholder: "Cole o token do BotFather"},
+				{Nome: "chat_id", Label: "Chat ID", Tipo: "text", Valor: store.GetIntegracaoKV(db, fid, "telegram", "chat_id"), Placeholder: "Seu chat ID numérico"},
+			},
+		},
+		{
+			Nome: "brasilapi", Label: "Feriados (BrasilAPI)",
+			Descricao: "Calendário de feriados nacionais do ano.",
+			Ativa:     store.GetIntegracaoAtiva(db, fid, "brasilapi"),
+		},
+		{
+			Nome: "sheets", Label: "Google Sheets",
+			Descricao: "Exporte dados automaticamente para uma planilha Google.",
+			Ativa:     store.GetIntegracaoAtiva(db, fid, "sheets"),
+			Campos: []models.IntegracaoCampo{
+				{Nome: "spreadsheet_id", Label: "ID da Planilha", Tipo: "text", Valor: store.GetIntegracaoKV(db, fid, "sheets", "spreadsheet_id"), Placeholder: "ID da planilha no Google Sheets"},
+				{Nome: "service_account_json", Label: "Service Account JSON", Tipo: "textarea", Valor: store.GetIntegracaoKV(db, fid, "sheets", "service_account_json"), Placeholder: "Cole o JSON da service account"},
+			},
+		},
+	}
+}
+
+func HandleIntegracoes(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		u := auth.CurrentUser(r)
+		sucesso := r.URL.Query().Get("ok")
+		erro := r.URL.Query().Get("erro")
+
+		var sucessoMsg, erroMsg string
+		if sucesso != "" {
+			sucessoMsg = "Integração atualizada com sucesso!"
+		}
+		if erro != "" {
+			erroMsg = erro
+		}
+
+		render(w, "integracoes", models.IntegracoesPage{
+			BasePage: models.BasePage{
+				CurrentUser:    u,
+				Active:         "integracoes",
+				Title:          "Integrações",
+				BlockedScreens: u.BlockedScreens,
+			},
+			Integracoes: buildIntegracoesList(db, u.FamilyID),
+			Sucesso:     sucessoMsg,
+			Erro:        erroMsg,
+		})
+	}
+}
+
+func HandleIntegracaoSalvar(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		u := auth.CurrentUser(r)
+		fid := u.FamilyID
+		nome := r.PathValue("nome")
+		r.ParseForm()
+
+		ativa := r.FormValue("ativa") == "on"
+		store.SetIntegracaoAtiva(db, fid, nome, ativa)
+
+		// Salvar campos extras
+		for key, vals := range r.Form {
+			if key == "ativa" {
+				continue
+			}
+			if len(vals) > 0 {
+				store.SetIntegracaoKV(db, fid, nome, key, vals[0])
+			}
+		}
+
+		// Ações especiais ao ativar
+		if ativa {
+			switch nome {
+			case "bcb":
+				go integrations.FetchBCB(db)
+			case "cotacoes":
+				go integrations.FetchCotacoes(db)
+			case "brasilapi":
+				go integrations.FetchFeriados(db, time.Now().Year())
+			case "telegram":
+				botToken := r.FormValue("bot_token")
+				chatID := r.FormValue("chat_id")
+				if botToken != "" && chatID != "" {
+					if err := integrations.TestTelegram(botToken, chatID); err != nil {
+						http.Redirect(w, r, "/integracoes?erro=Telegram: "+err.Error(), http.StatusSeeOther)
+						return
+					}
+				}
+			}
+		}
+
+		http.Redirect(w, r, "/integracoes?ok=1", http.StatusSeeOther)
+	}
+}
+
+func HandleIntegracaoTestar(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		u := auth.CurrentUser(r)
+		fid := u.FamilyID
+		nome := r.PathValue("nome")
+
+		w.Header().Set("Content-Type", "application/json")
+		var err error
+
+		switch nome {
+		case "bcb":
+			err = integrations.FetchBCB(db)
+		case "cotacoes":
+			err = integrations.FetchCotacoes(db)
+		case "brasilapi":
+			err = integrations.FetchFeriados(db, time.Now().Year())
+		case "telegram":
+			botToken := store.GetIntegracaoKV(db, fid, "telegram", "bot_token")
+			chatID := store.GetIntegracaoKV(db, fid, "telegram", "chat_id")
+			err = integrations.TestTelegram(botToken, chatID)
+		case "sheets":
+			err = integrations.ExportToSheet(db, fid)
+		}
+
+		if err != nil {
+			json.NewEncoder(w).Encode(map[string]string{"status": "erro", "mensagem": err.Error()})
+		} else {
+			json.NewEncoder(w).Encode(map[string]string{"status": "ok", "mensagem": "Teste realizado com sucesso!"})
+		}
 	}
 }
 
@@ -289,6 +548,7 @@ func HandleDashboard(db *sql.DB) http.HandlerFunc {
 			DespesasVR:      vr,
 			Parcelamentos:   parcelamentos,
 			Historico:       historico,
+			Integracoes:     store.GetDadosEconomicos(db),
 		})
 	}
 }
@@ -471,12 +731,19 @@ func HandleParcelamentos(db *sql.DB) http.HandlerFunc {
 func HandleCreateParcelamento(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		r.ParseForm()
+		financiamento := r.FormValue("financiamento") == "on"
+		var valorOriginal, taxaJuros float64
+		if financiamento {
+			valorOriginal = parseFloat(r.FormValue("valor_original"))
+			taxaJuros = parseFloat(r.FormValue("taxa_juros"))
+		}
 		store.CreateParcelamento(db, auth.CurrentUser(r).FamilyID,
 			r.FormValue("descricao"), r.FormValue("cartao"),
 			parseFloat(r.FormValue("valor_parcela")),
 			parseInt(r.FormValue("parcela_atual")),
 			parseInt(r.FormValue("total_parcelas")),
-			parseDate(r.FormValue("data_inicio")))
+			parseDate(r.FormValue("data_inicio")),
+			financiamento, valorOriginal, taxaJuros)
 		http.Redirect(w, r, "/despesas?tab=parcelamentos", http.StatusSeeOther)
 	}
 }
@@ -493,6 +760,54 @@ func HandleUpdateParcelamento(db *sql.DB) http.HandlerFunc {
 func HandleDeleteParcelamento(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		store.DeleteParcelamento(db, auth.CurrentUser(r).FamilyID, parseInt(r.PathValue("id")))
+		http.Redirect(w, r, "/despesas?tab=parcelamentos", http.StatusSeeOther)
+	}
+}
+
+func HandleAnteciparPreview(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		fid := auth.CurrentUser(r).FamilyID
+		id := parseInt(r.PathValue("id"))
+		previews, err := store.GetAntecipacoesPreview(db, fid, id)
+		if err != nil {
+			http.Error(w, err.Error(), 400)
+			return
+		}
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		if len(previews) == 0 {
+			fmt.Fprint(w, `<p class="muted">Nenhuma parcela disponível para antecipação.</p>`)
+			return
+		}
+		fmt.Fprint(w, `<div class="table-responsive"><table><thead><tr><th>Parcela</th><th>Valor Original</th><th>Desconto</th><th>Valor c/ Desconto</th></tr></thead><tbody>`)
+		var totalDesc, totalPagar float64
+		for _, p := range previews {
+			totalDesc += p.Desconto
+			totalPagar += p.ValorComDesconto
+			fmt.Fprintf(w, `<tr><td>%dª</td><td>%s</td><td class="text-success">- %s</td><td><strong>%s</strong></td></tr>`,
+				p.ParcelaNum, formatBRL(p.ValorOriginal), formatBRL(p.Desconto), formatBRL(p.ValorComDesconto))
+		}
+		fmt.Fprint(w, `</tbody></table></div>`)
+		fmt.Fprintf(w, `<div class="antecipar-resumo"><p>Total a pagar: <strong>%s</strong></p><p class="text-success">Economia total: <strong>%s</strong></p></div>`,
+			formatBRL(totalPagar), formatBRL(totalDesc))
+	}
+}
+
+func HandleAnteciparParcela(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		r.ParseForm()
+		fid := auth.CurrentUser(r).FamilyID
+		id := parseInt(r.PathValue("id"))
+		qtd := parseInt(r.FormValue("qtd_parcelas"))
+		if qtd <= 0 {
+			qtd = 1
+		}
+		economia, err := store.AnteciparParcelas(db, fid, id, qtd)
+		if err != nil {
+			log.Printf("antecipar parcela: %v", err)
+			http.Redirect(w, r, "/despesas?tab=parcelamentos", http.StatusSeeOther)
+			return
+		}
+		log.Printf("antecipação: %d parcelas, economia R$ %.2f", qtd, economia)
 		http.Redirect(w, r, "/despesas?tab=parcelamentos", http.StatusSeeOther)
 	}
 }
@@ -1321,5 +1636,45 @@ func HandlePluggySync(db *sql.DB) http.HandlerFunc {
 			return
 		}
 		http.Redirect(w, r, "/cadastros?tab=integracao", http.StatusSeeOther)
+	}
+}
+
+// HandlePluggyWebhook faz proxy do webhook externo para o pluggy-service interno.
+// Rota publica (sem auth) — a validacao e feita por token no pluggy-service.
+func HandlePluggyWebhook(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		cfg, err := store.GetIntegracaoConfig(db, "pluggy")
+		if err != nil || cfg.ServiceURL == "" {
+			cfg = &models.IntegracaoConfig{ServiceURL: "http://pluggy-service:8081"}
+		}
+
+		// Forward token from query string
+		targetURL := cfg.ServiceURL + "/api/pluggy/webhook"
+		if token := r.URL.Query().Get("token"); token != "" {
+			targetURL += "?token=" + token
+		}
+
+		proxyReq, err := http.NewRequest("POST", targetURL, r.Body)
+		if err != nil {
+			http.Error(w, "proxy error", http.StatusBadGateway)
+			return
+		}
+		proxyReq.Header.Set("Content-Type", "application/json")
+		// Forward webhook token header if present
+		if h := r.Header.Get("X-Webhook-Token"); h != "" {
+			proxyReq.Header.Set("X-Webhook-Token", h)
+		}
+
+		client := &http.Client{Timeout: 30 * time.Second}
+		resp, err := client.Do(proxyReq)
+		if err != nil {
+			log.Printf("[webhook-proxy] erro: %v", err)
+			http.Error(w, "pluggy-service indisponivel", http.StatusBadGateway)
+			return
+		}
+		defer resp.Body.Close()
+
+		w.WriteHeader(resp.StatusCode)
+		io.Copy(w, resp.Body)
 	}
 }

@@ -10,6 +10,10 @@
 | GET | `/login` | HandleLogin | Tela de login |
 | POST | `/login` | HandleLogin | Processar login |
 | POST | `/logout` | HandleLogout | Encerrar sessao |
+| GET | `/forgot-password` | HandleForgotPassword | Formulario recuperacao de senha |
+| POST | `/forgot-password` | HandleForgotPassword | Enviar email de reset |
+| GET | `/reset-senha` | HandleResetPassword | Formulario nova senha (com token) |
+| POST | `/reset-senha` | HandleResetPassword | Redefinir senha |
 
 ## Protegidas (Protected — requer login)
 
@@ -103,6 +107,18 @@
 | POST | `/transacoes/{id}/converter` | HandleTransacaoConverter |
 | POST | `/transacoes/{id}/ignorar` | HandleTransacaoIgnorar |
 | POST | `/transacoes/{id}/categorizar` | HandleTransacaoCategorizar |
+| POST | `/transacoes/{id}/vincular` | HandleTransacaoVincular |
+| POST | `/transacoes/{id}/desvincular` | HandleTransacaoDesvincular |
+| GET | `/api/transacoes/{id}/matches` | HandleTransacaoMatches |
+| POST | `/transacoes/auto-match` | HandleAutoMatch |
+
+## Protegidas (integracoes)
+
+| Metodo | Rota | Handler |
+|--------|------|---------|
+| GET | `/integracoes` | HandleIntegracoes |
+| POST | `/integracoes/{nome}` | HandleIntegracaoSalvar |
+| POST | `/integracoes/{nome}/testar` | HandleIntegracaoTestar |
 
 ## AdminOnly (admin global)
 

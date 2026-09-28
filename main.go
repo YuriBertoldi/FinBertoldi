@@ -7,6 +7,7 @@ import (
 
 	"fincontrol/internal/auth"
 	"fincontrol/internal/handler"
+	"fincontrol/internal/integrations"
 	"fincontrol/internal/store"
 )
 
@@ -38,6 +39,10 @@ func main() {
 	mux.HandleFunc("GET /login", handler.HandleLogin(db))
 	mux.HandleFunc("POST /login", handler.HandleLogin(db))
 	mux.HandleFunc("POST /logout", handler.HandleLogout(db))
+	mux.HandleFunc("GET /forgot-password", handler.HandleForgotPassword(db))
+	mux.HandleFunc("POST /forgot-password", handler.HandleForgotPassword(db))
+	mux.HandleFunc("GET /reset-senha", handler.HandleResetPassword(db))
+	mux.HandleFunc("POST /reset-senha", handler.HandleResetPassword(db))
 
 	// Dashboard
 	mux.HandleFunc("GET /", auth.Protected(db, handler.HandleDashboard(db)))
@@ -56,6 +61,8 @@ func main() {
 	mux.HandleFunc("POST /parcelamentos", auth.ScreenProtected(db, "despesas", handler.HandleCreateParcelamento(db)))
 	mux.HandleFunc("POST /parcelamentos/{id}/update", auth.ScreenProtected(db, "despesas", handler.HandleUpdateParcelamento(db)))
 	mux.HandleFunc("POST /parcelamentos/{id}/delete", auth.ScreenProtected(db, "despesas", handler.HandleDeleteParcelamento(db)))
+	mux.HandleFunc("POST /parcelamentos/{id}/antecipar", auth.ScreenProtected(db, "despesas", handler.HandleAnteciparParcela(db)))
+	mux.HandleFunc("GET /api/parcelamentos/{id}/antecipar-preview", auth.ScreenProtected(db, "despesas", handler.HandleAnteciparPreview(db)))
 
 	// Receitas
 	mux.HandleFunc("GET /receitas", auth.ScreenProtected(db, "receitas", handler.HandleReceitas(db)))
@@ -103,6 +110,9 @@ func main() {
 	mux.HandleFunc("POST /cadastros/pluggy/{item_id}/disconnect", auth.AdminOnly(db, handler.HandlePluggyDisconnect(db)))
 	mux.HandleFunc("POST /cadastros/pluggy/{item_id}/sync", auth.AdminOnly(db, handler.HandlePluggySync(db)))
 
+	// Pluggy webhook (público — validação por token no pluggy-service)
+	mux.HandleFunc("POST /webhook/pluggy", handler.HandlePluggyWebhook(db))
+
 	// Usuários (admin only)
 	mux.HandleFunc("GET /usuarios", auth.AdminOnly(db, handler.HandleUsuarios(db)))
 	mux.HandleFunc("POST /usuarios", auth.AdminOnly(db, handler.HandleCreateUsuario(db)))
@@ -128,6 +138,10 @@ func main() {
 	mux.HandleFunc("POST /transacoes/{id}/converter", auth.ScreenProtected(db, "transacoes", handler.HandleTransacaoConverter(db)))
 	mux.HandleFunc("POST /transacoes/{id}/ignorar", auth.ScreenProtected(db, "transacoes", handler.HandleTransacaoIgnorar(db)))
 	mux.HandleFunc("POST /transacoes/{id}/categorizar", auth.ScreenProtected(db, "transacoes", handler.HandleTransacaoCategorizar(db)))
+	mux.HandleFunc("POST /transacoes/{id}/vincular", auth.ScreenProtected(db, "transacoes", handler.HandleTransacaoVincular(db)))
+	mux.HandleFunc("POST /transacoes/{id}/desvincular", auth.ScreenProtected(db, "transacoes", handler.HandleTransacaoDesvincular(db)))
+	mux.HandleFunc("GET /api/transacoes/{id}/matches", auth.ScreenProtected(db, "transacoes", handler.HandleTransacaoMatches(db)))
+	mux.HandleFunc("POST /transacoes/auto-match", auth.ScreenProtected(db, "transacoes", handler.HandleAutoMatch(db)))
 
 	// Importar / Exportar
 	mux.HandleFunc("GET /dados", auth.Protected(db, handler.HandleImportPage(db)))
@@ -147,6 +161,14 @@ func main() {
 	mux.HandleFunc("POST /familias", auth.AdminOnly(db, handler.HandleCreateFamilia(db)))
 	mux.HandleFunc("POST /familias/{id}/rename", auth.AdminOnly(db, handler.HandleRenameFamilia(db)))
 	mux.HandleFunc("POST /familias/{id}/delete", auth.AdminOnly(db, handler.HandleDeleteFamilia(db)))
+
+	// Integrações
+	mux.HandleFunc("GET /integracoes", auth.Protected(db, handler.HandleIntegracoes(db)))
+	mux.HandleFunc("POST /integracoes/{nome}", auth.Protected(db, handler.HandleIntegracaoSalvar(db)))
+	mux.HandleFunc("POST /integracoes/{nome}/testar", auth.Protected(db, handler.HandleIntegracaoTestar(db)))
+
+	// Iniciar scheduler de integrações
+	integrations.StartScheduler(db)
 
 	port := getEnv("PORT", "8080")
 	log.Printf("Servidor iniciado em http://localhost:%s", port)

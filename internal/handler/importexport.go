@@ -249,7 +249,7 @@ func HandleImport(db *sql.DB) http.HandlerFunc {
 				if totalParcelas == 0 {
 					totalParcelas = 1
 				}
-				if err := store.CreateParcelamento(db, fid, descricao, cartao, valorParc, parcelaAtual, totalParcelas, dataInicio); err == nil {
+				if err := store.CreateParcelamento(db, fid, descricao, cartao, valorParc, parcelaAtual, totalParcelas, dataInicio, false, 0, 0); err == nil {
 					resultado.Parcelamentos++
 				}
 			}

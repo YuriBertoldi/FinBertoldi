@@ -168,7 +168,11 @@
       {{range .Parcelamentos}}
       <tr class="{{if not .Ativo}}inativa{{end}}">
         <td class="col-check"><input type="checkbox" class="row-check"></td>
-        <td>{{.Descricao}}</td>
+        <td>
+          {{.Descricao}}
+          {{if .Financiamento}}<span class="badge badge-financ" title="Financiamento — Taxa {{.TaxaJuros}}% a.m.">Financ.</span>{{end}}
+          {{if and .Financiamento (gt .TotalEconomizado 0)}}<br><small class="text-success">Economizado: {{brl .TotalEconomizado}}</small>{{end}}
+        </td>
         <td><small>{{.Cartao}}</small></td>
         <td>
           {{if .Ativo}}
@@ -176,7 +180,10 @@
           {{end}}
           <span class="progress-label">{{progress .ParcelaAtual .TotalParcelas}}</span>
         </td>
-        <td>{{brl .ValorParcela}}</td>
+        <td>
+          {{brl .ValorParcela}}
+          {{if and .Financiamento (gt .TotalJuros 0)}}<br><small class="muted">Juros total: {{brl .TotalJuros}}</small>{{end}}
+        </td>
         <td>{{if .Ativo}}{{brl .ValorRestante}}{{else}}<span class="muted">—</span>{{end}}</td>
         <td><small>{{date .DataInicio}}</small></td>
         <td>
@@ -187,6 +194,9 @@
           {{end}}
         </td>
         <td class="actions">
+          {{if and .Financiamento .Ativo (gt .Restantes 0)}}
+          <button data-open-dialog="dialog-antecipar-{{.ID}}" class="btn-action" title="Adiantar Parcelas">⏩</button>
+          {{end}}
           <button data-open-dialog="dialog-edit-parc-{{.ID}}" class="btn-action" title="Editar">✏️</button>
           <form method="POST" action="/parcelamentos/{{.ID}}/delete" style="display:inline"
                 onsubmit="return confirm('Excluir {{.Descricao}}?')">
@@ -194,6 +204,7 @@
           </form>
         </td>
       </tr>
+      <!-- Dialog editar -->
       <dialog id="dialog-edit-parc-{{.ID}}">
         <article>
           <header>
@@ -212,6 +223,12 @@
                 </select>
               </label>
             </div>
+            {{if .Financiamento}}
+            <div style="margin-top:.5rem;padding:.75rem;background:var(--pico-card-background-color);border-radius:var(--pico-border-radius)">
+              <small class="muted">Valor Original: <strong>{{brl .ValorOriginal}}</strong> | Taxa: <strong>{{.TaxaJuros}}% a.m.</strong> | Juros Total: <strong>{{brl .TotalJuros}}</strong></small>
+              {{if gt .TotalEconomizado 0}}<br><small class="text-success">Economizado com antecipações: <strong>{{brl .TotalEconomizado}}</strong></small>{{end}}
+            </div>
+            {{end}}
             <footer>
               <button data-close-dialog type="button" class="secondary">Cancelar</button>
               <button type="submit">Salvar</button>
@@ -219,8 +236,31 @@
           </form>
         </article>
       </dialog>
+      {{if and .Financiamento .Ativo (gt .Restantes 0)}}
+      <!-- Dialog antecipar -->
+      <dialog id="dialog-antecipar-{{.ID}}">
+        <article>
+          <header>
+            <button data-close-dialog aria-label="Fechar"></button>
+            <h3>Adiantar Parcelas: {{.Descricao}}</h3>
+          </header>
+          <div hx-get="/api/parcelamentos/{{.ID}}/antecipar-preview" hx-trigger="intersect once" hx-swap="innerHTML" id="preview-{{.ID}}">
+            <p class="muted">Carregando parcelas...</p>
+          </div>
+          <form method="POST" action="/parcelamentos/{{.ID}}/antecipar" style="margin-top:1rem">
+            <label>Quantas parcelas adiantar?
+              <input type="number" name="qtd_parcelas" min="1" max="{{.Restantes}}" value="1" required>
+            </label>
+            <footer>
+              <button data-close-dialog type="button" class="secondary">Cancelar</button>
+              <button type="submit">Confirmar Antecipação</button>
+            </footer>
+          </form>
+        </article>
+      </dialog>
+      {{end}}
       {{else}}
-      <tr><td colspan="8" class="muted center">Nenhum parcelamento cadastrado.</td></tr>
+      <tr><td colspan="9" class="muted center">Nenhum parcelamento cadastrado.</td></tr>
       {{end}}
     </tbody>
   </table>
@@ -248,12 +288,27 @@
           <input type="text" name="cartao" placeholder="Ex: Nubank (cadastre em Cadastros > Cartões)">
           {{end}}
         </label>
-        <label>Valor/Parcela (R$)<input type="text" name="valor_parcela" placeholder="350,00" required></label>
+        <label>Valor/Parcela (R$)<input type="text" name="valor_parcela" placeholder="350,00" required id="np-valor-parcela"></label>
       </div>
       <div class="grid">
         <label>Parcela Atual<input type="number" name="parcela_atual" value="1" min="1"></label>
-        <label>Total de Parcelas<input type="number" name="total_parcelas" placeholder="12" min="1" required></label>
+        <label>Total de Parcelas<input type="number" name="total_parcelas" placeholder="12" min="1" required id="np-total-parcelas"></label>
         <label>Data de Início<input type="date" name="data_inicio" required></label>
+      </div>
+      <label style="cursor:pointer;display:flex;align-items:center;gap:.5rem;margin-top:.5rem">
+        <input type="checkbox" name="financiamento" id="chk-financ" onchange="toggleFinancFields()" role="switch">
+        É financiamento? (com juros)
+      </label>
+      <div id="financ-fields" style="display:none;margin-top:.5rem">
+        <div class="grid">
+          <label>Valor Original (R$)
+            <input type="text" name="valor_original" placeholder="10.000,00" id="np-valor-original">
+          </label>
+          <label>Taxa de Juros Mensal (%)
+            <input type="text" name="taxa_juros" placeholder="1,99" id="np-taxa-juros">
+          </label>
+        </div>
+        <p class="hint" id="np-juros-info" style="display:none"></p>
       </div>
       <p class="hint" style="margin-top:.75rem">🔁 O parcelamento será debitado <strong>do mês de início até o último mês</strong> e então pára automaticamente.</p>
       <footer>
@@ -328,8 +383,11 @@
     {{range .ParcelamentosMes}}
     <tr data-cat="parcelamento" data-status="{{if .Pago}}pago{{else}}pendente{{end}}" data-nome="{{.Descricao}}">
       <td class="col-check"><input type="checkbox" class="row-check"></td>
-      <td><span class="badge badge-grupo-cartao" style="margin-right:.5rem">Parcela</span>{{.Descricao}} <small class="muted">({{progress .ParcelaAtual .TotalParcelas}})</small></td>
-      <td class="valor-col">{{brl .ValorParcela}}</td>
+      <td>
+        <span class="badge badge-grupo-cartao" style="margin-right:.5rem">Parcela</span>{{.Descricao}} <small class="muted">({{progress .ParcelaAtual .TotalParcelas}})</small>
+        {{if .Antecipada}}<span class="badge badge-antecipada">Antecipada</span>{{end}}
+      </td>
+      <td class="valor-col">{{if .ValorPago}}{{brl (deref .ValorPago)}}{{else}}{{brl .ValorParcela}}{{end}}</td>
       <td class="status-col">{{template "toggle-parc-btn" .}}</td>
     </tr>
     {{end}}
@@ -415,12 +473,50 @@ initSelecao({ tableId: 'pag-table', valorCol: 2, barId: 'sel-bar-pag', tipoValor
       searchId: 'sp-busca',
       filters: [
         { id: 'sp-cartao', col: 2 },
-        { id: 'sp-status', col: 7 }
+        { id: 'sp-status', col: 8 }
       ],
       countId: 'sp-count',
       noResultsId: 'sp-no-results'
     });
     initSelecao({ tableId: 'table-parc', valorCol: 4, barId: 'sel-bar-parc', tipoValor: 'negativo' });
   }
+
+  // Toggle campos de financiamento
+  function toggleFinancFields() {
+    var chk = document.getElementById('chk-financ');
+    var fields = document.getElementById('financ-fields');
+    if (chk && fields) {
+      fields.style.display = chk.checked ? '' : 'none';
+    }
+  }
+
+  // Calcular juros ao preencher campos
+  function calcJurosInfo() {
+    var vp = document.getElementById('np-valor-parcela');
+    var tp = document.getElementById('np-total-parcelas');
+    var vo = document.getElementById('np-valor-original');
+    var info = document.getElementById('np-juros-info');
+    if (!vp || !tp || !vo || !info) return;
+    var valorParcela = parseFloat((vp.value || '0').replace(/\./g, '').replace(',', '.'));
+    var totalParcelas = parseInt(tp.value || '0');
+    var valorOriginal = parseFloat((vo.value || '0').replace(/\./g, '').replace(',', '.'));
+    if (valorParcela > 0 && totalParcelas > 0 && valorOriginal > 0) {
+      var totalComJuros = valorParcela * totalParcelas;
+      var juros = totalComJuros - valorOriginal;
+      if (juros > 0) {
+        info.style.display = '';
+        info.innerHTML = 'Total com juros: <strong>R$ ' + totalComJuros.toLocaleString('pt-BR', {minimumFractionDigits:2}) +
+          '</strong> | Juros total: <strong class="text-danger">R$ ' + juros.toLocaleString('pt-BR', {minimumFractionDigits:2}) + '</strong>';
+      } else {
+        info.style.display = 'none';
+      }
+    } else {
+      info.style.display = 'none';
+    }
+  }
+  ['np-valor-parcela','np-total-parcelas','np-valor-original'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.addEventListener('input', calcJurosInfo);
+  });
 </script>
 {{end}}

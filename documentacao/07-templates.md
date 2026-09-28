@@ -38,6 +38,9 @@ Contem:
 | `minha-familia.html` | /minha-familia | Gerenciamento de membros da familia |
 | `usuarios.html` | /usuarios | Admin: gerenciar usuarios |
 | `familias.html` | /familias | Admin: gerenciar familias |
+| `integracoes.html` | /integracoes | Configuracao de integracoes (BCB, cotacoes, Telegram, etc) |
+| `forgot-password.html` | /forgot-password | Recuperacao de senha (standalone, sem sidebar) |
+| `reset-password.html` | /reset-senha | Redefinir senha via token (standalone) |
 | `importexport.html` | /dados | Import/export XLSX |
 
 ## Templates de relatorio

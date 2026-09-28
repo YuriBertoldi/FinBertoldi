@@ -25,6 +25,11 @@ Define todas as structs de dominio (entidades do banco) e structs de dados de pa
 | `TransacaoBanco` | `transacoes_banco` | Transacao importada de extrato bancario |
 | `PluggyItem` | `pluggy_items` | Conta bancaria conectada via Pluggy |
 | `IntegracaoConfig` | `integracoes_config` | Configuracao de integracao externa (Pluggy, etc) |
+| `DadoEconomico` | `dados_economicos` | Indicador economico (Selic, CDI, IPCA, USD, EUR, BTC) |
+| `Feriado` | `feriados` | Feriado nacional (BrasilAPI) |
+| `IntegracaoStatus` | — (runtime) | Status de integracao para UI (ativa, campos, label) |
+| `IntegracaoCampo` | — (runtime) | Campo configuravel de integracao |
+| `AntecipacaoPreview` | — (runtime) | Preview de antecipacao de parcela com desconto |
 
 ## Grupos de categoria
 
@@ -50,6 +55,8 @@ O campo `Grupo` de `Categoria` determina como a despesa aparece no dashboard:
 | `UsuariosPage` | usuarios | Lista de usuarios + familias |
 | `MeuTimePage` | minha-familia | Membros da familia, Telas para controle de acesso |
 | `ImportExportPage` | importexport | Resultado de importacao XLSX |
+| `IntegracoesPage` | integracoes | Lista de integracoes com status e campos |
+| `DashboardIntegracoes` | dashboard | Indicadores economicos + feriados |
 
 ## Status de TransacaoBanco
 

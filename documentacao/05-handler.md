@@ -21,6 +21,8 @@ Contem:
 - `calcResumo(...)` — calcula totais do dashboard (despesas, pago, pendente, sobra, caixa)
 - Handlers de todas as telas (Dashboard, Despesas, Receitas, etc)
 - Handlers de integracao Pluggy (admin only)
+- Handlers de recuperacao de senha (forgot/reset)
+- Handlers de integracoes (listar, salvar, testar)
 
 ### bankimport.go
 
@@ -36,6 +38,10 @@ Parsers de importacao bancaria e handlers de transacoes:
 - `HandleTransacaoConverter` — converte transacao em despesa ou receita
 - `HandleTransacaoIgnorar` — marca transacao como ignorada
 - `HandleTransacaoCategorizar` — atribui categoria a transacao
+- `HandleTransacaoVincular` — vincula transacao a despesa/receita existente
+- `HandleTransacaoDesvincular` — remove vinculo de transacao
+- `HandleAutoMatch` — auto-match de transacoes pendentes por valor/data
+- `HandleTransacaoMatches` — endpoint HTMX com sugestoes de match
 
 ### reports.go
 
@@ -84,6 +90,7 @@ func HandleX(db *sql.DB) http.HandlerFunc {
 | `seq` | Gera sequencia de inteiros |
 | `json` | Serializa para JSON (usado em Chart.js) |
 | `contains` | Verifica se slice contem elemento |
+| `deref` | Dereferencia ponteiro *float64 (nil → 0) |
 | `mesDisplay` | "2026-01" → "Janeiro/2026" |
 | `mesNav` | Navegacao de mes (anterior/proximo) |
 
@@ -117,3 +124,18 @@ Funcoes auxiliares:
 - `parseValorBR` — parse de valores monetarios BR
 - `normalizeHeader` — normalizacao de cabecalhos CSV
 - `parseCSVFile` — parse completo de CSV (comma, semicolon, com categoria, vazio, dedup)
+
+## Handlers de Recuperacao de Senha
+
+| Handler | Rota | Descricao |
+|---------|------|-----------|
+| `HandleForgotPassword` | GET/POST /forgot-password | Formulario e envio de email com token |
+| `HandleResetPassword` | GET/POST /reset-senha | Validacao de token e atualizacao de senha |
+
+## Handlers de Integracoes
+
+| Handler | Rota | Descricao |
+|---------|------|-----------|
+| `HandleIntegracoes` | GET /integracoes | Pagina de configuracao de integracoes |
+| `HandleIntegracaoSalvar` | POST /integracoes/{nome} | Salvar config (KV) e toggle ativa |
+| `HandleIntegracaoTestar` | POST /integracoes/{nome}/testar | Testar integracao (retorna JSON) |

@@ -446,6 +446,128 @@ func HandleTransacaoCategorizar(db *sql.DB) http.HandlerFunc {
 	}
 }
 
+func HandleTransacaoVincular(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		u := auth.CurrentUser(r)
+		fid := u.FamilyID
+		id := parseInt(r.PathValue("id"))
+		destino := r.FormValue("destino") // "despesa" ou "receita"
+		vinculoID := parseInt(r.FormValue("vinculo_id"))
+
+		var err error
+		if destino == "despesa" {
+			err = store.VincularTransacaoDespesa(db, fid, id, vinculoID)
+		} else {
+			err = store.VincularTransacaoReceita(db, fid, id, vinculoID)
+		}
+		if err != nil {
+			renderTransacoesComErro(w, r, db, u, "Erro ao vincular: "+err.Error())
+			return
+		}
+		http.Redirect(w, r, "/transacoes", http.StatusSeeOther)
+	}
+}
+
+func HandleTransacaoDesvincular(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		u := auth.CurrentUser(r)
+		id := parseInt(r.PathValue("id"))
+		store.DesvincularTransacao(db, u.FamilyID, id)
+		http.Redirect(w, r, "/transacoes", http.StatusSeeOther)
+	}
+}
+
+func HandleAutoMatch(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		u := auth.CurrentUser(r)
+		matched, err := store.AutoMatchTransacoes(db, u.FamilyID)
+		if err != nil {
+			renderTransacoesComErro(w, r, db, u, "Erro no auto-match: "+err.Error())
+			return
+		}
+		renderTransacoesComResultado(w, r, db, u, &models.ImportBancoResultado{
+			Total: matched,
+			Novos: matched,
+		})
+	}
+}
+
+func HandleTransacaoMatches(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		u := auth.CurrentUser(r)
+		fid := u.FamilyID
+		id := parseInt(r.PathValue("id"))
+
+		// Buscar a transação
+		txns, _ := store.GetTransacoesBanco(db, fid, "", "", "", "")
+		var txn *models.TransacaoBanco
+		for i := range txns {
+			if txns[i].ID == id {
+				txn = &txns[i]
+				break
+			}
+		}
+		if txn == nil {
+			w.WriteHeader(404)
+			return
+		}
+
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		if txn.Tipo == "debito" {
+			despesas, _ := store.BuscarMatchesDespesas(db, fid, txn.Valor, txn.Descricao)
+			parcelas, _ := store.BuscarMatchesParcelamentos(db, fid, txn.Valor, txn.Data)
+			fmt.Fprintf(w, `<div class="match-results">`)
+			if len(despesas) == 0 && len(parcelas) == 0 {
+				fmt.Fprintf(w, `<p class="text-muted">Nenhum match encontrado.</p>`)
+			}
+			if len(despesas) > 0 {
+				fmt.Fprintf(w, `<h4>Despesas</h4>`)
+				for _, m := range despesas {
+					fmt.Fprintf(w, `<form method="POST" action="/transacoes/%d/vincular" class="match-item">
+						<input type="hidden" name="destino" value="despesa">
+						<input type="hidden" name="vinculo_id" value="%d">
+						<span class="match-nome">%s</span>
+						<span class="match-valor">R$ %.2f</span>
+						<span class="match-score badge">%d%%</span>
+						<button type="submit" class="btn-action">Vincular</button>
+					</form>`, id, m.ID, m.Nome, m.Valor, m.Score)
+				}
+			}
+			if len(parcelas) > 0 {
+				fmt.Fprintf(w, `<h4>Parcelamentos</h4>`)
+				for _, m := range parcelas {
+					fmt.Fprintf(w, `<form method="POST" action="/transacoes/%d/vincular" class="match-item">
+						<input type="hidden" name="destino" value="despesa">
+						<input type="hidden" name="vinculo_id" value="%d">
+						<span class="match-nome">%s</span>
+						<span class="match-valor">R$ %.2f</span>
+						<span class="match-score badge">%d%%</span>
+						<button type="submit" class="btn-action">Vincular</button>
+					</form>`, id, m.ID, m.Nome, m.Valor, m.Score)
+				}
+			}
+			fmt.Fprintf(w, `</div>`)
+		} else {
+			receitas, _ := store.BuscarMatchesReceitas(db, fid, txn.Valor, txn.Data)
+			fmt.Fprintf(w, `<div class="match-results">`)
+			if len(receitas) == 0 {
+				fmt.Fprintf(w, `<p class="text-muted">Nenhum match encontrado.</p>`)
+			}
+			for _, m := range receitas {
+				fmt.Fprintf(w, `<form method="POST" action="/transacoes/%d/vincular" class="match-item">
+					<input type="hidden" name="destino" value="receita">
+					<input type="hidden" name="vinculo_id" value="%d">
+					<span class="match-nome">%s</span>
+					<span class="match-valor">R$ %.2f</span>
+					<span class="match-score badge">%d%%</span>
+					<button type="submit" class="btn-action">Vincular</button>
+				</form>`, id, m.ID, m.Descricao, m.Valor, m.Score)
+			}
+			fmt.Fprintf(w, `</div>`)
+		}
+	}
+}
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
