@@ -25,7 +25,15 @@
 
 ## Screenshots
 
-> *Adicione screenshots das telas principais aqui*
+| Dashboard | Despesas |
+|:---------:|:--------:|
+| ![Dashboard](docs/screenshots/dashboard.png) | ![Despesas](docs/screenshots/despesas.png) |
+
+| Planejamento FIRE | Investimentos |
+|:-----------------:|:-------------:|
+| ![Planejamento](docs/screenshots/planejamento.png) | ![Investimentos](docs/screenshots/investimentos.png) |
+
+*Dados ficticios — conta demo para demonstracao*
 
 ---
 
