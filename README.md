@@ -25,7 +25,8 @@
 
 ## Screenshots
 
-> *Adicione screenshots das telas principais aqui*
+![Dashboard](docs/screenshots/dashboard.png)
+*Dashboard com cards de resumo, grafico de evolucao e parcelamentos ativos (valores ocultos por privacidade)*
 
 ---
 
