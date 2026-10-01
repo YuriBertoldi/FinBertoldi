@@ -146,15 +146,14 @@ func (c *Client) ListAccounts(itemID string) ([]Account, error) {
 	return resp.Results, nil
 }
 
-// ListTransactions retrieves transactions for an account within a date range.
+// ListTransactions retrieves transactions for an account within a date range using v2 cursor pagination.
 func (c *Client) ListTransactions(accountID string, from, to time.Time) ([]Transaction, error) {
-	path := fmt.Sprintf("/transactions?accountId=%s&from=%s&to=%s&pageSize=500",
+	path := fmt.Sprintf("/v2/transactions?accountId=%s&dateFrom=%s&dateTo=%s",
 		accountID, from.Format("2006-01-02"), to.Format("2006-01-02"))
 
 	var all []Transaction
-	page := 1
 	for {
-		data, err := c.doRequest("GET", fmt.Sprintf("%s&page=%d", path, page), nil)
+		data, err := c.doRequest("GET", path, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -163,10 +162,10 @@ func (c *Client) ListTransactions(accountID string, from, to time.Time) ([]Trans
 			return nil, err
 		}
 		all = append(all, resp.Results...)
-		if page >= resp.TotalPages {
+		if resp.Next == nil || *resp.Next == "" {
 			break
 		}
-		page++
+		path = "/v2/transactions" + *resp.Next
 	}
 	return all, nil
 }

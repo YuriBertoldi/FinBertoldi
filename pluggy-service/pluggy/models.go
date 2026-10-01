@@ -78,10 +78,8 @@ type Transaction struct {
 }
 
 type TransactionsResponse struct {
-	Results    []Transaction `json:"results"`
-	Total      int           `json:"total"`
-	TotalPages int           `json:"totalPages"`
-	Page       int           `json:"page"`
+	Results []Transaction `json:"results"`
+	Next    *string       `json:"next"`
 }
 
 type WebhookPayload struct {
