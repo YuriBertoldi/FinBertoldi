@@ -71,6 +71,8 @@ func (s *Syncer) syncItem(familyID int, itemID, connectorName string) (int, erro
 			continue
 		}
 
+		isCreditCard := acc.Type == "CREDIT"
+
 		for _, t := range txns {
 			fitID := t.ProviderCode
 			if fitID == "" {
@@ -84,8 +86,15 @@ func (s *Syncer) syncItem(familyID int, itemID, connectorName string) (int, erro
 				continue
 			}
 
+			amount := t.Amount
+			// Cartão de crédito: Pluggy envia compras como positivo,
+			// mas para o usuário é uma saída. Inverter o sinal.
+			if isCreditCard {
+				amount = -amount
+			}
+
 			tipo := "debito"
-			if t.Amount > 0 {
+			if amount > 0 {
 				tipo = "credito"
 			}
 
@@ -102,7 +111,7 @@ func (s *Syncer) syncItem(familyID int, itemID, connectorName string) (int, erro
 			_, err := s.db.Exec(`INSERT INTO transacoes_banco
 				(family_id, data, descricao, valor, tipo, categoria, origem, banco, fit_id, status, pluggy_item_id)
 				VALUES ($1,$2,$3,$4,$5,$6,'pluggy',$7,$8,'pendente',$9)`,
-				familyID, t.Date, desc, math.Abs(t.Amount), tipo, cat, connectorName, fitID, itemID)
+				familyID, t.Date, desc, math.Abs(amount), tipo, cat, connectorName, fitID, itemID)
 			if err != nil {
 				log.Printf("[sync] erro insert txn %s: %v", fitID, err)
 				continue
