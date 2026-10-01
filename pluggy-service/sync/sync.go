@@ -72,6 +72,7 @@ func (s *Syncer) syncItem(familyID int, itemID, connectorName string) (int, erro
 		}
 
 		isCreditCard := acc.Type == "CREDIT"
+		log.Printf("[sync] conta %s tipo=%s subtipo=%s nome=%s (creditCard=%v)", acc.ID, acc.Type, acc.Subtype, acc.Name, isCreditCard)
 
 		for _, t := range txns {
 			fitID := t.ProviderCode
@@ -87,6 +88,7 @@ func (s *Syncer) syncItem(familyID int, itemID, connectorName string) (int, erro
 			}
 
 			amount := t.Amount
+			log.Printf("[sync-debug] txn=%s desc=%q amount=%.2f type=%s accType=%s", t.ID, t.Description, t.Amount, t.Type, acc.Type)
 			// Cartão de crédito: Pluggy envia compras como positivo,
 			// mas para o usuário é uma saída. Inverter o sinal.
 			if isCreditCard {
