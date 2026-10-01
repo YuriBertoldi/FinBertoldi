@@ -5,7 +5,6 @@ import (
 	"encoding/csv"
 	"fmt"
 	"io"
-	"math"
 	"net/http"
 	"strconv"
 	"strings"
@@ -295,10 +294,10 @@ func HandleTransacoes(db *sql.DB) http.HandlerFunc {
 
 		var totalEnt, totalSai float64
 		for _, t := range txns {
-			if t.Valor > 0 {
+			if t.Tipo == "credito" {
 				totalEnt += t.Valor
 			} else {
-				totalSai += math.Abs(t.Valor)
+				totalSai += t.Valor
 			}
 		}
 
@@ -633,10 +632,10 @@ func renderTransacoesComResultado(w http.ResponseWriter, r *http.Request, db *sq
 
 	var totalEnt, totalSai float64
 	for _, t := range txns {
-		if t.Valor > 0 {
+		if t.Tipo == "credito" {
 			totalEnt += t.Valor
 		} else {
-			totalSai += math.Abs(t.Valor)
+			totalSai += t.Valor
 		}
 	}
 
