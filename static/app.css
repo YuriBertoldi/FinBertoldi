@@ -799,10 +799,10 @@ button.outline:hover {
   display: inline-flex !important;
   align-items: center;
   justify-content: center;
-  width: auto !important;
+  width: 30px !important;
   height: 30px !important;
-  padding: 0 10px !important;
-  font-size: .75rem !important;
+  padding: 0 !important;
+  font-size: .85rem !important;
   background: var(--bg-elev-2) !important;
   border: 1px solid var(--border-soft) !important;
   border-radius: 8px !important;
@@ -811,7 +811,7 @@ button.outline:hover {
   transition: all .15s;
   font-weight: 500 !important;
   line-height: 1 !important;
-  margin: 0 3px !important;
+  margin: 0 2px !important;
 }
 .btn-action:hover {
   border-color: var(--color-receita) !important;

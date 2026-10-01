@@ -96,14 +96,14 @@
         <td><span class="badge badge-status-{{.Status}}">{{.Status}}</span></td>
         <td class="actions">
           {{if eq .Status "pendente"}}
-            <button data-open-dialog="dialog-converter-{{.ID}}" class="btn-action" title="Converter em nova despesa/receita">Criar</button>
-            <button data-open-dialog="dialog-vincular-{{.ID}}" class="btn-action outline" title="Vincular a despesa/receita existente">Vincular</button>
+            <button data-open-dialog="dialog-converter-{{.ID}}" class="btn-action" title="Criar despesa/receita">➕</button>
+            <button data-open-dialog="dialog-vincular-{{.ID}}" class="btn-action outline" title="Vincular a existente">🔗</button>
             <form method="POST" action="/transacoes/{{.ID}}/ignorar" style="display:inline">
-              <button type="submit" class="btn-action danger" title="Ignorar" onclick="return confirm('Ignorar esta transacao?')">Ignorar</button>
+              <button type="submit" class="btn-action danger" title="Ignorar" onclick="return confirm('Ignorar esta transacao?')">🚫</button>
             </form>
           {{else if eq .Status "categorizada"}}
-            <button data-open-dialog="dialog-converter-{{.ID}}" class="btn-action" title="Converter">Criar</button>
-            <button data-open-dialog="dialog-vincular-{{.ID}}" class="btn-action outline" title="Vincular">Vincular</button>
+            <button data-open-dialog="dialog-converter-{{.ID}}" class="btn-action" title="Criar despesa/receita">➕</button>
+            <button data-open-dialog="dialog-vincular-{{.ID}}" class="btn-action outline" title="Vincular a existente">🔗</button>
           {{else if eq .Status "convertida"}}
             <span class="text-muted">Vinculada</span>
             <form method="POST" action="/transacoes/{{.ID}}/desvincular" style="display:inline">
