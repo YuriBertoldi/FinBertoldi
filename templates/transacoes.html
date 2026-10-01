@@ -5,6 +5,12 @@
     <form method="POST" action="/transacoes/auto-match" style="display:inline">
       <button type="submit" class="btn-auto-match" title="Buscar matches automaticos entre transacoes pendentes e despesas/receitas">Auto-Match</button>
     </form>
+    <form method="POST" action="/transacoes/converter-todas" style="display:inline">
+      <button type="submit" class="btn-bulk btn-bulk-criar" title="Criar despesa/receita para todas as pendentes" onclick="return confirm('Criar despesa/receita para TODAS as transacoes pendentes?\n\nDebitos → Despesa (categoria Outros)\nCreditos → Receita (tipo Outros)')">Criar Todas</button>
+    </form>
+    <form method="POST" action="/transacoes/ignorar-todas" style="display:inline">
+      <button type="submit" class="btn-bulk btn-bulk-ignorar" title="Ignorar todas as transacoes pendentes" onclick="return confirm('Ignorar TODAS as transacoes pendentes?')">Ignorar Todas</button>
+    </form>
     <button data-open-dialog="dialog-import-csv" class="outline">Importar CSV</button>
     <button data-open-dialog="dialog-import-ofx" class="outline">Importar OFX</button>
     {{if .Contas}}
@@ -290,6 +296,18 @@
   font-weight: 600;
 }
 .btn-auto-match:hover { opacity: .85; }
+
+.btn-bulk {
+  border: none;
+  padding: .45rem .9rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: .85rem;
+  font-weight: 600;
+}
+.btn-bulk:hover { opacity: .85; }
+.btn-bulk-criar { background: linear-gradient(135deg, #27ae60, #219a52); color: #fff; }
+.btn-bulk-ignorar { background: linear-gradient(135deg, #95a5a6, #7f8c8d); color: #fff; }
 
 .match-results { display: flex; flex-direction: column; gap: .5rem; }
 .match-results h4 { margin: .5rem 0 .25rem; font-size: .9rem; color: var(--text-secondary); }

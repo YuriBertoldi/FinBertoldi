@@ -477,6 +477,36 @@ func HandleTransacaoDesvincular(db *sql.DB) http.HandlerFunc {
 	}
 }
 
+func HandleIgnorarTodas(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		u := auth.CurrentUser(r)
+		n, err := store.IgnorarTodasPendentes(db, u.FamilyID)
+		if err != nil {
+			renderTransacoesComErro(w, r, db, u, "Erro ao ignorar: "+err.Error())
+			return
+		}
+		renderTransacoesComResultado(w, r, db, u, &models.ImportBancoResultado{
+			Total: int(n),
+			Novos: int(n),
+		})
+	}
+}
+
+func HandleConverterTodas(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		u := auth.CurrentUser(r)
+		n, err := store.ConverterTodasPendentes(db, u.FamilyID)
+		if err != nil {
+			renderTransacoesComErro(w, r, db, u, "Erro ao converter: "+err.Error())
+			return
+		}
+		renderTransacoesComResultado(w, r, db, u, &models.ImportBancoResultado{
+			Total: n,
+			Novos: n,
+		})
+	}
+}
+
 func HandleAutoMatch(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		u := auth.CurrentUser(r)

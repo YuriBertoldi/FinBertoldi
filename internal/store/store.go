@@ -1107,6 +1107,79 @@ func IgnorarTransacao(db *sql.DB, fid, id int) error {
 	return err
 }
 
+func IgnorarTodasPendentes(db *sql.DB, fid int) (int64, error) {
+	res, err := db.Exec(`UPDATE transacoes_banco SET status='ignorada' WHERE family_id=$1 AND status='pendente'`, fid)
+	if err != nil {
+		return 0, err
+	}
+	return res.RowsAffected()
+}
+
+func ConverterTodasPendentes(db *sql.DB, fid int) (int, error) {
+	rows, err := db.Query(`SELECT id, descricao, valor, data, tipo, categoria FROM transacoes_banco
+		WHERE family_id=$1 AND status='pendente'`, fid)
+	if err != nil {
+		return 0, err
+	}
+	defer rows.Close()
+
+	type txn struct {
+		id        int
+		descricao string
+		valor     float64
+		data      time.Time
+		tipo      string
+		categoria string
+	}
+	var txns []txn
+	for rows.Next() {
+		var t txn
+		rows.Scan(&t.id, &t.descricao, &t.valor, &t.data, &t.tipo, &t.categoria)
+		txns = append(txns, t)
+	}
+
+	count := 0
+	for _, t := range txns {
+		tx, err := db.Begin()
+		if err != nil {
+			continue
+		}
+		if t.tipo == "credito" {
+			tipo := "Outros"
+			var receitaID int
+			err = tx.QueryRow(`INSERT INTO receitas (family_id, descricao, valor, data, tipo, recorrente)
+				VALUES ($1,$2,$3,$4,$5,false) RETURNING id`, fid, t.descricao, abs(t.valor), t.data, tipo).Scan(&receitaID)
+			if err != nil {
+				tx.Rollback()
+				continue
+			}
+			_, err = tx.Exec(`UPDATE transacoes_banco SET status='convertida', receita_id=$1
+				WHERE id=$2 AND family_id=$3`, receitaID, t.id, fid)
+		} else {
+			cat := t.categoria
+			if cat == "" {
+				cat = "Outros"
+			}
+			var despesaID int
+			err = tx.QueryRow(`INSERT INTO despesas_fixas (family_id, nome, valor, categoria)
+				VALUES ($1,$2,$3,$4) RETURNING id`, fid, t.descricao, abs(t.valor), cat).Scan(&despesaID)
+			if err != nil {
+				tx.Rollback()
+				continue
+			}
+			_, err = tx.Exec(`UPDATE transacoes_banco SET status='convertida', despesa_id=$1, categoria=$2
+				WHERE id=$3 AND family_id=$4`, despesaID, cat, t.id, fid)
+		}
+		if err != nil {
+			tx.Rollback()
+			continue
+		}
+		tx.Commit()
+		count++
+	}
+	return count, nil
+}
+
 func CategorizarTransacao(db *sql.DB, fid, id int, categoria string) error {
 	_, err := db.Exec(`UPDATE transacoes_banco SET categoria=$1, status='categorizada' WHERE id=$2 AND family_id=$3`,
 		categoria, id, fid)

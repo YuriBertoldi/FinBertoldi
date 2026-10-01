@@ -142,6 +142,8 @@ func main() {
 	mux.HandleFunc("POST /transacoes/{id}/desvincular", auth.ScreenProtected(db, "transacoes", handler.HandleTransacaoDesvincular(db)))
 	mux.HandleFunc("GET /api/transacoes/{id}/matches", auth.ScreenProtected(db, "transacoes", handler.HandleTransacaoMatches(db)))
 	mux.HandleFunc("POST /transacoes/auto-match", auth.ScreenProtected(db, "transacoes", handler.HandleAutoMatch(db)))
+	mux.HandleFunc("POST /transacoes/ignorar-todas", auth.ScreenProtected(db, "transacoes", handler.HandleIgnorarTodas(db)))
+	mux.HandleFunc("POST /transacoes/converter-todas", auth.ScreenProtected(db, "transacoes", handler.HandleConverterTodas(db)))
 
 	// Importar / Exportar
 	mux.HandleFunc("GET /dados", auth.Protected(db, handler.HandleImportPage(db)))
