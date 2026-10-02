@@ -61,6 +61,126 @@
   {{end}}
 </div>
 
+<!-- ===== INTEGRACAO BANCARIA (Pluggy) ===== -->
+{{if or .CurrentUser.Admin .CurrentUser.FamilyAdmin}}
+<div style="margin-top:2rem">
+  <h3 style="margin-bottom:1rem">🏦 Integracao Bancaria (Pluggy)</h3>
+
+  <div class="integ-card {{if and .PluggyConfig .PluggyConfig.Ativo}}integ-ativa{{end}}">
+    <div class="integ-header">
+      <div class="integ-icon">🏦</div>
+      <div class="integ-info">
+        <h3>Pluggy</h3>
+        <p>Sincronize transacoes bancarias automaticamente via Open Banking.</p>
+      </div>
+      <span class="integ-badge {{if eq .PluggyStatus "online"}}badge-on{{else if eq .PluggyStatus "offline"}}badge-off{{else}}badge-off{{end}}">
+        {{if eq .PluggyStatus "online"}}Online{{else if eq .PluggyStatus "offline"}}Offline{{else}}Nao configurado{{end}}
+      </span>
+    </div>
+
+    <form method="POST" action="/integracoes/pluggy/config" class="integ-form">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem">
+        <label class="integ-field">
+          <span>Client ID</span>
+          <input type="text" name="client_id" value="{{if .PluggyConfig}}{{.PluggyConfig.ClientID}}{{end}}" placeholder="Seu Client ID da Pluggy">
+        </label>
+        <label class="integ-field">
+          <span>Client Secret</span>
+          <input type="password" name="client_secret" value="{{if .PluggyConfig}}{{.PluggyConfig.ClientSecret}}{{end}}" placeholder="Seu Client Secret">
+        </label>
+      </div>
+      <label class="integ-field">
+        <span>URL do Servico</span>
+        <input type="text" name="service_url" value="{{if .PluggyConfig}}{{.PluggyConfig.ServiceURL}}{{end}}" placeholder="http://pluggy-service:8081">
+      </label>
+      <div class="integ-actions">
+        <label class="integ-toggle">
+          <input type="checkbox" name="ativo" {{if and .PluggyConfig .PluggyConfig.Ativo}}checked{{end}}>
+          <span class="toggle-slider"></span>
+          <span class="toggle-label">{{if and .PluggyConfig .PluggyConfig.Ativo}}Ativa{{else}}Inativa{{end}}</span>
+        </label>
+        <button type="submit" class="btn-save">Salvar</button>
+      </div>
+    </form>
+  </div>
+
+  {{if and .PluggyConfig .PluggyConfig.Ativo}}
+  <!-- Conectar Banco + Contas -->
+  <div class="integ-card" style="margin-top:1rem">
+    <div class="integ-header">
+      <div class="integ-info">
+        <h3>Contas Conectadas</h3>
+        <p>Gerencie suas conexoes bancarias.</p>
+      </div>
+      <button id="btn-pluggy-connect" onclick="openPluggyConnect()" class="btn-save" style="white-space:nowrap">+ Conectar Banco</button>
+    </div>
+    <table style="width:100%;font-size:.85rem;margin-top:.5rem">
+      <thead><tr><th>Banco</th><th>Status</th><th>Ultima Sync</th><th>Acoes</th></tr></thead>
+      <tbody>
+        {{range .PluggyContas}}
+        <tr>
+          <td><strong>{{.ConnectorName}}</strong></td>
+          <td>
+            {{if eq .Status "UPDATED"}}<span class="integ-badge badge-on">Atualizado</span>
+            {{else if eq .Status "UPDATING"}}<span class="integ-badge" style="background:rgba(243,156,18,.15);color:#f39c12">Atualizando...</span>
+            {{else}}<span class="integ-badge badge-off">{{.Status}}</span>{{end}}
+          </td>
+          <td>{{if .LastSync}}{{.LastSync.Format "02/01/2006 15:04"}}{{else}}<span style="color:var(--text-muted)">Nunca</span>{{end}}</td>
+          <td>
+            <form method="POST" action="/integracoes/pluggy/{{.ItemID}}/sync" style="display:inline">
+              <button type="submit" class="btn-action" title="Sincronizar">🔄</button>
+            </form>
+            <form method="POST" action="/integracoes/pluggy/{{.ItemID}}/disconnect" style="display:inline"
+                  onsubmit="return confirm('Desconectar {{.ConnectorName}}?')">
+              <button type="submit" class="btn-action danger" title="Desconectar">🗑️</button>
+            </form>
+          </td>
+        </tr>
+        {{else}}
+        <tr><td colspan="4" style="color:var(--text-muted);text-align:center;padding:1rem">Nenhum banco conectado.</td></tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+
+  <script src="https://cdn.pluggy.ai/pluggy-connect/latest/pluggy-connect.js"></script>
+  <script>
+  function openPluggyConnect() {
+    const btn = document.getElementById('btn-pluggy-connect');
+    btn.disabled = true;
+    btn.textContent = 'Carregando...';
+    fetch('/integracoes/pluggy/connect-token', { method: 'POST' })
+      .then(r => r.json())
+      .then(data => {
+        if (!data.accessToken) {
+          alert('Erro ao obter token: ' + (data.error || 'desconhecido'));
+          btn.disabled = false; btn.textContent = '+ Conectar Banco';
+          return;
+        }
+        const pc = new PluggyConnect({
+          connectToken: data.accessToken,
+          onSuccess: (itemData) => {
+            fetch('/integracoes/pluggy/items', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ item_id: itemData.item.id })
+            }).then(() => { window.location.href = '/integracoes'; });
+          },
+          onError: () => { btn.disabled = false; btn.textContent = '+ Conectar Banco'; },
+          onClose: () => { btn.disabled = false; btn.textContent = '+ Conectar Banco'; }
+        });
+        pc.init();
+      })
+      .catch(err => {
+        alert('Erro: ' + err.message);
+        btn.disabled = false; btn.textContent = '+ Conectar Banco';
+      });
+  }
+  </script>
+  {{end}}
+</div>
+{{end}}
+
 <script>
 function testarIntegracao(nome, btn) {
   btn.disabled = true;

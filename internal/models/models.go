@@ -175,6 +175,13 @@ type DashboardData struct {
 	Parcelamentos   []Parcelamento
 	Historico       []MesResumo
 	Integracoes     DashboardIntegracoes
+	Widgets         map[string]bool
+}
+
+type WidgetInfo struct {
+	Key   string
+	Label string
+	Icon  string
 }
 
 type MesResumo struct {
@@ -221,14 +228,9 @@ type IntegracaoConfig struct {
 
 type CadastrosPage struct {
 	BasePage
-	TabAtivo      string
-	Categorias    []Categoria
-	Cartoes       []Cartao
-	PluggyConfig  *IntegracaoConfig
-	PluggyContas  []PluggyItem
-	PluggyStatus  string // "online", "offline", "nao_configurado"
-	PluggyErro    string
-	PluggySucesso string
+	TabAtivo   string
+	Categorias []Categoria
+	Cartoes    []Cartao
 }
 
 type ReceitasPage struct {
@@ -382,9 +384,12 @@ type IntegracaoCampo struct {
 
 type IntegracoesPage struct {
 	BasePage
-	Integracoes []IntegracaoStatus
-	Erro        string
-	Sucesso     string
+	Integracoes   []IntegracaoStatus
+	PluggyConfig  *IntegracaoConfig
+	PluggyContas  []PluggyItem
+	PluggyStatus  string
+	Erro          string
+	Sucesso       string
 }
 
 type DashboardIntegracoes struct {

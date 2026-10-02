@@ -1466,6 +1466,63 @@ func GetDadosEconomicos(db *sql.DB) models.DashboardIntegracoes {
 	return d
 }
 
+// --- Dashboard Widgets ---
+
+var defaultWidgets = []string{
+	"resumo", "grafico_receitas_despesas", "grafico_sobra", "grafico_investimentos",
+	"detalhes_mes", "parcelamentos", "reserva_em", "indicadores", "feriados",
+}
+
+func GetDashboardWidgets(db *sql.DB, userID int) map[string]bool {
+	result := make(map[string]bool)
+	// Default: all visible
+	for _, w := range defaultWidgets {
+		result[w] = true
+	}
+
+	rows, err := db.Query(`SELECT widget_key, visivel FROM dashboard_widgets WHERE user_id=$1`, userID)
+	if err != nil {
+		return result
+	}
+	defer rows.Close()
+
+	hasRows := false
+	for rows.Next() {
+		hasRows = true
+		var key string
+		var vis bool
+		rows.Scan(&key, &vis)
+		result[key] = vis
+	}
+
+	if !hasRows {
+		return result // No config saved yet, show all
+	}
+	return result
+}
+
+func SaveDashboardWidgets(db *sql.DB, userID int, widgets map[string]bool) error {
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	tx.Exec(`DELETE FROM dashboard_widgets WHERE user_id=$1`, userID)
+	pos := 0
+	for _, key := range defaultWidgets {
+		vis := widgets[key]
+		tx.Exec(`INSERT INTO dashboard_widgets (user_id, widget_key, visivel, posicao) VALUES ($1,$2,$3,$4)`,
+			userID, key, vis, pos)
+		pos++
+	}
+	return tx.Commit()
+}
+
+func GetWidgetKeys() []string {
+	return defaultWidgets
+}
+
 // --- Feriados ---
 
 func UpsertFeriado(db *sql.DB, data time.Time, nome, tipo string) error {
@@ -1477,6 +1534,22 @@ func UpsertFeriado(db *sql.DB, data time.Time, nome, tipo string) error {
 func GetFeriadosAno(db *sql.DB, ano int) ([]models.Feriado, error) {
 	rows, err := db.Query(`SELECT data, nome, tipo FROM feriados
 		WHERE EXTRACT(YEAR FROM data) = $1 ORDER BY data`, ano)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var list []models.Feriado
+	for rows.Next() {
+		var f models.Feriado
+		rows.Scan(&f.Data, &f.Nome, &f.Tipo)
+		list = append(list, f)
+	}
+	return list, nil
+}
+
+func GetFeriadosProximos(db *sql.DB, limit int) ([]models.Feriado, error) {
+	rows, err := db.Query(`SELECT data, nome, tipo FROM feriados
+		WHERE data >= CURRENT_DATE ORDER BY data LIMIT $1`, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -1913,6 +1986,19 @@ var migrations = []migration{
 				chave VARCHAR(50) NOT NULL,
 				valor TEXT NOT NULL DEFAULT '',
 				PRIMARY KEY(family_id, integracao, chave)
+			)`,
+		},
+	},
+	{
+		version: 16,
+		name: "dashboard_widgets",
+		stmts: []string{
+			`CREATE TABLE IF NOT EXISTS dashboard_widgets (
+				user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+				widget_key VARCHAR(40) NOT NULL,
+				visivel BOOLEAN NOT NULL DEFAULT true,
+				posicao INTEGER NOT NULL DEFAULT 0,
+				PRIMARY KEY(user_id, widget_key)
 			)`,
 		},
 	},

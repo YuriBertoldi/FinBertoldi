@@ -7,32 +7,66 @@
     <a href="/?mes={{.MesNext}}" role="button" class="outline secondary mes-btn">›</a>
   </div>
   <button type="button" class="outline" style="margin:0" onclick="window.open('/relatorio/dashboard?mes={{.Mes}}','_blank')">📄 Relatório</button>
+  <button type="button" class="outline" style="margin:0" onclick="document.getElementById('widget-dialog').showModal()">⚙️ Widgets</button>
 </div>
 
+<!-- Dialog de configuração de widgets -->
+<dialog id="widget-dialog" class="widget-dialog">
+  <form method="POST" action="/api/dashboard/widgets">
+    <h3 style="margin:0 0 1rem">Configurar Widgets</h3>
+    <p class="muted" style="font-size:.82rem;margin-bottom:1rem">Escolha quais widgets aparecem no seu dashboard.</p>
+    <div class="widget-checklist">
+      {{$w := .Widgets}}
+      <label><input type="checkbox" name="widgets" value="resumo" {{if index $w "resumo"}}checked{{end}}> 💵 Resumo (cards)</label>
+      <label><input type="checkbox" name="widgets" value="grafico_receitas_despesas" {{if index $w "grafico_receitas_despesas"}}checked{{end}}> 📊 Receitas vs Despesas</label>
+      <label><input type="checkbox" name="widgets" value="grafico_sobra" {{if index $w "grafico_sobra"}}checked{{end}}> 📈 Sobra Mensal</label>
+      <label><input type="checkbox" name="widgets" value="grafico_investimentos" {{if index $w "grafico_investimentos"}}checked{{end}}> 💰 Investimentos</label>
+      <label><input type="checkbox" name="widgets" value="detalhes_mes" {{if index $w "detalhes_mes"}}checked{{end}}> 📋 Detalhes do mês</label>
+      <label><input type="checkbox" name="widgets" value="parcelamentos" {{if index $w "parcelamentos"}}checked{{end}}> 💳 Parcelamentos</label>
+      <label><input type="checkbox" name="widgets" value="reserva_em" {{if index $w "reserva_em"}}checked{{end}}> 🛡️ Reserva de Emergência</label>
+      <label><input type="checkbox" name="widgets" value="indicadores" {{if index $w "indicadores"}}checked{{end}}> 📡 Indicadores</label>
+      <label><input type="checkbox" name="widgets" value="feriados" {{if index $w "feriados"}}checked{{end}}> 📅 Feriados</label>
+    </div>
+    <div style="display:flex;gap:.5rem;justify-content:flex-end;margin-top:1.25rem">
+      <button type="button" class="outline secondary" onclick="document.getElementById('widget-dialog').close()">Cancelar</button>
+      <button type="submit">Salvar</button>
+    </div>
+  </form>
+</dialog>
+
 <!-- Cards de resumo -->
+{{if index .Widgets "resumo"}}
 <div id="dash-resumo" class="summary-grid">
   {{template "dash-resumo-cards" .}}
 </div>
+{{end}}
 
 <div class="dash-grid">
   <!-- Coluna esquerda: GRÁFICOS -->
   <div class="dash-left">
+    {{if index .Widgets "grafico_receitas_despesas"}}
     <section class="dash-section">
       <h3 class="section-title">📊 Receitas vs Despesas — Últimos 6 meses</h3>
       <div class="chart-wrap"><canvas id="chartReceitasDespesas"></canvas></div>
     </section>
+    {{end}}
 
+    {{if index .Widgets "grafico_sobra"}}
     <section class="dash-section">
       <h3 class="section-title">📈 Sobra Mensal — Evolução</h3>
       <div class="chart-wrap"><canvas id="chartSobra"></canvas></div>
     </section>
+    {{end}}
 
+    {{if index .Widgets "grafico_investimentos"}}
     <section class="dash-section">
       <h3 class="section-title">💰 Investimentos — Aportes Mensais</h3>
       <div class="chart-wrap chart-small"><canvas id="chartInvestido"></canvas></div>
     </section>
+    {{end}}
 
     <!-- Detalhes do mês colapsável -->
+    {{if index .Widgets "detalhes_mes"}}
     <details class="dash-section detalhes-mes">
       <summary>
         <span class="section-title" style="margin:0;border:none;padding:0">📋 Detalhes do mês — marcar contas pagas</span>
@@ -88,11 +122,12 @@
         {{end}}
       </div>
     </details>
+    {{end}}
   </div>
 
   <!-- Coluna direita -->
   <div class="dash-right">
-    {{if .Parcelamentos}}
+    {{if and .Parcelamentos (index .Widgets "parcelamentos")}}
     <section class="dash-section">
       <h3 class="section-title">💳 Parcelamentos Ativos</h3>
       {{range .Parcelamentos}}
@@ -111,6 +146,7 @@
     </section>
     {{end}}
 
+    {{if index .Widgets "reserva_em"}}
     <section class="dash-section em-section">
       <h3 class="section-title">🛡️ Reserva de Emergência</h3>
       <p class="card-value em-valor">{{brl .ReservaEM}}</p>
@@ -118,8 +154,9 @@
         Gerenciar →
       </a>
     </section>
+    {{end}}
 
-    {{if or .Integracoes.Selic .Integracoes.USD .Integracoes.Feriados}}
+    {{if and (or .Integracoes.Selic .Integracoes.USD) (index .Widgets "indicadores")}}
     <section class="dash-section">
       <h3 class="section-title">📡 Indicadores</h3>
       <div class="indicadores-grid">
@@ -130,14 +167,17 @@
         {{if .Integracoes.EUR}}<div class="ind-item"><span class="ind-label">EUR</span><span class="ind-valor">R$ {{printf "%.2f" (deref .Integracoes.EUR)}}</span></div>{{end}}
         {{if .Integracoes.BTC}}<div class="ind-item"><span class="ind-label">BTC</span><span class="ind-valor">R$ {{printf "%.0f" (deref .Integracoes.BTC)}}</span></div>{{end}}
       </div>
-      {{if .Integracoes.Feriados}}
+    </section>
+    {{end}}
+
+    {{if and .Integracoes.Feriados (index .Widgets "feriados")}}
+    <section class="dash-section">
+      <h3 class="section-title">📅 Próximos Feriados</h3>
       <div class="feriados-list">
-        <p class="ind-label" style="margin-top:.75rem;margin-bottom:.25rem">Próximos feriados</p>
         {{range .Integracoes.Feriados}}
         <div class="feriado-item"><span>{{.Data.Format "02/01"}}</span><span>{{.Nome}}</span></div>
         {{end}}
       </div>
-      {{end}}
     </section>
     {{end}}
   </div>
@@ -193,6 +233,7 @@
   };
 
   // ===== GRÁFICO 1: Receitas vs Despesas (bar) =====
+  if (document.getElementById('chartReceitasDespesas'))
   new Chart(document.getElementById('chartReceitasDespesas'), {
     type: 'bar',
     data: {
@@ -221,6 +262,7 @@
 
   // ===== GRÁFICO 2: Sobra (line + área) =====
   const sobraColors = sobras.map(s => s < 0 ? COLOR_NEGATIVO : COLOR_SOBRA);
+  if (document.getElementById('chartSobra'))
   new Chart(document.getElementById('chartSobra'), {
     type: 'line',
     data: {
@@ -244,6 +286,7 @@
   });
 
   // ===== GRÁFICO 3: Investimentos (bar) =====
+  if (document.getElementById('chartInvestido'))
   new Chart(document.getElementById('chartInvestido'), {
     type: 'bar',
     data: {
@@ -269,6 +312,13 @@
 .feriado-item { display: flex; gap: .5rem; font-size: .82rem; color: var(--text-secondary); }
 .feriado-item span:first-child { font-weight: 600; color: var(--text-primary); min-width: 3rem; }
 @media (max-width: 500px) { .indicadores-grid { grid-template-columns: repeat(2, 1fr); } }
+
+.widget-dialog { background: var(--bg-elev-1); border: 1px solid var(--border-mid); border-radius: var(--radius-md); padding: 1.5rem; max-width: 400px; width: 90%; color: var(--text-primary); }
+.widget-dialog::backdrop { background: rgba(0,0,0,.6); }
+.widget-checklist { display: flex; flex-direction: column; gap: .5rem; }
+.widget-checklist label { display: flex; align-items: center; gap: .5rem; font-size: .88rem; cursor: pointer; padding: .35rem .5rem; border-radius: var(--radius-sm); transition: background .15s; }
+.widget-checklist label:hover { background: var(--bg-elev-2); }
+.widget-checklist input[type="checkbox"] { width: 1rem; height: 1rem; accent-color: #27ae60; }
 </style>
 {{end}}
 

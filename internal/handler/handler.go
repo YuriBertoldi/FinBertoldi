@@ -559,7 +559,7 @@ func HandleIntegracoes(db *sql.DB) http.HandlerFunc {
 			erroMsg = erro
 		}
 
-		render(w, "integracoes", models.IntegracoesPage{
+		page := models.IntegracoesPage{
 			BasePage: models.BasePage{
 				CurrentUser:    u,
 				Active:         "integracoes",
@@ -569,7 +569,21 @@ func HandleIntegracoes(db *sql.DB) http.HandlerFunc {
 			Integracoes: buildIntegracoesList(db, u.FamilyID),
 			Sucesso:     sucessoMsg,
 			Erro:        erroMsg,
-		})
+		}
+
+		// Pluggy config (admin only)
+		if u.Admin || u.FamilyAdmin {
+			cfg, err := store.GetIntegracaoConfig(db, "pluggy")
+			if err == nil {
+				page.PluggyConfig = cfg
+				page.PluggyContas, _ = store.GetPluggyItems(db, u.FamilyID)
+				page.PluggyStatus = pluggyHealthCheck(cfg.ServiceURL)
+			} else {
+				page.PluggyStatus = "nao_configurado"
+			}
+		}
+
+		render(w, "integracoes", page)
 	}
 }
 
@@ -680,6 +694,14 @@ func HandleDashboard(db *sql.DB) http.HandlerFunc {
 		// Reserva de emergência conta como investimento no total
 		resumo := calcResumo(basicas, cartao, vr, parcelamentos, totalReceitas, totalInvestido+reservaEM, investidoNoMes)
 
+		integ := store.GetDadosEconomicos(db)
+		// Carregar feriados próximos
+		feriados, _ := store.GetFeriadosProximos(db, 5)
+		integ.Feriados = feriados
+
+		u := auth.CurrentUser(r)
+		widgets := store.GetDashboardWidgets(db, u.ID)
+
 		render(w, "dashboard", models.DashboardData{
 			BasePage:        bp(db, r, "dashboard", "Dashboard"),
 			DashboardResumo: resumo,
@@ -693,8 +715,29 @@ func HandleDashboard(db *sql.DB) http.HandlerFunc {
 			DespesasVR:      vr,
 			Parcelamentos:   parcelamentos,
 			Historico:       historico,
-			Integracoes:     store.GetDadosEconomicos(db),
+			Integracoes:     integ,
+			Widgets:         widgets,
 		})
+	}
+}
+
+func HandleSaveWidgets(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		u := auth.CurrentUser(r)
+		r.ParseForm()
+
+		selected := r.Form["widgets"]
+		selectedSet := make(map[string]bool)
+		for _, k := range selected {
+			selectedSet[k] = true
+		}
+		widgets := make(map[string]bool)
+		for _, key := range store.GetWidgetKeys() {
+			widgets[key] = selectedSet[key]
+		}
+
+		store.SaveDashboardWidgets(db, u.ID, widgets)
+		http.Redirect(w, r, "/", http.StatusSeeOther)
 	}
 }
 
@@ -1239,17 +1282,6 @@ func HandleCadastros(db *sql.DB) http.HandlerFunc {
 			Cartoes:    cartoes,
 		}
 
-		if tab == "integracao" && u.Admin {
-			cfg, err := store.GetIntegracaoConfig(db, "pluggy")
-			if err == nil {
-				page.PluggyConfig = cfg
-				page.PluggyContas, _ = store.GetPluggyItems(db, fid)
-				page.PluggyStatus = pluggyHealthCheck(cfg.ServiceURL)
-			} else {
-				page.PluggyStatus = "nao_configurado"
-			}
-		}
-
 		render(w, "cadastros", page)
 	}
 }
@@ -1716,7 +1748,7 @@ func HandleSavePluggyConfig(db *sql.DB) http.HandlerFunc {
 		if err := store.SaveIntegracaoConfig(db, cfg); err != nil {
 			log.Printf("Erro ao salvar config pluggy: %v", err)
 		}
-		http.Redirect(w, r, "/cadastros?tab=integracao", http.StatusSeeOther)
+		http.Redirect(w, r, "/integracoes", http.StatusSeeOther)
 	}
 }
 
@@ -1768,7 +1800,7 @@ func HandlePluggyDisconnect(db *sql.DB) http.HandlerFunc {
 		u := auth.CurrentUser(r)
 		itemID := r.PathValue("item_id")
 		store.DeletePluggyItem(db, u.FamilyID, itemID)
-		http.Redirect(w, r, "/cadastros?tab=integracao", http.StatusSeeOther)
+		http.Redirect(w, r, "/integracoes", http.StatusSeeOther)
 	}
 }
 
@@ -1780,7 +1812,7 @@ func HandlePluggySync(db *sql.DB) http.HandlerFunc {
 			http.Error(w, err.Error(), status)
 			return
 		}
-		http.Redirect(w, r, "/cadastros?tab=integracao", http.StatusSeeOther)
+		http.Redirect(w, r, "/integracoes", http.StatusSeeOther)
 	}
 }
 

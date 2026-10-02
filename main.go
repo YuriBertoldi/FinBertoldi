@@ -50,6 +50,7 @@ func main() {
 	// Dashboard
 	mux.HandleFunc("GET /", auth.Protected(db, handler.HandleDashboard(db)))
 	mux.HandleFunc("POST /api/despesas/{id}/toggle-pago", auth.Protected(db, handler.HandleToggleDespesaPago(db)))
+	mux.HandleFunc("POST /api/dashboard/widgets", auth.Protected(db, handler.HandleSaveWidgets(db)))
 	mux.HandleFunc("POST /api/parcelamentos/{id}/toggle-pago", auth.Protected(db, handler.HandleToggleParcelamentoPago(db)))
 
 	// Despesas
@@ -107,11 +108,11 @@ func main() {
 	mux.HandleFunc("POST /cadastros/cartoes/{id}/toggle-ativo", auth.ScreenProtected(db, "cadastros", handler.HandleToggleCartaoAtivo(db)))
 
 	// Pluggy integration (admin only)
-	mux.HandleFunc("POST /cadastros/pluggy/config", auth.AdminOnly(db, handler.HandleSavePluggyConfig(db)))
-	mux.HandleFunc("POST /cadastros/pluggy/connect-token", auth.AdminOnly(db, handler.HandlePluggyConnectToken(db)))
-	mux.HandleFunc("POST /cadastros/pluggy/items", auth.AdminOnly(db, handler.HandlePluggyRegisterItem(db)))
-	mux.HandleFunc("POST /cadastros/pluggy/{item_id}/disconnect", auth.AdminOnly(db, handler.HandlePluggyDisconnect(db)))
-	mux.HandleFunc("POST /cadastros/pluggy/{item_id}/sync", auth.AdminOnly(db, handler.HandlePluggySync(db)))
+	mux.HandleFunc("POST /integracoes/pluggy/config", auth.AdminOnly(db, handler.HandleSavePluggyConfig(db)))
+	mux.HandleFunc("POST /integracoes/pluggy/connect-token", auth.AdminOnly(db, handler.HandlePluggyConnectToken(db)))
+	mux.HandleFunc("POST /integracoes/pluggy/items", auth.AdminOnly(db, handler.HandlePluggyRegisterItem(db)))
+	mux.HandleFunc("POST /integracoes/pluggy/{item_id}/disconnect", auth.AdminOnly(db, handler.HandlePluggyDisconnect(db)))
+	mux.HandleFunc("POST /integracoes/pluggy/{item_id}/sync", auth.AdminOnly(db, handler.HandlePluggySync(db)))
 
 	// Pluggy webhook (público — validação por token no pluggy-service)
 	mux.HandleFunc("POST /webhook/pluggy", handler.HandlePluggyWebhook(db))
