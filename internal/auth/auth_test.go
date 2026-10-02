@@ -204,6 +204,25 @@ func TestScreenProtectedPermiteAdmin(t *testing.T) {
 	}
 }
 
+func TestVerifyGoogleIDTokenSemClientID(t *testing.T) {
+	t.Setenv("GOOGLE_CLIENT_ID", "")
+	_, err := VerifyGoogleIDToken("fake-token")
+	if err == nil {
+		t.Error("deveria falhar sem GOOGLE_CLIENT_ID")
+	}
+	if err.Error() != "GOOGLE_CLIENT_ID não configurado" {
+		t.Errorf("erro inesperado: %v", err)
+	}
+}
+
+func TestVerifyGoogleIDTokenInvalido(t *testing.T) {
+	t.Setenv("GOOGLE_CLIENT_ID", "test-client-id")
+	_, err := VerifyGoogleIDToken("token-invalido-xyz")
+	if err == nil {
+		t.Error("deveria falhar com token inválido")
+	}
+}
+
 func TestAdminOnlyBloqueiaUsuarioComum(t *testing.T) {
 	called := false
 	h := func(w http.ResponseWriter, r *http.Request) {

@@ -36,6 +36,35 @@ func TestHashSenhaUnique(t *testing.T) {
 	}
 }
 
+func TestGooglePending(t *testing.T) {
+	token := "test-token-123"
+	SaveGooglePending(nil, token, "user@gmail.com", "Test User")
+
+	email, nome, ok := GetGooglePending(nil, token)
+	if !ok {
+		t.Fatal("GetGooglePending deveria retornar ok=true")
+	}
+	if email != "user@gmail.com" {
+		t.Errorf("email = %q; want 'user@gmail.com'", email)
+	}
+	if nome != "Test User" {
+		t.Errorf("nome = %q; want 'Test User'", nome)
+	}
+
+	// Segunda chamada deve retornar vazio (consumido)
+	_, _, ok2 := GetGooglePending(nil, token)
+	if ok2 {
+		t.Error("GetGooglePending deveria retornar ok=false após consumir")
+	}
+}
+
+func TestGooglePendingTokenInexistente(t *testing.T) {
+	_, _, ok := GetGooglePending(nil, "nao-existe")
+	if ok {
+		t.Error("token inexistente deveria retornar ok=false")
+	}
+}
+
 func TestGetEnv(t *testing.T) {
 	os.Setenv("FINC_TEST_VAR", "custom")
 	defer os.Unsetenv("FINC_TEST_VAR")
