@@ -903,6 +903,9 @@ func ResetSenha(db *sql.DB, id int, hash string) error {
 }
 
 func DeleteUser(db *sql.DB, id int) error {
+	db.Exec(`DELETE FROM password_resets WHERE user_id=$1`, id)
+	db.Exec(`DELETE FROM screen_permissions WHERE user_id=$1`, id)
+	db.Exec(`DELETE FROM dashboard_widgets WHERE user_id=$1`, id)
 	_, err := db.Exec(`DELETE FROM users WHERE id=$1`, id)
 	return err
 }
