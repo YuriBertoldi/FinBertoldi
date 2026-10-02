@@ -1,0 +1,161 @@
+{{define "register"}}
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0f1419">
+  <title>{{.Title}} — FinBertoldi</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body {
+      margin: 0; padding: 0; height: 100%; width: 100%;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    body {
+      min-height: 100vh; display: flex; align-items: center; justify-content: center;
+      padding: 1.5rem;
+      background:
+        radial-gradient(circle at 20% 20%, rgba(39, 174, 96, 0.15), transparent 50%),
+        radial-gradient(circle at 80% 80%, rgba(41, 128, 185, 0.12), transparent 50%),
+        linear-gradient(135deg, #0f1419 0%, #1a2332 100%);
+      color: #e6e9ed;
+    }
+    .card {
+      width: 100%; max-width: 440px;
+      background: rgba(26, 32, 44, 0.85);
+      backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 20px; padding: 2.5rem 2.25rem;
+      box-shadow: 0 20px 60px rgba(0,0,0,.4), 0 0 0 1px rgba(255,255,255,.04) inset;
+    }
+    .brand { text-align: center; margin-bottom: 1.5rem; }
+    .brand-logo {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 56px; height: 56px; border-radius: 16px;
+      background: linear-gradient(135deg, #27ae60, #1e8449);
+      font-size: 1.7rem; margin-bottom: .75rem;
+      box-shadow: 0 8px 24px rgba(39,174,96,.35);
+    }
+    .brand h1 { font-size: 1.5rem; font-weight: 800; margin: 0 0 .25rem; color: #fff; letter-spacing: -.02em; }
+    .brand p { font-size: .85rem; color: #8b95a7; margin: 0; }
+
+    .erro-box {
+      display: flex; align-items: center; gap: .6rem;
+      background: rgba(231,76,60,.12); border: 1px solid rgba(231,76,60,.35);
+      color: #f5a097; padding: .75rem 1rem; border-radius: 10px;
+      font-size: .88rem; margin-bottom: 1.25rem;
+    }
+
+    .google-info {
+      display: flex; align-items: center; gap: .6rem;
+      background: rgba(39,174,96,.1); border: 1px solid rgba(39,174,96,.25);
+      color: #7dcea0; padding: .75rem 1rem; border-radius: 10px;
+      font-size: .85rem; margin-bottom: 1.25rem;
+    }
+
+    form { margin: 0; }
+    .field { margin-bottom: 1rem; }
+    .field label {
+      display: block; font-size: .8rem; font-weight: 600;
+      color: #b0b8c4; margin-bottom: .4rem; letter-spacing: .02em;
+    }
+    .field input {
+      width: 100%; padding: .8rem 1rem;
+      background: rgba(15,20,25,.6); border: 1px solid rgba(255,255,255,.08);
+      border-radius: 10px; color: #fff; font-size: 16px; font-family: inherit;
+      transition: border-color .15s, background .15s, box-shadow .15s; outline: none;
+    }
+    .field input::placeholder { color: #5a6478; }
+    .field input:focus {
+      border-color: #27ae60; background: rgba(15,20,25,.85);
+      box-shadow: 0 0 0 3px rgba(39,174,96,.15);
+    }
+    .field input[readonly] { opacity: .6; cursor: not-allowed; }
+
+    .submit-btn {
+      width: 100%; padding: .85rem 1rem;
+      background: linear-gradient(135deg, #27ae60, #1e8449);
+      border: none; border-radius: 10px; color: #fff;
+      font-size: .95rem; font-weight: 600; font-family: inherit;
+      cursor: pointer; margin-top: .5rem; letter-spacing: .01em;
+      transition: transform .15s, box-shadow .15s, filter .15s;
+    }
+    .submit-btn:hover {
+      filter: brightness(1.1);
+      box-shadow: 0 8px 24px rgba(39,174,96,.35);
+      transform: translateY(-1px);
+    }
+
+    .footer-hint {
+      text-align: center; font-size: .82rem; color: #6a7385; margin: 1.25rem 0 0;
+    }
+    .footer-hint a { color: #27ae60; text-decoration: none; }
+
+    @media (max-width: 480px) {
+      body { padding: 1rem; align-items: flex-start; padding-top: 2rem; }
+      .card { padding: 1.75rem 1.25rem; border-radius: 16px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="brand">
+      <div class="brand-logo">💰</div>
+      <h1>Criar conta</h1>
+      <p>Cadastre-se e comece a controlar suas financas</p>
+    </div>
+
+    {{if .Erro}}
+    <div class="erro-box" role="alert">
+      <span>⚠️</span> <span>{{.Erro}}</span>
+    </div>
+    {{end}}
+
+    {{if .IsGoogle}}
+    <div class="google-info">
+      <span>✓</span> <span>Conta Google verificada: <strong>{{.GoogleEmail}}</strong></span>
+    </div>
+    {{end}}
+
+    <form method="POST" action="/register">
+      {{if .IsGoogle}}<input type="hidden" name="is_google" value="1">{{end}}
+
+      <div class="field">
+        <label for="nome">Seu nome</label>
+        <input id="nome" type="text" name="nome" placeholder="Ex: Maria Silva" required
+          {{if .GoogleNome}}value="{{.GoogleNome}}"{{end}} autofocus autocomplete="name">
+      </div>
+
+      <div class="field">
+        <label for="email">E-mail</label>
+        <input id="email" type="email" name="email" placeholder="seu@email.com" required autocomplete="email"
+          {{if .GoogleEmail}}value="{{.GoogleEmail}}" readonly{{end}}>
+      </div>
+
+      {{if not .IsGoogle}}
+      <div class="field">
+        <label for="senha">Senha</label>
+        <input id="senha" type="password" name="senha" placeholder="Minimo 6 caracteres" required minlength="6" autocomplete="new-password">
+      </div>
+      {{end}}
+
+      <div class="field">
+        <label for="familia">Nome da familia</label>
+        <input id="familia" type="text" name="familia" placeholder="Ex: Familia Silva" required>
+      </div>
+
+      <button type="submit" class="submit-btn">Criar conta e familia →</button>
+    </form>
+
+    <p class="footer-hint">
+      Ja tem conta? <a href="/login">Fazer login</a>
+    </p>
+  </div>
+</body>
+</html>
+{{end}}

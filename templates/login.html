@@ -191,8 +191,32 @@
       <a href="/forgot-password" style="color:#27ae60;font-size:.85rem;text-decoration:none">Esqueceu a senha?</a>
     </p>
 
+    {{if .GoogleClientID}}
+    <div style="display:flex;align-items:center;gap:.75rem;margin:1.25rem 0 1rem">
+      <hr style="flex:1;border:none;border-top:1px solid rgba(255,255,255,.08)">
+      <span style="font-size:.78rem;color:#6a7385">ou</span>
+      <hr style="flex:1;border:none;border-top:1px solid rgba(255,255,255,.08)">
+    </div>
+    <div id="g_id_onload"
+         data-client_id="{{.GoogleClientID}}"
+         data-login_uri="/auth/google/callback"
+         data-auto_prompt="false">
+    </div>
+    <div class="g_id_signin"
+         data-type="standard"
+         data-size="large"
+         data-theme="filled_black"
+         data-text="continue_with"
+         data-shape="pill"
+         data-logo_alignment="center"
+         data-width="370"
+         style="display:flex;justify-content:center">
+    </div>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    {{end}}
+
     <p class="footer-hint">
-      Acesso restrito · Contate o administrador para credenciais
+      Nao tem conta? <a href="/register" style="color:#27ae60;text-decoration:none">Cadastre-se</a>
     </p>
   </div>
 </body>

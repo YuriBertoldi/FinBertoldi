@@ -267,8 +267,17 @@ type MeuTimePage struct {
 }
 
 type LoginPage struct {
-	Title string
-	Erro  string
+	Title          string
+	Erro           string
+	GoogleClientID string
+}
+
+type RegisterPage struct {
+	Title       string
+	Erro        string
+	GoogleEmail string
+	GoogleNome  string
+	IsGoogle    bool
 }
 
 // --- Transações Bancárias ---

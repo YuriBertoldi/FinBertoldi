@@ -79,6 +79,8 @@ func InitTemplates() {
 	tmplPages["forgot_password"] = fp
 	rp := template.Must(template.New("reset_password").Funcs(buildFuncMap()).ParseFiles("templates/reset-password.html"))
 	tmplPages["reset_password"] = rp
+	reg := template.Must(template.New("register").Funcs(buildFuncMap()).ParseFiles("templates/register.html"))
+	tmplPages["register"] = reg
 	InitReportTemplates()
 }
 
@@ -224,7 +226,7 @@ func HandleLogin(db *sql.DB) http.HandlerFunc {
 			if r.URL.Query().Get("reset") != "" {
 				erro = "Senha alterada com sucesso! Faca login."
 			}
-			renderLogin(w, models.LoginPage{Title: "Login — FinBertoldi", Erro: erro})
+			renderLogin(w, models.LoginPage{Title: "Login — FinBertoldi", Erro: erro, GoogleClientID: os.Getenv("GOOGLE_CLIENT_ID")})
 			return
 		}
 		r.ParseForm()
@@ -258,6 +260,149 @@ func HandleLogout(db *sql.DB) http.HandlerFunc {
 		}
 		auth.ClearSessionCookie(w)
 		http.Redirect(w, r, "/login", http.StatusSeeOther)
+	}
+}
+
+// --- Google OAuth ---
+
+func HandleGoogleCallback(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		r.ParseForm()
+		idToken := r.FormValue("credential")
+		if idToken == "" {
+			http.Redirect(w, r, "/login?erro=1", http.StatusSeeOther)
+			return
+		}
+
+		claims, err := auth.VerifyGoogleIDToken(idToken)
+		if err != nil {
+			log.Printf("google auth error: %v", err)
+			http.Redirect(w, r, "/login?erro=1", http.StatusSeeOther)
+			return
+		}
+
+		user, _, err := store.GetUserByEmail(db, claims.Email)
+		if err == nil && user.Ativo {
+			// Usuário existe — fazer login
+			token := auth.GenerateToken()
+			expiry := time.Now().Add(7 * 24 * time.Hour)
+			store.CreateSession(db, user.ID, token, expiry)
+			auth.SetSessionCookie(w, token, expiry)
+			http.Redirect(w, r, "/", http.StatusSeeOther)
+			return
+		}
+
+		// Usuário não existe — redirecionar para cadastro com dados do Google
+		googleToken := auth.GenerateToken()
+		http.SetCookie(w, &http.Cookie{
+			Name:     "google_pending",
+			Value:    googleToken,
+			Path:     "/",
+			MaxAge:   600, // 10 minutos
+			HttpOnly: true,
+			SameSite: http.SameSiteLaxMode,
+		})
+		store.SaveGooglePending(db, googleToken, claims.Email, claims.Name)
+		http.Redirect(w, r, "/register?google=1", http.StatusSeeOther)
+	}
+}
+
+func HandleRegister(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if u := auth.AuthUser(db, r); u != nil && u.Ativo {
+			http.Redirect(w, r, "/", http.StatusSeeOther)
+			return
+		}
+
+		if r.Method == http.MethodGet {
+			data := models.RegisterPage{Title: "Cadastro"}
+			if r.URL.Query().Get("google") == "1" {
+				if c, err := r.Cookie("google_pending"); err == nil {
+					email, nome, _ := store.GetGooglePending(db, c.Value)
+					data.GoogleEmail = email
+					data.GoogleNome = nome
+					data.IsGoogle = true
+				}
+			}
+			renderStandalone(w, "register", data)
+			return
+		}
+
+		// POST — criar família + usuário
+		r.ParseForm()
+		nome := strings.TrimSpace(r.FormValue("nome"))
+		email := strings.TrimSpace(r.FormValue("email"))
+		senha := r.FormValue("senha")
+		familyNome := strings.TrimSpace(r.FormValue("familia"))
+		isGoogle := r.FormValue("is_google") == "1"
+
+		if nome == "" || email == "" || familyNome == "" {
+			renderStandalone(w, "register", models.RegisterPage{
+				Title: "Cadastro", Erro: "Preencha todos os campos.",
+			})
+			return
+		}
+
+		// Verificar email duplicado
+		if existing, _, err := store.GetUserByEmail(db, email); err == nil && existing.ID > 0 {
+			renderStandalone(w, "register", models.RegisterPage{
+				Title: "Cadastro", Erro: "Este email já está cadastrado.",
+			})
+			return
+		}
+
+		// Senha obrigatória para cadastro sem Google
+		senhaHash := ""
+		if isGoogle {
+			// Google users: senha aleatória (login via Google)
+			b := make([]byte, 32)
+			rand.Read(b)
+			h, _ := bcrypt.GenerateFromPassword(b, bcrypt.DefaultCost)
+			senhaHash = string(h)
+		} else {
+			if len(senha) < 6 {
+				renderStandalone(w, "register", models.RegisterPage{
+					Title: "Cadastro", Erro: "Senha deve ter no mínimo 6 caracteres.",
+				})
+				return
+			}
+			h, _ := bcrypt.GenerateFromPassword([]byte(senha), bcrypt.DefaultCost)
+			senhaHash = string(h)
+		}
+
+		// Criar família
+		familyID, err := store.CreateFamily(db, familyNome)
+		if err != nil {
+			renderStandalone(w, "register", models.RegisterPage{
+				Title: "Cadastro", Erro: "Erro ao criar família: " + err.Error(),
+			})
+			return
+		}
+
+		// Criar usuário como family_admin
+		userID, err := store.CreateUserReturningID(db, nome, email, senhaHash, true, familyID)
+		if err != nil {
+			renderStandalone(w, "register", models.RegisterPage{
+				Title: "Cadastro", Erro: "Erro ao criar usuário: " + err.Error(),
+			})
+			return
+		}
+
+		// Login automático
+		token := auth.GenerateToken()
+		expiry := time.Now().Add(7 * 24 * time.Hour)
+		store.CreateSession(db, userID, token, expiry)
+		auth.SetSessionCookie(w, token, expiry)
+
+		// Limpar cookie do Google
+		http.SetCookie(w, &http.Cookie{
+			Name:   "google_pending",
+			Value:  "",
+			Path:   "/",
+			MaxAge: -1,
+		})
+
+		http.Redirect(w, r, "/", http.StatusSeeOther)
 	}
 }
 

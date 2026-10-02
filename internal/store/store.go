@@ -8,6 +8,7 @@ import (
 	"log"
 	"math"
 	"os"
+	"sync"
 	"time"
 
 	"fincontrol/internal/models"
@@ -868,6 +869,14 @@ func CreateUser(db *sql.DB, nome, email, senhaHash string, admin bool, familyID 
 	return err
 }
 
+func CreateUserReturningID(db *sql.DB, nome, email, senhaHash string, familyAdmin bool, familyID int) (int, error) {
+	var id int
+	err := db.QueryRow(`INSERT INTO users (nome, email, senha_hash, admin, family_admin, family_id)
+		VALUES ($1,$2,$3,false,$4,$5) RETURNING id`,
+		nome, email, senhaHash, familyAdmin, familyID).Scan(&id)
+	return id, err
+}
+
 func SetUserFamily(db *sql.DB, userID, familyID int) error {
 	_, err := db.Exec(`UPDATE users SET family_id=$1 WHERE id=$2`, familyID, userID)
 	return err
@@ -896,6 +905,29 @@ func ResetSenha(db *sql.DB, id int, hash string) error {
 func DeleteUser(db *sql.DB, id int) error {
 	_, err := db.Exec(`DELETE FROM users WHERE id=$1`, id)
 	return err
+}
+
+// --- Google Pending (cadastro via Google) ---
+
+var googlePending = struct {
+	sync.Mutex
+	data map[string][2]string // token -> [email, nome]
+}{data: map[string][2]string{}}
+
+func SaveGooglePending(_ *sql.DB, token, email, nome string) {
+	googlePending.Lock()
+	defer googlePending.Unlock()
+	googlePending.data[token] = [2]string{email, nome}
+}
+
+func GetGooglePending(_ *sql.DB, token string) (email, nome string, ok bool) {
+	googlePending.Lock()
+	defer googlePending.Unlock()
+	d, exists := googlePending.data[token]
+	if exists {
+		delete(googlePending.data, token)
+	}
+	return d[0], d[1], exists
 }
 
 // --- Famílias ---
