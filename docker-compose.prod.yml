@@ -7,6 +7,7 @@ services:
     environment:
       DATABASE_URL: postgres://${DB_USER}:${DB_PASS}@postgres:5432/${DB_NAME}?sslmode=disable
       SESSION_SECRET: ${SESSION_SECRET}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       TZ: America/Sao_Paulo
     depends_on:
       postgres:
