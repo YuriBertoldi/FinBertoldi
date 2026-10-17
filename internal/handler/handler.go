@@ -67,7 +67,7 @@ func buildFuncMap() template.FuncMap {
 
 // InitTemplates carrega e compila todos os templates.
 func InitTemplates() {
-	pages := []string{"dashboard", "despesas", "pagamentos", "receitas", "investimentos", "planejamento", "emprestimos", "usuarios", "familias", "cadastros", "minha-familia", "importexport", "transacoes", "integracoes"}
+	pages := []string{"dashboard", "despesas", "pagamentos", "receitas", "investimentos", "planejamento", "emprestimos", "usuarios", "familias", "cadastros", "minha-familia", "importexport", "transacoes", "integracoes", "notificacoes"}
 	for _, page := range pages {
 		t := template.New("").Funcs(buildFuncMap())
 		template.Must(t.ParseFiles("templates/base.html", "templates/"+page+".html"))

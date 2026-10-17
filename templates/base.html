@@ -148,6 +148,7 @@
             <span class="user-role-user">Usuário</span>
           {{end}}
         </div>
+        <a href="/notificacoes" class="icon-btn {{if eq .Active "notificacoes"}}active{{end}}" title="Notificações">🔔</a>
         <form method="POST" action="/logout" style="display:inline;margin:0">
           <button type="submit" class="icon-btn icon-btn-danger" title="Sair">↩</button>
         </form>

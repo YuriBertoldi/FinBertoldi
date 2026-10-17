@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"fincontrol/internal/auth"
+	"fincontrol/internal/contas"
 	"fincontrol/internal/handler"
 	"fincontrol/internal/integrations"
 	"fincontrol/internal/store"
@@ -76,6 +77,12 @@ func main() {
 
 	// Pagamentos do Mês
 	mux.HandleFunc("GET /pagamentos", auth.ScreenProtected(db, "despesas", handler.HandlePagamentos(db)))
+	mux.HandleFunc("GET /pagamentos/whatsapp", auth.ScreenProtected(db, "despesas", handler.HandlePagamentosWhatsApp(db)))
+	mux.HandleFunc("POST /pagamentos/enviar", auth.ScreenProtected(db, "despesas", handler.HandlePagamentosEnviar(db)))
+
+	// Notificações (preferências do próprio usuário)
+	mux.HandleFunc("GET /notificacoes", auth.Protected(db, handler.HandleNotificacoes(db)))
+	mux.HandleFunc("POST /notificacoes", auth.Protected(db, handler.HandleSaveNotificacoes(db)))
 
 	// Investimentos
 	mux.HandleFunc("GET /investimentos", auth.ScreenProtected(db, "investimentos", handler.HandleInvestimentos(db)))
@@ -175,6 +182,7 @@ func main() {
 
 	// Iniciar scheduler de integrações
 	integrations.StartScheduler(db)
+	contas.StartScheduler(db)
 
 	port := getEnv("PORT", "8080")
 	log.Printf("Servidor iniciado em http://localhost:%s", port)

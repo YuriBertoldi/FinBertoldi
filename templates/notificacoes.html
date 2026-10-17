@@ -1,0 +1,69 @@
+{{define "content"}}
+<div class="page-header">
+  <h2>🔔 Notificações</h2>
+</div>
+
+<p class="hint">💡 Receba as contas do mês (o mesmo resumo do botão WhatsApp em Pagamentos) por e-mail e Telegram, todo mês, no dia que você escolher.</p>
+
+{{if .Erro}}<div class="alert alert-erro">⚠️ {{.Erro}}</div>{{end}}
+{{if .Msg}}<div class="alert alert-success">✅ {{.Msg}}</div>{{end}}
+
+<article>
+  <form method="POST" action="/notificacoes">
+    <h3 style="margin-top:0">📅 Envio mensal automático</h3>
+
+    <label>Dia do envio
+      <select name="dia_envio" style="max-width:12rem">
+        {{$dia := .Notificacoes.DiaEnvio}}
+        {{range $d := seq 31}}<option value="{{$d}}" {{if eq $d $dia}}selected{{end}}>Dia {{$d}}</option>{{end}}
+      </select>
+      <small>Por exemplo, o dia em que você recebe o salário. Se o mês não tiver esse dia, o envio sai no último dia do mês. O envio acontece a partir das 8h.</small>
+    </label>
+
+    <fieldset>
+      <legend>Quais contas enviar</legend>
+      <p class="hint">💡 Escolha <strong>mês seguinte</strong> se você recebe o salário no fim do mês e usa esse dinheiro para pagar as contas do próximo mês. Assim, quem recebe no dia 23 de outubro já recebe a lista de <strong>novembro</strong>, que vai pagar com esse salário. Se você recebe no começo do mês e paga as contas do próprio mês, deixe em <strong>mês atual</strong>.</p>
+      <label>
+        <input type="radio" name="mes_referencia" value="atual" {{if not .Notificacoes.MesSeguinte}}checked{{end}}>
+        Do <strong>mês atual</strong> <small class="muted">(envio em 23/10 → contas de outubro)</small>
+      </label>
+      <label>
+        <input type="radio" name="mes_referencia" value="seguinte" {{if .Notificacoes.MesSeguinte}}checked{{end}}>
+        Do <strong>mês seguinte</strong> <small class="muted">(envio em 23/10 → contas de novembro)</small>
+      </label>
+    </fieldset>
+
+    <fieldset>
+      <label>
+        <input type="checkbox" name="email_mensal" role="switch" {{if .Notificacoes.EmailMensal}}checked{{end}}>
+        📧 Enviar por e-mail para <strong>{{.CurrentUser.Email}}</strong>
+      </label>
+      {{if not .SMTPConfigurado}}<small class="muted">⚠️ O envio de e-mail (SMTP) ainda não foi configurado no servidor.</small>{{end}}
+
+      <label style="margin-top:1rem">
+        <input type="checkbox" name="telegram_mensal" role="switch" {{if .Notificacoes.TelegramMensal}}checked{{end}}>
+        ✈️ Enviar pelo Telegram
+      </label>
+      {{if not .TelegramBot}}<small class="muted">⚠️ O bot do Telegram da família ainda não foi configurado em Integrações.</small>{{end}}
+    </fieldset>
+
+    <label>Seu Chat ID do Telegram
+      <input type="text" name="telegram_chat_id" value="{{.Notificacoes.TelegramChatID}}"
+             placeholder="{{if .TelegramChatFam}}Vazio = usa o chat da família ({{.TelegramChatFam}}){{else}}Ex: 123456789{{end}}">
+      <small>Para descobrir, mande uma mensagem para o <strong>@userinfobot</strong> no Telegram. Antes, inicie uma conversa com o bot da família.</small>
+    </label>
+
+    {{with .Notificacoes.UltimoEnvioFmt}}<p class="muted">Último envio automático: {{.}}</p>{{end}}
+
+    <button type="submit">Salvar preferências</button>
+  </form>
+</article>
+
+<article>
+  <h3 style="margin-top:0">📤 Enviar agora</h3>
+  <p class="muted">Envia as contas de <strong>{{.MesEnvioDisplay}}</strong> para o seu e-mail e o seu Telegram, conforme a opção salva acima.</p>
+  <button type="button" class="outline" hx-post="/pagamentos/enviar?mes={{.MesEnvio}}" hx-target="#envio-resultado"
+          hx-indicator="this" hx-disabled-elt="this">📧✈️ Enviar contas do mês</button>
+  <div id="envio-resultado"></div>
+</article>
+{{end}}

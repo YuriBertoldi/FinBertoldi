@@ -236,7 +236,7 @@ body.has-sidebar {
   padding: 0;
 }
 .icon-btn:hover {
-  border-color: var(--color-receita);
+  border-color: var(--color-receita) !important;
   color: var(--color-receita);
 }
 .icon-btn-danger:hover {
@@ -890,7 +890,7 @@ button.outline:hover {
 }
 .btn-toggle.pago {
   background: linear-gradient(135deg, var(--color-receita), var(--color-receita-2));
-  border-color: var(--color-receita);
+  border-color: var(--color-receita) !important;
   color: #fff;
   box-shadow: 0 2px 8px rgba(39, 174, 96, 0.3);
 }
@@ -1232,8 +1232,27 @@ dialog article {
   background: transparent;
   border: none;
 }
-dialog header { margin-bottom: 1rem; color: var(--text-primary); }
+dialog header { margin-bottom: 1rem; color: var(--text-primary); position: relative; padding-right: 2.5rem; }
 dialog header h3 { margin: 0; }
+dialog header [data-close-dialog] {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  transform: translateY(-50%);
+  width: 2rem;
+  height: 2rem;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 1.1rem;
+  line-height: 1;
+}
+dialog header [data-close-dialog]::before { content: "✕"; }
+dialog header [data-close-dialog]:focus { box-shadow: none; }
+dialog header [data-close-dialog]:hover { background: var(--border-soft); color: var(--text-primary); }
 dialog footer {
   display: flex;
   gap: .5rem;
@@ -1247,6 +1266,44 @@ dialog::backdrop {
   background: rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(4px);
 }
+
+/* Prévia da mensagem de WhatsApp (Pagamentos do Mês) */
+.wa-chat {
+  background: #0b141a;
+  border-radius: var(--radius-md);
+  padding: 1rem;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+.wa-bolha {
+  background: #005c4b;
+  color: #e9edef;
+  border-radius: 8px 0 8px 8px;
+  padding: .5rem .65rem;
+  margin-left: auto;
+  width: fit-content;
+  max-width: 100%;
+  font-size: .85rem;
+  line-height: 1.4;
+}
+.wa-bolha strong { color: #fff; }
+.wa-bolha pre {
+  background: transparent;
+  color: inherit;
+  font-size: .78rem;
+  margin: .25rem 0 .6rem;
+  padding: 0;
+  overflow-x: auto;
+}
+#dialog-whatsapp footer { align-items: center; }
+#dialog-whatsapp footer > * { margin: 0; display: inline-flex; align-items: center; justify-content: center; gap: .45rem; }
+.wa-enviar {
+  background: #25d366;
+  border-color: #25d366;
+  color: #0b141a;
+}
+.wa-enviar:hover { background: #1ebe5b; border-color: #1ebe5b; color: #0b141a; }
+.wa-enviar svg { width: 1.1rem; height: 1.1rem; fill: currentColor; }
 
 /* ====================================================
    PLANEJAMENTO
@@ -1796,4 +1853,27 @@ body.sidebar-is-open .sidebar-toggle { }
 
   /* Tabelas: coluna extra pode ser escondida em tablet */
   .hide-tablet { display: none !important; }
+}
+
+/* Resultado do envio por e-mail/Telegram */
+.wa-resultado {
+  list-style: none;
+  margin: .75rem 0 0;
+  padding: .6rem .8rem;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  font-size: .85rem;
+}
+.wa-resultado li { list-style: none; margin: .15rem 0; }
+#dialog-whatsapp footer { flex-wrap: wrap; }
+
+/* Switches: o fundo dos inputs do app apagava o estado "ligado" do Pico */
+input[type="checkbox"][role="switch"]:checked {
+  background-color: var(--color-receita) !important;
+  border-color: var(--color-receita) !important;
+}
+input[type="radio"]:checked {
+  background: var(--color-receita) !important;
+  border-color: var(--color-receita) !important;
+  box-shadow: inset 0 0 0 .22em var(--bg-base);
 }

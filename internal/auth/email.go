@@ -3,6 +3,7 @@ package auth
 import (
 	"fmt"
 	"log"
+	"mime"
 	"net/smtp"
 	"os"
 )
@@ -10,21 +11,11 @@ import (
 // SendResetEmail envia email com link de recuperação de senha.
 // Se SMTP não estiver configurado, loga o link no console.
 func SendResetEmail(to, token, baseURL string) error {
-	host := os.Getenv("SMTP_HOST")
-	port := os.Getenv("SMTP_PORT")
-	user := os.Getenv("SMTP_USER")
-	pass := os.Getenv("SMTP_PASS")
-	from := os.Getenv("SMTP_FROM")
-
 	link := baseURL + "/reset-senha?token=" + token
 
-	if host == "" || from == "" {
+	if !SMTPConfigurado() {
 		log.Printf("[password-reset] SMTP nao configurado. Link de recuperacao: %s", link)
 		return nil
-	}
-
-	if port == "" {
-		port = "587"
 	}
 
 	subject := "Recuperacao de Senha - FinBertoldi"
@@ -40,10 +31,29 @@ func SendResetEmail(to, token, baseURL string) error {
 </div>
 </body></html>`, link)
 
-	msg := fmt.Sprintf("From: %s\r\nTo: %s\r\nSubject: %s\r\nMIME-Version: 1.0\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n%s",
-		from, to, subject, body)
+	return SendEmail(to, subject, body)
+}
 
-	auth := smtp.PlainAuth("", user, pass, host)
-	addr := host + ":" + port
-	return smtp.SendMail(addr, auth, from, []string{to}, []byte(msg))
+// SMTPConfigurado indica se as variáveis SMTP mínimas estão definidas.
+func SMTPConfigurado() bool {
+	return os.Getenv("SMTP_HOST") != "" && os.Getenv("SMTP_FROM") != ""
+}
+
+// SendEmail envia um e-mail HTML usando as variáveis SMTP_*.
+func SendEmail(to, subject, htmlBody string) error {
+	host := os.Getenv("SMTP_HOST")
+	port := os.Getenv("SMTP_PORT")
+	from := os.Getenv("SMTP_FROM")
+	if !SMTPConfigurado() {
+		return fmt.Errorf("SMTP não configurado")
+	}
+	if port == "" {
+		port = "587"
+	}
+
+	msg := fmt.Sprintf("From: %s\r\nTo: %s\r\nSubject: %s\r\nMIME-Version: 1.0\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n%s",
+		from, to, mime.QEncoding.Encode("utf-8", subject), htmlBody)
+
+	auth := smtp.PlainAuth("", os.Getenv("SMTP_USER"), os.Getenv("SMTP_PASS"), host)
+	return smtp.SendMail(host+":"+port, auth, from, []string{to}, []byte(msg))
 }

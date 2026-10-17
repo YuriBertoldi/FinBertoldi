@@ -425,3 +425,48 @@ type PlanejamentoPage struct {
 	DespesaAnual    float64
 	HistoricoSobra  []MesResumo
 }
+
+// Notificacoes são as preferências de envio das contas do mês de um usuário.
+type Notificacoes struct {
+	EmailMensal    bool
+	TelegramMensal bool
+	TelegramChatID string
+	DiaEnvio       int  // 1–31; em meses mais curtos envia no último dia
+	MesSeguinte    bool // true = envia as contas do mês seguinte ao do envio
+	UltimoEnvio    *time.Time
+}
+
+// NotificacaoPendente é um usuário que deve receber o envio mensal hoje.
+type NotificacaoPendente struct {
+	User         User
+	Notificacoes Notificacoes
+}
+
+type NotificacoesPage struct {
+	BasePage
+	Notificacoes    Notificacoes
+	TelegramBot     bool
+	TelegramChatFam string
+	SMTPConfigurado bool
+	MesEnvio        string // "2026-11" — mês enviado pelo botão "Enviar agora"
+	MesEnvioDisplay string
+	Msg             string
+	Erro            string
+}
+
+// MesReferencia devolve o mês cujas contas são enviadas quando o envio ocorre em "envio".
+func (n Notificacoes) MesReferencia(envio time.Time) time.Time {
+	m := time.Date(envio.Year(), envio.Month(), 1, 0, 0, 0, 0, time.UTC)
+	if n.MesSeguinte {
+		m = m.AddDate(0, 1, 0)
+	}
+	return m
+}
+
+// UltimoEnvioFmt devolve o mês do último envio automático ("10/2026") ou "".
+func (n Notificacoes) UltimoEnvioFmt() string {
+	if n.UltimoEnvio == nil {
+		return ""
+	}
+	return n.UltimoEnvio.Format("01/2006")
+}
