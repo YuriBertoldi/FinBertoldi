@@ -53,6 +53,8 @@ func runGlobalIntegrations(db *sql.DB) {
 }
 
 func runFamilyIntegrations(db *sql.DB) {
+	exportarPlanilhas(db)
+
 	// Buscar famílias com telegram ativo
 	rows, err := db.Query(`SELECT DISTINCT family_id FROM integracoes_kv WHERE integracao='telegram' AND chave='ativa' AND valor='true'`)
 	if err != nil {
@@ -68,6 +70,27 @@ func runFamilyIntegrations(db *sql.DB) {
 			if err := SendAlertaVencimento(db, fid); err != nil {
 				log.Printf("[telegram] erro alerta fid=%d: %v", fid, err)
 			}
+		}
+	}
+}
+
+// exportarPlanilhas atualiza o Google Sheets das famílias com a integração ativa (1x por dia).
+func exportarPlanilhas(db *sql.DB) {
+	rows, err := db.Query(`SELECT DISTINCT family_id FROM integracoes_kv WHERE integracao='sheets' AND chave='ativa' AND valor='true'`)
+	if err != nil {
+		return
+	}
+	var fids []int
+	for rows.Next() {
+		var fid int
+		if rows.Scan(&fid) == nil {
+			fids = append(fids, fid)
+		}
+	}
+	rows.Close()
+	for _, fid := range fids {
+		if err := ExportToSheet(db, fid); err != nil {
+			log.Printf("[sheets] erro fid=%d: %v", fid, err)
 		}
 	}
 }

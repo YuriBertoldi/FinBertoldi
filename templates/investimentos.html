@@ -29,11 +29,12 @@
     <h3>Reserva de Emergência</h3>
     <button data-open-dialog="dialog-reserva-em" class="outline">Atualizar Saldo</button>
   </div>
-  <p class="card-value" style="font-size:1.5rem">{{brl .ReservaEM}}</p>
+  <p class="card-value" style="font-size:var(--fs-xl)">{{brl .ReservaEM}}</p>
 
   {{if .HistoricoReserva}}
   <details>
     <summary>Ver histórico</summary>
+    <div class="table-responsive">
     <table>
       <thead><tr><th>Data</th><th>Tipo</th><th>Valor</th><th>Notas</th><th></th></tr></thead>
       <tbody>
@@ -49,7 +50,7 @@
           </td>
           <td class="{{if eq .Tipo "retirada"}}valor-negativo{{else}}valor-positivo{{end}}">{{brl .Valor}}</td>
           <td><small>{{.Notas}}</small></td>
-          <td>
+          <td class="actions">
             <button data-open-dialog="dialog-edit-res-{{.ID}}" class="btn-action" title="Editar">✏️</button>
             <form method="POST" action="/reserva-em/{{.ID}}/delete" style="display:inline"
                   onsubmit="return confirm('Excluir registro?')">
@@ -94,6 +95,7 @@
         {{end}}
       </tbody>
     </table>
+    </div>
   </details>
   {{end}}
 </section>

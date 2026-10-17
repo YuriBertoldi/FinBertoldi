@@ -9,6 +9,20 @@ on:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: fincontrol
+          POSTGRES_PASSWORD: fincontrol
+          POSTGRES_DB: fincontrol
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U fincontrol"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v7
 
@@ -22,6 +36,12 @@ jobs:
 
       - name: Test
         run: go test ./... -v -count=1
+
+      - name: Integration tests (PostgreSQL)
+        env:
+          DATABASE_URL: postgres://fincontrol:fincontrol@localhost:5432/fincontrol?sslmode=disable
+          INTEGRATION_REQUIRED: "1"
+        run: go test -tags=integration ./internal/store/ ./internal/integrations/ -v -count=1
 
   deploy:
     needs: build-and-test

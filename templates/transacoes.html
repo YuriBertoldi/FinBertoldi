@@ -239,7 +239,7 @@
 .txn-filters input, .txn-filters select {
   margin: 0;
   padding: .4rem .6rem;
-  font-size: .85rem;
+  font-size: var(--fs-sm);
 }
 .txn-row.txn-convertida { opacity: .55; }
 .txn-row.txn-ignorada { opacity: .4; text-decoration: line-through; }
@@ -253,8 +253,8 @@
 .badge-status-convertida { background: rgba(39,174,96,.2); color: #27ae60; border: 1px solid rgba(39,174,96,.3); }
 .badge-status-ignorada { background: rgba(149,165,166,.2); color: #95a5a6; border: 1px solid rgba(149,165,166,.3); }
 
-.badge-cat { background: var(--bg-elev-2); font-size: .75rem; }
-.badge-pluggy { background: rgba(39,174,96,.15); color: #27ae60; border: 1px solid rgba(39,174,96,.3); padding: .3rem .7rem; border-radius: 8px; font-size: .8rem; }
+.badge-cat { background: var(--bg-elev-2); font-size: var(--fs-xs); }
+.badge-pluggy { background: rgba(39,174,96,.15); color: #27ae60; border: 1px solid rgba(39,174,96,.3); padding: .3rem .7rem; border-radius: 8px; font-size: var(--fs-xs); }
 
 .converter-tabs details { margin-bottom: .75rem; }
 .converter-tabs summary { cursor: pointer; font-weight: 600; padding: .4rem 0; }
@@ -262,8 +262,8 @@
 
 .card-grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: .75rem; margin-bottom: 1.25rem; }
 .card-resumo { text-align: center; padding: 1rem; }
-.card-label { font-size: .8rem; color: var(--text-muted); margin-bottom: .25rem; }
-.card-value { font-size: 1.3rem; font-weight: 700; }
+.card-label { font-size: var(--fs-xs); color: var(--text-muted); margin-bottom: .25rem; }
+.card-value { font-size: var(--fs-xl); font-weight: 700; }
 
 .import-form { display: flex; flex-direction: column; gap: .75rem; }
 .file-label {
@@ -277,13 +277,13 @@
 }
 .file-label:hover { border-color: var(--color-receita); }
 .file-label input[type="file"] { display: none; }
-.file-icon { font-size: 1rem; font-weight: 700; padding: .2rem .5rem; background: var(--bg-elev-2); border-radius: 4px; }
-.file-text { font-size: .88rem; color: var(--text-secondary); }
+.file-icon { font-size: var(--fs-base); font-weight: 700; padding: .2rem .5rem; background: var(--bg-elev-2); border-radius: 4px; }
+.file-text { font-size: var(--fs-sm); color: var(--text-secondary); }
 
-.alert { padding: .9rem 1.1rem; border-radius: var(--radius-sm); margin-bottom: 1.25rem; font-size: .9rem; }
+.alert { padding: .9rem 1.1rem; border-radius: var(--radius-sm); margin-bottom: 1.25rem; font-size: var(--fs-md); }
 .alert-ok { background: rgba(39,174,96,.12); border: 1px solid rgba(39,174,96,.3); color: var(--text-primary); }
 .alert-erro { background: rgba(231,76,60,.12); border: 1px solid rgba(231,76,60,.3); color: var(--text-primary); }
-.text-muted { color: var(--text-muted); font-size: .8rem; }
+.text-muted { color: var(--text-muted); font-size: var(--fs-xs); }
 
 .btn-auto-match {
   background: linear-gradient(135deg, #9b59b6, #8e44ad);
@@ -292,7 +292,7 @@
   padding: .45rem .9rem;
   border-radius: var(--radius-sm);
   cursor: pointer;
-  font-size: .85rem;
+  font-size: var(--fs-sm);
   font-weight: 600;
 }
 .btn-auto-match:hover { opacity: .85; }
@@ -302,7 +302,7 @@
   padding: .45rem .9rem;
   border-radius: var(--radius-sm);
   cursor: pointer;
-  font-size: .85rem;
+  font-size: var(--fs-sm);
   font-weight: 600;
 }
 .btn-bulk:hover { opacity: .85; }
@@ -310,7 +310,7 @@
 .btn-bulk-ignorar { background: linear-gradient(135deg, #95a5a6, #7f8c8d); color: #fff; }
 
 .match-results { display: flex; flex-direction: column; gap: .5rem; }
-.match-results h4 { margin: .5rem 0 .25rem; font-size: .9rem; color: var(--text-secondary); }
+.match-results h4 { margin: .5rem 0 .25rem; font-size: var(--fs-md); color: var(--text-secondary); }
 .match-item {
   display: flex; align-items: center; gap: .75rem;
   padding: .6rem .8rem;
@@ -318,10 +318,10 @@
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-mid);
 }
-.match-nome { flex: 1; font-weight: 500; font-size: .88rem; }
-.match-valor { font-weight: 600; font-size: .88rem; white-space: nowrap; }
+.match-nome { flex: 1; font-weight: 500; font-size: var(--fs-sm); }
+.match-valor { font-weight: 600; font-size: var(--fs-sm); white-space: nowrap; }
 .match-score {
-  font-size: .75rem; padding: .15rem .4rem;
+  font-size: var(--fs-xs); padding: .15rem .4rem;
   background: rgba(39,174,96,.2); color: #27ae60;
   border-radius: 4px;
 }

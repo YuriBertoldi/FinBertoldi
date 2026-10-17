@@ -50,7 +50,7 @@
         <td>
           <strong>{{.Nome}}</strong>
           {{if eq .ID $.CurrentUser.ID}}
-            <span class="badge badge-ativo" style="font-size:.65rem">você</span>
+            <span class="badge badge-ativo" style="font-size:var(--fs-2xs)">você</span>
           {{end}}
         </td>
         <td>{{.Email}}</td>
@@ -169,7 +169,7 @@
           <span>Criar nova família</span>
         </label>
         <input type="text" name="new_family_name" id="input-family-nova" placeholder="Nome da nova família (ou deixe em branco)" disabled>
-        <p class="hint" style="margin-top:.5rem;font-size:.78rem">Se vazio, usará o nome do usuário.</p>
+        <p class="hint" style="margin-top:.5rem;font-size:var(--fs-xs)">Se vazio, usará o nome do usuário.</p>
       </fieldset>
 
       <label class="check-row" style="margin-top:1rem">

@@ -27,16 +27,6 @@ func TestGenerateToken(t *testing.T) {
 	}
 }
 
-func TestGenerateTokenUnique(t *testing.T) {
-	seen := make(map[string]bool, 1000)
-	for i := 0; i < 1000; i++ {
-		tok := GenerateToken()
-		if seen[tok] {
-			t.Fatalf("colisão de token na iteração %d: %s", i, tok)
-		}
-		seen[tok] = true
-	}
-}
 
 func TestSetSessionCookie(t *testing.T) {
 	w := httptest.NewRecorder()

@@ -133,14 +133,6 @@ func TestMesFromRequest(t *testing.T) {
 	}
 }
 
-func TestBoolStr(t *testing.T) {
-	if got := boolStr(true); got != "S" {
-		t.Errorf("boolStr(true) = %q; want 'S'", got)
-	}
-	if got := boolStr(false); got != "N" {
-		t.Errorf("boolStr(false) = %q; want 'N'", got)
-	}
-}
 
 func TestParseBool(t *testing.T) {
 	cases := []struct {

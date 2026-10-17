@@ -41,6 +41,16 @@ var assetVersion = func() string {
 func buildFuncMap() template.FuncMap {
 	return template.FuncMap{
 		"assetV": func() string { return assetVersion },
+		// dict monta um mapa para passar mais de um valor a um template: dict "K" x "P" $
+		"dict": func(kv ...any) map[string]any {
+			m := map[string]any{}
+			for i := 0; i+1 < len(kv); i += 2 {
+				if k, ok := kv[i].(string); ok {
+					m[k] = kv[i+1]
+				}
+			}
+			return m
+		},
 		"brl": func(v float64) template.HTML {
 			return template.HTML(`<span class="money">` + formatBRL(v) + `</span>`)
 		},
@@ -536,7 +546,7 @@ func buildIntegracoesList(db *sql.DB, fid int) []models.IntegracaoStatus {
 			Descricao: "Receba alertas de vencimento e resumo semanal no Telegram.",
 			Ativa:     store.GetIntegracaoAtiva(db, fid, "telegram"),
 			Campos: []models.IntegracaoCampo{
-				{Nome: "bot_token", Label: "Bot Token", Tipo: "password", Valor: store.GetIntegracaoKV(db, fid, "telegram", "bot_token"), Placeholder: "Cole o token do BotFather"},
+				{Nome: "bot_token", Label: "Bot Token", Tipo: "password", Segredo: true, Configurado: store.GetIntegracaoKV(db, fid, "telegram", "bot_token") != "", Placeholder: "Cole o token do BotFather"},
 				{Nome: "chat_id", Label: "Chat ID", Tipo: "text", Valor: store.GetIntegracaoKV(db, fid, "telegram", "chat_id"), Placeholder: "Seu chat ID numérico"},
 			},
 		},
@@ -547,14 +557,43 @@ func buildIntegracoesList(db *sql.DB, fid int) []models.IntegracaoStatus {
 		},
 		{
 			Nome: "sheets", Label: "Google Sheets",
-			Descricao: "Exporte dados automaticamente para uma planilha Google.",
+			Descricao: "Atualiza uma planilha Google com contas, receitas, parcelamentos e investimentos (1x por dia).",
 			Ativa:     store.GetIntegracaoAtiva(db, fid, "sheets"),
-			Campos: []models.IntegracaoCampo{
-				{Nome: "spreadsheet_id", Label: "ID da Planilha", Tipo: "text", Valor: store.GetIntegracaoKV(db, fid, "sheets", "spreadsheet_id"), Placeholder: "ID da planilha no Google Sheets"},
-				{Nome: "service_account_json", Label: "Service Account JSON", Tipo: "textarea", Valor: store.GetIntegracaoKV(db, fid, "sheets", "service_account_json"), Placeholder: "Cole o JSON da service account"},
-			},
+			Campos:    camposSheets(db, fid),
 		},
 	}
+}
+
+// camposSheets mostra o e-mail da service account (para compartilhar a planilha) sem expor a chave.
+func camposSheets(db *sql.DB, fid int) []models.IntegracaoCampo {
+	saJSON := store.GetIntegracaoKV(db, fid, "sheets", "service_account_json")
+	ajudaSA := ""
+	if sa, err := integrations.ParseServiceAccount(saJSON); err == nil {
+		ajudaSA = "Compartilhe a planilha como Editor com: " + sa.ClientEmail
+	}
+	ajudaID := ""
+	if ultima := store.GetIntegracaoKV(db, fid, "sheets", "ultima_exportacao"); ultima != "" {
+		ajudaID = "Última atualização: " + ultima
+	}
+	return []models.IntegracaoCampo{
+		{Nome: "spreadsheet_id", Label: "Link ou ID da planilha", Tipo: "text", Valor: store.GetIntegracaoKV(db, fid, "sheets", "spreadsheet_id"), Placeholder: "https://docs.google.com/spreadsheets/d/...", Ajuda: ajudaID},
+		{Nome: "service_account_json", Label: "JSON da Service Account", Tipo: "textarea", Segredo: true, Configurado: saJSON != "", Placeholder: "Cole aqui o conteúdo do arquivo .json da chave", Ajuda: ajudaSA},
+	}
+}
+
+// camposSecretos não são sobrescritos quando o formulário vem vazio.
+var camposSecretos = map[string]bool{"bot_token": true, "service_account_json": true}
+
+// valorParaSalvar decide se um campo do formulário de integração deve ser gravado.
+func valorParaSalvar(campo string, vals []string) (string, bool) {
+	if campo == "ativa" || len(vals) == 0 {
+		return "", false
+	}
+	v := strings.TrimSpace(vals[0])
+	if v == "" && camposSecretos[campo] {
+		return "", false
+	}
+	return v, true
 }
 
 func HandleIntegracoes(db *sql.DB) http.HandlerFunc {
@@ -609,22 +648,33 @@ func HandleIntegracaoSalvar(db *sql.DB) http.HandlerFunc {
 		ativa := r.FormValue("ativa") == "on"
 		store.SetIntegracaoAtiva(db, fid, nome, ativa)
 
-		if nome == "telegram" {
+		erro := func(msg string) {
+			http.Redirect(w, r, "/integracoes?erro="+url.QueryEscape(msg), http.StatusSeeOther)
+		}
+		switch nome {
+		case "telegram":
 			if tok := strings.TrimSpace(r.FormValue("bot_token")); tok != "" {
 				if err := integrations.ValidarTokenTelegram(tok); err != nil {
-					http.Redirect(w, r, "/integracoes?erro="+url.QueryEscape("Telegram: "+err.Error()), http.StatusSeeOther)
+					erro("Telegram: " + err.Error())
 					return
 				}
 			}
+		case "sheets":
+			if js := strings.TrimSpace(r.FormValue("service_account_json")); js != "" {
+				if _, err := integrations.ParseServiceAccount(js); err != nil {
+					erro("Google Sheets: " + err.Error())
+					return
+				}
+			}
+			if r.Form.Has("spreadsheet_id") {
+				r.Form.Set("spreadsheet_id", integrations.ExtrairIDPlanilha(r.FormValue("spreadsheet_id")))
+			}
 		}
 
-		// Salvar campos extras
+		// Salvar campos extras (segredos em branco mantêm o valor salvo)
 		for key, vals := range r.Form {
-			if key == "ativa" {
-				continue
-			}
-			if len(vals) > 0 {
-				store.SetIntegracaoKV(db, fid, nome, key, strings.TrimSpace(vals[0]))
+			if v, ok := valorParaSalvar(key, vals); ok {
+				store.SetIntegracaoKV(db, fid, nome, key, v)
 			}
 		}
 
@@ -638,13 +688,18 @@ func HandleIntegracaoSalvar(db *sql.DB) http.HandlerFunc {
 			case "brasilapi":
 				go integrations.FetchFeriados(db, time.Now().Year())
 			case "telegram":
-				botToken := r.FormValue("bot_token")
-				chatID := r.FormValue("chat_id")
+				botToken := store.GetIntegracaoKV(db, fid, "telegram", "bot_token")
+				chatID := store.GetIntegracaoKV(db, fid, "telegram", "chat_id")
 				if botToken != "" && chatID != "" {
 					if err := integrations.TestTelegram(botToken, chatID); err != nil {
-						http.Redirect(w, r, "/integracoes?erro="+url.QueryEscape("Telegram: "+err.Error()), http.StatusSeeOther)
+						erro("Telegram: " + err.Error())
 						return
 					}
+				}
+			case "sheets":
+				if err := integrations.ExportToSheet(db, fid); err != nil {
+					erro("Google Sheets (configuração salva, mas a planilha não foi atualizada): " + err.Error())
+					return
 				}
 			}
 		}
@@ -721,7 +776,21 @@ func HandleDashboard(db *sql.DB) http.HandlerFunc {
 		integ.Feriados = feriados
 
 		u := auth.CurrentUser(r)
-		widgets := store.GetDashboardWidgets(db, u.ID)
+		layout := store.GetDashboardLayout(db, u.ID)
+		widgets := map[string]bool{}
+		var esquerda, direita []string
+		for _, wd := range layout {
+			widgets[wd.Key] = wd.Visivel
+			if !wd.Visivel {
+				continue
+			}
+			switch wd.Coluna {
+			case "esquerda":
+				esquerda = append(esquerda, wd.Key)
+			case "direita":
+				direita = append(direita, wd.Key)
+			}
+		}
 
 		render(w, "dashboard", models.DashboardData{
 			BasePage:        bp(db, r, "dashboard", "Dashboard"),
@@ -738,6 +807,9 @@ func HandleDashboard(db *sql.DB) http.HandlerFunc {
 			Historico:       historico,
 			Integracoes:     integ,
 			Widgets:         widgets,
+			WidgetLayout:    layout,
+			WidgetsEsquerda: esquerda,
+			WidgetsDireita:  direita,
 		})
 	}
 }
@@ -747,19 +819,45 @@ func HandleSaveWidgets(db *sql.DB) http.HandlerFunc {
 		u := auth.CurrentUser(r)
 		r.ParseForm()
 
-		selected := r.Form["widgets"]
-		selectedSet := make(map[string]bool)
-		for _, k := range selected {
-			selectedSet[k] = true
+		layout := montarLayoutWidgets(store.GetDashboardLayout(db, u.ID), r.Form["ordem"], r.Form["widgets"], r.FormValue)
+		if err := store.SaveDashboardLayout(db, u.ID, layout); err != nil {
+			log.Printf("salvar widgets: %v", err)
 		}
-		widgets := make(map[string]bool)
-		for _, key := range store.GetWidgetKeys() {
-			widgets[key] = selectedSet[key]
-		}
-
-		store.SaveDashboardWidgets(db, u.ID, widgets)
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 	}
+}
+
+// montarLayoutWidgets aplica o que veio do diálogo (ordem, marcados e coluna de cada um)
+// sobre o layout atual. Chaves desconhecidas são ignoradas; widgets que não vieram no
+// formulário mantêm a configuração e vão para o fim; o "resumo" continua no topo.
+func montarLayoutWidgets(atual []models.DashboardWidget, ordem, marcados []string, coluna func(string) string) []models.DashboardWidget {
+	visiveis := map[string]bool{}
+	for _, k := range marcados {
+		visiveis[k] = true
+	}
+	pendentes := map[string]models.DashboardWidget{}
+	for _, wd := range atual {
+		pendentes[wd.Key] = wd
+	}
+	var layout []models.DashboardWidget
+	for _, k := range ordem {
+		wd, ok := pendentes[k]
+		if !ok {
+			continue
+		}
+		delete(pendentes, k)
+		wd.Visivel = visiveis[k]
+		if c := coluna("coluna_" + k); wd.Coluna != "topo" && (c == "esquerda" || c == "direita") {
+			wd.Coluna = c
+		}
+		layout = append(layout, wd)
+	}
+	for _, wd := range atual {
+		if _, falta := pendentes[wd.Key]; falta {
+			layout = append(layout, wd)
+		}
+	}
+	return store.OrdenarTopo(layout)
 }
 
 // calcResumo agrega os totais do mês para os cards de resumo.

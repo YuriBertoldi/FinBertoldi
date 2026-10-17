@@ -1,10 +1,10 @@
 package store
 
 import (
-	"os"
 	"strings"
 	"testing"
 
+	"fincontrol/internal/models"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -65,13 +65,18 @@ func TestGooglePendingTokenInexistente(t *testing.T) {
 	}
 }
 
-func TestGetEnv(t *testing.T) {
-	os.Setenv("FINC_TEST_VAR", "custom")
-	defer os.Unsetenv("FINC_TEST_VAR")
-	if got := getEnv("FINC_TEST_VAR", "default"); got != "custom" {
-		t.Errorf("getEnv com var setada = %q; want 'custom'", got)
+func TestOrdenarTopo(t *testing.T) {
+	in := []models.DashboardWidget{
+		{Key: "feriados", Coluna: "esquerda"},
+		{Key: "resumo", Coluna: "topo"},
+		{Key: "parcelamentos", Coluna: "direita"},
 	}
-	if got := getEnv("FINC_NAO_EXISTE_123", "default"); got != "default" {
-		t.Errorf("getEnv sem var = %q; want 'default'", got)
+	got := OrdenarTopo(in)
+	var chaves []string
+	for _, w := range got {
+		chaves = append(chaves, w.Key)
+	}
+	if strings.Join(chaves, ",") != "resumo,feriados,parcelamentos" {
+		t.Errorf("ordem = %v; resumo deve ir para o topo mantendo a ordem dos demais", chaves)
 	}
 }

@@ -176,6 +176,17 @@ type DashboardData struct {
 	Historico       []MesResumo
 	Integracoes     DashboardIntegracoes
 	Widgets         map[string]bool
+	WidgetLayout    []DashboardWidget // todos os widgets na ordem escolhida (para o diálogo)
+	WidgetsEsquerda []string          // chaves visíveis da coluna esquerda, em ordem
+	WidgetsDireita  []string          // chaves visíveis da coluna direita, em ordem
+}
+
+// DashboardWidget é a configuração de um widget do dashboard para um usuário.
+type DashboardWidget struct {
+	Key     string
+	Label   string
+	Visivel bool
+	Coluna  string // "topo" (fixo), "esquerda" ou "direita"
 }
 
 type WidgetInfo struct {
@@ -380,6 +391,9 @@ type IntegracaoCampo struct {
 	Tipo        string // "text", "password", "textarea"
 	Valor       string
 	Placeholder string
+	Segredo     bool   // nunca volta para a página; vazio ao salvar mantém o valor atual
+	Configurado bool   // há um segredo salvo
+	Ajuda       string // texto curto exibido abaixo do campo
 }
 
 type IntegracoesPage struct {

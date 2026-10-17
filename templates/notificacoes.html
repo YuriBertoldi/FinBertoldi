@@ -64,9 +64,13 @@
 
 <article>
   <h3 style="margin-top:0">📤 Enviar agora</h3>
-  <p class="muted">Envia as contas de <strong>{{.MesEnvioDisplay}}</strong> para o seu e-mail e o seu Telegram, conforme a opção salva acima.</p>
-  <button type="button" class="outline" hx-post="/pagamentos/enviar?mes={{.MesEnvio}}" hx-target="#envio-resultado"
-          hx-indicator="this" hx-disabled-elt="this">📧✈️ Enviar contas do mês</button>
+  <p class="muted">Envia as contas de <strong>{{.MesEnvioDisplay}}</strong>, conforme a opção salva acima.</p>
+  <div class="btns-canal">
+    <button type="button" class="btn-canal btn-telegram" hx-post="/pagamentos/enviar?mes={{.MesEnvio}}&canal=telegram"
+            hx-target="#envio-resultado" hx-disabled-elt="this">{{template "ico-telegram"}} Enviar pelo Telegram</button>
+    <button type="button" class="btn-canal btn-email" hx-post="/pagamentos/enviar?mes={{.MesEnvio}}&canal=email"
+            hx-target="#envio-resultado" hx-disabled-elt="this">{{template "ico-email"}} Enviar por e-mail</button>
+  </div>
   <div id="envio-resultado"></div>
 </article>
 

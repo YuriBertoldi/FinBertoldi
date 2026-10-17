@@ -34,12 +34,17 @@ func setupTestDB(t *testing.T) *sql.DB {
 		dsn = fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
 			host, port, user, pass, name)
 	}
+	// No CI (INTEGRATION_REQUIRED=1) a falta do banco é erro, não pulo silencioso.
+	pular := t.Skipf
+	if os.Getenv("INTEGRATION_REQUIRED") == "1" {
+		pular = t.Fatalf
+	}
 	db, err := sql.Open("postgres", dsn)
 	if err != nil {
-		t.Skipf("postgres não disponível: %v", err)
+		pular("postgres não disponível: %v", err)
 	}
 	if err := db.Ping(); err != nil {
-		t.Skipf("postgres não responde: %v", err)
+		pular("postgres não responde: %v", err)
 	}
 
 	db.SetMaxOpenConns(1)
@@ -239,8 +244,8 @@ func TestIsolamento_Parcelamentos(t *testing.T) {
 	fA, fB := criarDuasFamilias(t, db)
 	inicio := time.Now().AddDate(0, -3, 0)
 
-	CreateParcelamento(db, fA, "Geladeira A", "Nubank", 200, 1, 10, inicio)
-	CreateParcelamento(db, fB, "TV B", "Itaú", 500, 1, 12, inicio)
+	CreateParcelamento(db, fA, "Geladeira A", "Nubank", 200, 1, 10, inicio, false, 0, 0)
+	CreateParcelamento(db, fB, "TV B", "Itaú", 500, 1, 12, inicio, false, 0, 0)
 
 	listA, _ := GetParcelamentos(db, fA, false)
 	listB, _ := GetParcelamentos(db, fB, false)
@@ -339,8 +344,8 @@ func TestParcelamento_AutoFinalizar(t *testing.T) {
 	fA, _ := criarDuasFamilias(t, db)
 
 	inicio := time.Now().AddDate(0, -5, 0)
-	CreateParcelamento(db, fA, "Antigo", "X", 100, 1, 3, inicio)
-	CreateParcelamento(db, fA, "Ativo", "X", 200, 1, 12, time.Now().AddDate(0, -2, 0))
+	CreateParcelamento(db, fA, "Antigo", "X", 100, 1, 3, inicio, false, 0, 0)
+	CreateParcelamento(db, fA, "Ativo", "X", 200, 1, 12, time.Now().AddDate(0, -2, 0), false, 0, 0)
 
 	if err := AutoFinalizarParcelamentos(db, fA); err != nil {
 		t.Fatalf("auto finalizar: %v", err)
@@ -364,7 +369,7 @@ func TestParcelamento_VigenteNoMes(t *testing.T) {
 	fA, _ := criarDuasFamilias(t, db)
 
 	inicio := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
-	if err := CreateParcelamento(db, fA, "Notebook", "Visa", 500, 1, 12, inicio); err != nil {
+	if err := CreateParcelamento(db, fA, "Notebook", "Visa", 500, 1, 12, inicio, false, 0, 0); err != nil {
 		t.Fatalf("create: %v", err)
 	}
 
@@ -766,6 +771,8 @@ func TestMigrate_CriaFamiliaPadrao(t *testing.T) {
 
 func TestEnsureAdmin_CriaQuandoVazio(t *testing.T) {
 	db := setupTestDB(t)
+	t.Setenv("ADMIN_EMAIL", "")
+	t.Setenv("ADMIN_PASSWORD", "senha-definida-no-env")
 
 	if err := EnsureAdmin(db); err != nil {
 		t.Fatalf("EnsureAdmin: %v", err)
@@ -784,8 +791,25 @@ func TestEnsureAdmin_CriaQuandoVazio(t *testing.T) {
 	if u.FamilyID == 0 {
 		t.Error("admin sem family_id")
 	}
-	if err := bcrypt.CompareHashAndPassword([]byte(hash), []byte("admin123")); err != nil {
-		t.Error("senha padrão não valida")
+	if err := bcrypt.CompareHashAndPassword([]byte(hash), []byte("senha-definida-no-env")); err != nil {
+		t.Error("admin deveria usar a senha de ADMIN_PASSWORD")
+	}
+}
+
+func TestEnsureAdmin_SemSenhaNoEnvGeraAleatoria(t *testing.T) {
+	db := setupTestDB(t)
+	t.Setenv("ADMIN_EMAIL", "")
+	t.Setenv("ADMIN_PASSWORD", "")
+
+	if err := EnsureAdmin(db); err != nil {
+		t.Fatalf("EnsureAdmin: %v", err)
+	}
+	_, hash, err := GetUserByEmail(db, "admin@finbertoldi.com")
+	if err != nil {
+		t.Fatalf("admin não criado: %v", err)
+	}
+	if bcrypt.CompareHashAndPassword([]byte(hash), []byte("admin123")) == nil {
+		t.Error("sem ADMIN_PASSWORD não pode usar a senha fixa admin123")
 	}
 }
 

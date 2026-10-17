@@ -19,7 +19,7 @@
     {{if .Resultado.Investimentos}} <li>{{.Resultado.Investimentos}} investimento(s)</li>{{end}}
     {{if .Resultado.Emprestimos}}   <li>{{.Resultado.Emprestimos}} empréstimo(s)</li>{{end}}
   </ul>
-  <p style="margin:.5rem 0 0;color:var(--text-muted);font-size:.85rem">Total: {{.Resultado.Total}} registro(s) importado(s).</p>
+  <p style="margin:.5rem 0 0;color:var(--text-muted);font-size:var(--fs-sm)">Total: {{.Resultado.Total}} registro(s) importado(s).</p>
 </div>
 {{end}}
 
@@ -28,8 +28,8 @@
   <h3>📤 Exportar dados</h3>
   <p class="hint">Baixe todos os seus dados atuais em uma planilha XLSX pronta para editar ou fazer backup.</p>
   <div class="page-actions">
-    <a href="/dados/exportar" class="btn-export">⬇ Exportar meus dados</a>
-    <a href="/dados/modelo" class="btn-export outline-export">📋 Baixar modelo em branco</a>
+    <a href="/dados/exportar" class="btn-export" data-no-loading>⬇ Exportar meus dados</a>
+    <a href="/dados/modelo" class="btn-export outline-export" data-no-loading>📋 Baixar modelo em branco</a>
   </div>
 </section>
 
@@ -75,7 +75,7 @@
 }
 .import-section h3 {
   margin: 0 0 .5rem;
-  font-size: 1rem;
+  font-size: var(--fs-base);
   font-weight: 600;
 }
 .btn-export {
@@ -88,7 +88,7 @@
   font-weight: 600;
   border-radius: 10px;
   text-decoration: none;
-  font-size: .9rem;
+  font-size: var(--fs-md);
   transition: filter .15s, transform .15s;
   border: none;
 }
@@ -113,13 +113,13 @@
 }
 .file-label:hover { border-color: var(--color-receita); }
 .file-label input[type="file"] { display: none; }
-.file-icon { font-size: 1.4rem; }
-.file-text { font-size: .88rem; color: var(--text-secondary); }
+.file-icon { font-size: var(--fs-xl); }
+.file-text { font-size: var(--fs-sm); color: var(--text-secondary); }
 .alert {
   padding: .9rem 1.1rem;
   border-radius: var(--radius-sm);
   margin-bottom: 1.25rem;
-  font-size: .9rem;
+  font-size: var(--fs-md);
 }
 .alert-ok  { background: rgba(39,174,96,.12); border: 1px solid rgba(39,174,96,.3); color: var(--text-primary); }
 .alert-erro { background: rgba(231,76,60,.12); border: 1px solid rgba(231,76,60,.3); color: var(--text-primary); }

@@ -30,10 +30,22 @@ func HandlePagamentosEnviar(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		mes, _ := mesFromRequest(r)
 		u := auth.CurrentUser(r)
-		res := contas.Enviar(db, u, store.GetNotificacoes(db, u.ID), mes, true, true)
+		email, telegram := canaisEnvio(r.URL.Query().Get("canal"))
+		res := contas.Enviar(db, u, store.GetNotificacoes(db, u.ID), mes, email, telegram)
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		fmt.Fprint(w, resultadoEnvioHTML(res))
 	}
+}
+
+// canaisEnvio traduz ?canal=email|telegram; vazio ou desconhecido envia pelos dois.
+func canaisEnvio(canal string) (email, telegram bool) {
+	switch canal {
+	case "email":
+		return true, false
+	case "telegram":
+		return false, true
+	}
+	return true, true
 }
 
 func resultadoEnvioHTML(res []contas.Resultado) string {

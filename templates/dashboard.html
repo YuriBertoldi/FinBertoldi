@@ -13,26 +13,43 @@
 <!-- Dialog de configuração de widgets -->
 <dialog id="widget-dialog" class="widget-dialog">
   <form method="POST" action="/api/dashboard/widgets">
-    <h3 style="margin:0 0 1rem">Configurar Widgets</h3>
-    <p class="muted" style="font-size:.82rem;margin-bottom:1rem">Escolha quais widgets aparecem no seu dashboard.</p>
-    <div class="widget-checklist">
-      {{$w := .Widgets}}
-      <label><input type="checkbox" name="widgets" value="resumo" {{if index $w "resumo"}}checked{{end}}> 💵 Resumo (cards)</label>
-      <label><input type="checkbox" name="widgets" value="grafico_receitas_despesas" {{if index $w "grafico_receitas_despesas"}}checked{{end}}> 📊 Receitas vs Despesas</label>
-      <label><input type="checkbox" name="widgets" value="grafico_sobra" {{if index $w "grafico_sobra"}}checked{{end}}> 📈 Sobra Mensal</label>
-      <label><input type="checkbox" name="widgets" value="grafico_investimentos" {{if index $w "grafico_investimentos"}}checked{{end}}> 💰 Investimentos</label>
-      <label><input type="checkbox" name="widgets" value="detalhes_mes" {{if index $w "detalhes_mes"}}checked{{end}}> 📋 Detalhes do mês</label>
-      <label><input type="checkbox" name="widgets" value="parcelamentos" {{if index $w "parcelamentos"}}checked{{end}}> 💳 Parcelamentos</label>
-      <label><input type="checkbox" name="widgets" value="reserva_em" {{if index $w "reserva_em"}}checked{{end}}> 🛡️ Reserva de Emergência</label>
-      <label><input type="checkbox" name="widgets" value="indicadores" {{if index $w "indicadores"}}checked{{end}}> 📡 Indicadores</label>
-      <label><input type="checkbox" name="widgets" value="feriados" {{if index $w "feriados"}}checked{{end}}> 📅 Feriados</label>
-    </div>
-    <div style="display:flex;gap:.5rem;justify-content:flex-end;margin-top:1.25rem">
+    <h3 style="margin:0 0 .5rem">Configurar Widgets</h3>
+    <p class="muted" style="font-size:var(--fs-sm);margin-bottom:1rem">Marque o que aparece, use <strong>↑ ↓</strong> para mudar a ordem e escolha a coluna. No celular, a coluna <strong>Esquerda</strong> aparece primeiro.</p>
+    <ul class="widget-checklist" id="widget-lista">
+      {{range .WidgetLayout}}
+      <li class="widget-row" {{if eq .Coluna "topo"}}data-fixo="1"{{end}}>
+        <input type="hidden" name="ordem" value="{{.Key}}">
+        <label class="widget-nome"><input type="checkbox" name="widgets" value="{{.Key}}" {{if .Visivel}}checked{{end}}> {{.Label}}</label>
+        {{if eq .Coluna "topo"}}
+        <small class="muted widget-fixo">fixo no topo</small>
+        {{else}}
+        <select name="coluna_{{.Key}}" class="widget-coluna" aria-label="Coluna de {{.Label}}">
+          <option value="esquerda" {{if eq .Coluna "esquerda"}}selected{{end}}>Esquerda</option>
+          <option value="direita" {{if eq .Coluna "direita"}}selected{{end}}>Direita</option>
+        </select>
+        <span class="widget-mover">
+          <button type="button" class="widget-btn" onclick="moverWidget(this,-1)" aria-label="Subir {{.Label}}">↑</button>
+          <button type="button" class="widget-btn" onclick="moverWidget(this,1)" aria-label="Descer {{.Label}}">↓</button>
+        </span>
+        {{end}}
+      </li>
+      {{end}}
+    </ul>
+    <div class="widget-dialog-acoes">
       <button type="button" class="outline secondary" onclick="document.getElementById('widget-dialog').close()">Cancelar</button>
       <button type="submit">Salvar</button>
     </div>
   </form>
 </dialog>
+<script>
+function moverWidget(btn, dir) {
+  const li = btn.closest('li');
+  const alvo = dir < 0 ? li.previousElementSibling : li.nextElementSibling;
+  if (!alvo || alvo.dataset.fixo) return; // não passa por cima do Resumo
+  if (dir < 0) alvo.before(li); else alvo.after(li);
+  btn.focus();
+}
+</script>
 
 <!-- Cards de resumo -->
 {{if index .Widgets "resumo"}}
@@ -41,146 +58,17 @@
 </div>
 {{end}}
 
-<div class="dash-grid">
-  <!-- Coluna esquerda: GRÁFICOS -->
+<div class="dash-grid{{if not .WidgetsDireita}} dash-grid-unica{{else if not .WidgetsEsquerda}} dash-grid-unica{{end}}">
+  {{if .WidgetsEsquerda}}
   <div class="dash-left">
-    {{if index .Widgets "grafico_receitas_despesas"}}
-    <section class="dash-section">
-      <h3 class="section-title">📊 Receitas vs Despesas — Últimos 6 meses</h3>
-      <div class="chart-wrap"><canvas id="chartReceitasDespesas"></canvas></div>
-    </section>
-    {{end}}
-
-    {{if index .Widgets "grafico_sobra"}}
-    <section class="dash-section">
-      <h3 class="section-title">📈 Sobra Mensal — Evolução</h3>
-      <div class="chart-wrap"><canvas id="chartSobra"></canvas></div>
-    </section>
-    {{end}}
-
-    {{if index .Widgets "grafico_investimentos"}}
-    <section class="dash-section">
-      <h3 class="section-title">💰 Investimentos — Aportes Mensais</h3>
-      <div class="chart-wrap chart-small"><canvas id="chartInvestido"></canvas></div>
-    </section>
-    {{end}}
-
-    <!-- Detalhes do mês colapsável -->
-    {{if index .Widgets "detalhes_mes"}}
-    <details class="dash-section detalhes-mes">
-      <summary>
-        <span class="section-title" style="margin:0;border:none;padding:0">📋 Detalhes do mês — marcar contas pagas</span>
-      </summary>
-      <div style="margin-top:1rem">
-        {{if .DespesasBasicas}}
-        <p class="cat-label">Contas Básicas</p>
-        <table class="dash-table">
-          <tbody>
-            {{range .DespesasBasicas}}
-            <tr>
-              <td>{{.Nome}}</td>
-              <td class="valor-col">{{brl .Valor}}</td>
-              <td class="status-col">{{template "toggle-btn" .}}</td>
-            </tr>
-            {{end}}
-          </tbody>
-        </table>
-        {{end}}
-
-        {{if .DespesasCartao}}
-        <p class="cat-label">Cartão de Crédito</p>
-        <table class="dash-table">
-          <tbody>
-            {{range .DespesasCartao}}
-            <tr>
-              <td>{{.Nome}}</td>
-              <td class="valor-col">{{brl .Valor}}</td>
-              <td class="status-col">{{template "toggle-btn" .}}</td>
-            </tr>
-            {{end}}
-          </tbody>
-        </table>
-        {{end}}
-
-        {{if .DespesasVR}}
-        <p class="cat-label">VR / Alimentação</p>
-        <table class="dash-table">
-          <tbody>
-            {{range .DespesasVR}}
-            <tr>
-              <td>{{.Nome}}</td>
-              <td class="valor-col">{{brl .Valor}}</td>
-              <td class="status-col">{{template "toggle-btn" .}}</td>
-            </tr>
-            {{end}}
-          </tbody>
-        </table>
-        {{end}}
-
-        {{if and (not .DespesasBasicas) (not .DespesasCartao) (not .DespesasVR)}}
-        <p class="muted">Nenhuma despesa cadastrada para este mês.</p>
-        {{end}}
-      </div>
-    </details>
-    {{end}}
+    {{range $k := .WidgetsEsquerda}}{{template "dash-widget" (dict "K" $k "P" $)}}{{end}}
   </div>
-
-  <!-- Coluna direita -->
+  {{end}}
+  {{if .WidgetsDireita}}
   <div class="dash-right">
-    {{if and .Parcelamentos (index .Widgets "parcelamentos")}}
-    <section class="dash-section">
-      <h3 class="section-title">💳 Parcelamentos Ativos</h3>
-      {{range .Parcelamentos}}
-      <div class="parc-item">
-        <div class="parc-info">
-          <span class="parc-nome">{{.Descricao}}</span>
-          <small class="muted">{{.Cartao}}</small>
-        </div>
-        <div class="parc-right">
-          <span class="parc-valor">{{brl .ValorParcela}}/mês</span>
-          <small class="muted">{{progress .ParcelaAtual .TotalParcelas}}</small>
-          <progress value="{{.ParcelaAtual}}" max="{{.TotalParcelas}}" class="parc-progress"></progress>
-        </div>
-      </div>
-      {{end}}
-    </section>
-    {{end}}
-
-    {{if index .Widgets "reserva_em"}}
-    <section class="dash-section em-section">
-      <h3 class="section-title">🛡️ Reserva de Emergência</h3>
-      <p class="card-value em-valor">{{brl .ReservaEM}}</p>
-      <a href="/investimentos" class="outline secondary" role="button" style="font-size:.8rem;padding:.3rem .8rem">
-        Gerenciar →
-      </a>
-    </section>
-    {{end}}
-
-    {{if and (or .Integracoes.Selic .Integracoes.USD) (index .Widgets "indicadores")}}
-    <section class="dash-section">
-      <h3 class="section-title">📡 Indicadores</h3>
-      <div class="indicadores-grid">
-        {{if .Integracoes.Selic}}<div class="ind-item"><span class="ind-label">Selic</span><span class="ind-valor">{{printf "%.2f" (deref .Integracoes.Selic)}}%</span></div>{{end}}
-        {{if .Integracoes.CDI}}<div class="ind-item"><span class="ind-label">CDI</span><span class="ind-valor">{{printf "%.2f" (deref .Integracoes.CDI)}}%</span></div>{{end}}
-        {{if .Integracoes.IPCA}}<div class="ind-item"><span class="ind-label">IPCA</span><span class="ind-valor">{{printf "%.2f" (deref .Integracoes.IPCA)}}%</span></div>{{end}}
-        {{if .Integracoes.USD}}<div class="ind-item"><span class="ind-label">USD</span><span class="ind-valor">R$ {{printf "%.2f" (deref .Integracoes.USD)}}</span></div>{{end}}
-        {{if .Integracoes.EUR}}<div class="ind-item"><span class="ind-label">EUR</span><span class="ind-valor">R$ {{printf "%.2f" (deref .Integracoes.EUR)}}</span></div>{{end}}
-        {{if .Integracoes.BTC}}<div class="ind-item"><span class="ind-label">BTC</span><span class="ind-valor">R$ {{printf "%.0f" (deref .Integracoes.BTC)}}</span></div>{{end}}
-      </div>
-    </section>
-    {{end}}
-
-    {{if and .Integracoes.Feriados (index .Widgets "feriados")}}
-    <section class="dash-section">
-      <h3 class="section-title">📅 Próximos Feriados</h3>
-      <div class="feriados-list">
-        {{range .Integracoes.Feriados}}
-        <div class="feriado-item"><span>{{.Data.Format "02/01"}}</span><span>{{.Nome}}</span></div>
-        {{end}}
-      </div>
-    </section>
-    {{end}}
+    {{range $k := .WidgetsDireita}}{{template "dash-widget" (dict "K" $k "P" $)}}{{end}}
   </div>
+  {{end}}
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
@@ -306,17 +194,17 @@
 <style>
 .indicadores-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: .5rem; }
 .ind-item { background: var(--bg-elev-2); border-radius: var(--radius-sm); padding: .5rem .7rem; display: flex; flex-direction: column; gap: .15rem; }
-.ind-label { font-size: .72rem; color: var(--text-muted); font-weight: 500; text-transform: uppercase; letter-spacing: .03em; }
-.ind-valor { font-size: .95rem; font-weight: 600; color: var(--text-primary); }
+.ind-label { font-size: var(--fs-2xs); color: var(--text-muted); font-weight: 500; text-transform: uppercase; letter-spacing: .03em; }
+.ind-valor { font-size: var(--fs-md); font-weight: 600; color: var(--text-primary); }
 .feriados-list { display: flex; flex-direction: column; gap: .25rem; }
-.feriado-item { display: flex; gap: .5rem; font-size: .82rem; color: var(--text-secondary); }
+.feriado-item { display: flex; gap: .5rem; font-size: var(--fs-sm); color: var(--text-secondary); }
 .feriado-item span:first-child { font-weight: 600; color: var(--text-primary); min-width: 3rem; }
 @media (max-width: 500px) { .indicadores-grid { grid-template-columns: repeat(2, 1fr); } }
 
 .widget-dialog { background: var(--bg-elev-1); border: 1px solid var(--border-mid); border-radius: var(--radius-md); padding: 1.5rem; max-width: 400px; width: 90%; color: var(--text-primary); }
 .widget-dialog::backdrop { background: rgba(0,0,0,.6); }
 .widget-checklist { display: flex; flex-direction: column; gap: .5rem; }
-.widget-checklist label { display: flex; align-items: center; gap: .5rem; font-size: .88rem; cursor: pointer; padding: .35rem .5rem; border-radius: var(--radius-sm); transition: background .15s; }
+.widget-checklist label { display: flex; align-items: center; gap: .5rem; font-size: var(--fs-sm); cursor: pointer; padding: .35rem .5rem; border-radius: var(--radius-sm); transition: background .15s; }
 .widget-checklist label:hover { background: var(--bg-elev-2); }
 .widget-checklist input[type="checkbox"] { width: 1rem; height: 1rem; accent-color: #27ae60; }
 </style>
@@ -369,4 +257,145 @@
 <div id="dash-resumo" class="summary-grid" hx-swap-oob="outerHTML">
   {{template "dash-resumo-cards" .}}
 </div>
+{{end}}
+
+{{define "dash-widget"}}{{$p := .P}}{{if eq .K "grafico_receitas_despesas"}}{{template "dw-grafico_receitas_despesas" $p}}{{else if eq .K "grafico_sobra"}}{{template "dw-grafico_sobra" $p}}{{else if eq .K "grafico_investimentos"}}{{template "dw-grafico_investimentos" $p}}{{else if eq .K "detalhes_mes"}}{{template "dw-detalhes_mes" $p}}{{else if eq .K "parcelamentos"}}{{template "dw-parcelamentos" $p}}{{else if eq .K "reserva_em"}}{{template "dw-reserva_em" $p}}{{else if eq .K "indicadores"}}{{template "dw-indicadores" $p}}{{else if eq .K "feriados"}}{{template "dw-feriados" $p}}{{end}}{{end}}
+
+{{define "dw-grafico_receitas_despesas"}}
+    <section class="dash-section">
+      <h3 class="section-title">📊 Receitas vs Despesas — Últimos 6 meses</h3>
+      <div class="chart-wrap"><canvas id="chartReceitasDespesas"></canvas></div>
+    </section>
+{{end}}
+
+{{define "dw-grafico_sobra"}}
+    <section class="dash-section">
+      <h3 class="section-title">📈 Sobra Mensal — Evolução</h3>
+      <div class="chart-wrap"><canvas id="chartSobra"></canvas></div>
+    </section>
+{{end}}
+
+{{define "dw-grafico_investimentos"}}
+    <section class="dash-section">
+      <h3 class="section-title">💰 Investimentos — Aportes Mensais</h3>
+      <div class="chart-wrap chart-small"><canvas id="chartInvestido"></canvas></div>
+    </section>
+{{end}}
+
+{{define "dw-detalhes_mes"}}
+    <details class="dash-section detalhes-mes">
+      <summary>
+        <span class="section-title" style="margin:0;border:none;padding:0">📋 Detalhes do mês — marcar contas pagas</span>
+      </summary>
+      <div style="margin-top:1rem">
+        {{if .DespesasBasicas}}
+        <p class="cat-label">Contas Básicas</p>
+        <table class="dash-table">
+          <tbody>
+            {{range .DespesasBasicas}}
+            <tr>
+              <td>{{.Nome}}</td>
+              <td class="valor-col">{{brl .Valor}}</td>
+              <td class="status-col">{{template "toggle-btn" .}}</td>
+            </tr>
+            {{end}}
+          </tbody>
+        </table>
+        {{end}}
+
+        {{if .DespesasCartao}}
+        <p class="cat-label">Cartão de Crédito</p>
+        <table class="dash-table">
+          <tbody>
+            {{range .DespesasCartao}}
+            <tr>
+              <td>{{.Nome}}</td>
+              <td class="valor-col">{{brl .Valor}}</td>
+              <td class="status-col">{{template "toggle-btn" .}}</td>
+            </tr>
+            {{end}}
+          </tbody>
+        </table>
+        {{end}}
+
+        {{if .DespesasVR}}
+        <p class="cat-label">VR / Alimentação</p>
+        <table class="dash-table">
+          <tbody>
+            {{range .DespesasVR}}
+            <tr>
+              <td>{{.Nome}}</td>
+              <td class="valor-col">{{brl .Valor}}</td>
+              <td class="status-col">{{template "toggle-btn" .}}</td>
+            </tr>
+            {{end}}
+          </tbody>
+        </table>
+        {{end}}
+
+        {{if and (not .DespesasBasicas) (not .DespesasCartao) (not .DespesasVR)}}
+        <p class="muted">Nenhuma despesa cadastrada para este mês.</p>
+        {{end}}
+      </div>
+    </details>
+{{end}}
+
+{{define "dw-parcelamentos"}}
+{{if .Parcelamentos}}
+    <section class="dash-section">
+      <h3 class="section-title">💳 Parcelamentos Ativos</h3>
+      {{range .Parcelamentos}}
+      <div class="parc-item">
+        <div class="parc-info">
+          <span class="parc-nome">{{.Descricao}}</span>
+          <small class="muted">{{.Cartao}}</small>
+        </div>
+        <div class="parc-right">
+          <span class="parc-valor">{{brl .ValorParcela}}/mês</span>
+          <small class="muted">{{progress .ParcelaAtual .TotalParcelas}}</small>
+          <progress value="{{.ParcelaAtual}}" max="{{.TotalParcelas}}" class="parc-progress"></progress>
+        </div>
+      </div>
+      {{end}}
+    </section>
+{{end}}
+{{end}}
+
+{{define "dw-reserva_em"}}
+    <section class="dash-section em-section">
+      <h3 class="section-title">🛡️ Reserva de Emergência</h3>
+      <p class="card-value em-valor">{{brl .ReservaEM}}</p>
+      <a href="/investimentos" class="outline secondary" role="button" style="font-size:var(--fs-xs);padding:.3rem .8rem">
+        Gerenciar →
+      </a>
+    </section>
+{{end}}
+
+{{define "dw-indicadores"}}
+{{if (or .Integracoes.Selic .Integracoes.USD)}}
+    <section class="dash-section">
+      <h3 class="section-title">📡 Indicadores</h3>
+      <div class="indicadores-grid">
+        {{if .Integracoes.Selic}}<div class="ind-item"><span class="ind-label">Selic</span><span class="ind-valor">{{printf "%.2f" (deref .Integracoes.Selic)}}%</span></div>{{end}}
+        {{if .Integracoes.CDI}}<div class="ind-item"><span class="ind-label">CDI</span><span class="ind-valor">{{printf "%.2f" (deref .Integracoes.CDI)}}%</span></div>{{end}}
+        {{if .Integracoes.IPCA}}<div class="ind-item"><span class="ind-label">IPCA</span><span class="ind-valor">{{printf "%.2f" (deref .Integracoes.IPCA)}}%</span></div>{{end}}
+        {{if .Integracoes.USD}}<div class="ind-item"><span class="ind-label">USD</span><span class="ind-valor">R$ {{printf "%.2f" (deref .Integracoes.USD)}}</span></div>{{end}}
+        {{if .Integracoes.EUR}}<div class="ind-item"><span class="ind-label">EUR</span><span class="ind-valor">R$ {{printf "%.2f" (deref .Integracoes.EUR)}}</span></div>{{end}}
+        {{if .Integracoes.BTC}}<div class="ind-item"><span class="ind-label">BTC</span><span class="ind-valor">R$ {{printf "%.0f" (deref .Integracoes.BTC)}}</span></div>{{end}}
+      </div>
+    </section>
+{{end}}
+{{end}}
+
+{{define "dw-feriados"}}
+{{if .Integracoes.Feriados}}
+    <section class="dash-section">
+      <h3 class="section-title">📅 Próximos Feriados</h3>
+      <div class="feriados-list">
+        {{range .Integracoes.Feriados}}
+        <div class="feriado-item"><span>{{.Data.Format "02/01"}}</span><span>{{.Nome}}</span></div>
+        {{end}}
+      </div>
+    </section>
+{{end}}
 {{end}}

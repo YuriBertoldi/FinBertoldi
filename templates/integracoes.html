@@ -34,12 +34,15 @@
     <form method="POST" action="/integracoes/{{.Nome}}" class="integ-form">
       {{range .Campos}}
       <label class="integ-field">
-        <span>{{.Label}}</span>
+        <span>{{.Label}}{{if and .Segredo .Configurado}} <small class="integ-ok">✓ configurado</small>{{end}}</span>
         {{if eq .Tipo "textarea"}}
-        <textarea name="{{.Nome}}" placeholder="{{.Placeholder}}" rows="3">{{.Valor}}</textarea>
+        <textarea name="{{.Nome}}" rows="3" autocomplete="off" spellcheck="false"
+                  placeholder="{{if and .Segredo .Configurado}}Já configurado — deixe em branco para manter, ou cole um novo para trocar{{else}}{{.Placeholder}}{{end}}">{{if not .Segredo}}{{.Valor}}{{end}}</textarea>
         {{else}}
-        <input type="{{.Tipo}}" name="{{.Nome}}" value="{{.Valor}}" placeholder="{{.Placeholder}}">
+        <input type="{{.Tipo}}" name="{{.Nome}}" autocomplete="off" value="{{if not .Segredo}}{{.Valor}}{{end}}"
+               placeholder="{{if and .Segredo .Configurado}}Já configurado — deixe em branco para manter{{else}}{{.Placeholder}}{{end}}">
         {{end}}
+        {{with .Ajuda}}<small class="integ-ajuda">{{.}}</small>{{end}}
       </label>
       {{end}}
 
@@ -135,14 +138,16 @@
       <button data-close-dialog aria-label="Fechar"></button>
       <h3>📊 Google Sheets</h3>
     </header>
-    <p><strong>Para que serve:</strong> exportar as transações bancárias do mês para uma planilha do Google, para quem quer montar relatórios próprios.</p>
-    <div class="alert alert-erro">⚠️ <strong>Em desenvolvimento:</strong> a exportação ainda não está implementada. Mesmo configurada, esta integração não envia dados para a planilha.</div>
-    <p><strong>Como será configurada</strong> (quando estiver pronta):</p>
+    <p><strong>Para que serve:</strong> mantém uma planilha do Google atualizada com os dados da família, para quem quer montar gráficos e relatórios próprios. Ela recebe as abas <strong>Resumo</strong>, <strong>Contas do mês</strong>, <strong>Receitas</strong>, <strong>Parcelamentos</strong>, <strong>Investimentos</strong> e <strong>Transações</strong> — criadas sozinhas e atualizadas 1x por dia (e ao salvar ou clicar em Testar).</p>
+    <p class="muted">⚠️ Use uma planilha só para isso: o conteúdo dessas abas é substituído a cada atualização.</p>
+    <p><strong>Como configurar</strong> (uma vez, ~10 minutos):</p>
     <ol class="ajuda-passos">
-      <li>No <a href="https://console.cloud.google.com" target="_blank" rel="noopener">Google Cloud Console</a>, crie um projeto, ative a <strong>Google Sheets API</strong> e crie uma <strong>Service Account</strong> com uma chave JSON.</li>
-      <li>Compartilhe a planilha com o e-mail da service account (campo <code>client_email</code> do JSON) como <strong>Editor</strong>.</li>
-      <li>Copie o <strong>ID da planilha</strong> — o trecho entre <code>/d/</code> e <code>/edit</code> no endereço — e cole junto com o JSON da service account.</li>
+      <li>No <a href="https://console.cloud.google.com" target="_blank" rel="noopener">Google Cloud Console</a>, crie um projeto (grátis) e ative a <strong>Google Sheets API</strong> em <em>APIs e serviços → Biblioteca</em>.</li>
+      <li>Em <em>IAM e administrador → Contas de serviço</em>, crie uma <strong>conta de serviço</strong>. Nela, abra <em>Chaves → Adicionar chave → JSON</em>: um arquivo <code>.json</code> é baixado.</li>
+      <li>Crie uma planilha no Google Sheets e <strong>compartilhe como Editor</strong> com o e-mail da conta de serviço (termina em <code>iam.gserviceaccount.com</code> — depois de salvar, ele aparece aqui embaixo do campo).</li>
+      <li>Cole o <strong>link da planilha</strong> e o <strong>conteúdo do arquivo .json</strong> nos campos, ligue <strong>Ativa</strong> e salve. A planilha é preenchida na hora.</li>
     </ol>
+    <p class="muted">O JSON contém uma chave privada: depois de salvo ele não aparece mais na tela. Se vazar, exclua a chave no Google Cloud e gere outra.</p>
     <footer><button type="button" class="outline" data-close-dialog>Entendi</button></footer>
   </article>
 </dialog>
@@ -185,7 +190,7 @@
     </div>
 
     <form method="POST" action="/integracoes/pluggy/config" class="integ-form">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem">
+      <div class="integ-campos-2">
         <label class="integ-field">
           <span>Client ID</span>
           <input type="text" name="client_id" value="{{if .PluggyConfig}}{{.PluggyConfig.ClientID}}{{end}}" placeholder="Seu Client ID da Pluggy">
@@ -220,7 +225,7 @@
       </div>
       <button id="btn-pluggy-connect" onclick="openPluggyConnect()" class="btn-save" style="white-space:nowrap">+ Conectar Banco</button>
     </div>
-    <table style="width:100%;font-size:.85rem;margin-top:.5rem">
+    <table style="width:100%;font-size:var(--fs-sm);margin-top:.5rem">
       <thead><tr><th>Banco</th><th>Status</th><th>Ultima Sync</th><th>Acoes</th></tr></thead>
       <tbody>
         {{range .PluggyContas}}
@@ -290,10 +295,12 @@
 <script>
 function testarIntegracao(nome, btn) {
   btn.disabled = true;
+  btn.setAttribute('aria-busy', 'true');
   btn.textContent = 'Testando...';
   fetch('/integracoes/' + nome + '/testar', { method: 'POST' })
     .then(r => r.json())
     .then(data => {
+      btn.removeAttribute('aria-busy');
       if (data.status === 'ok') {
         btn.textContent = 'OK!';
         btn.style.background = '#27ae60';
@@ -309,6 +316,7 @@ function testarIntegracao(nome, btn) {
       }, 3000);
     })
     .catch(() => {
+      btn.removeAttribute('aria-busy');
       btn.disabled = false;
       btn.textContent = 'Testar';
     });
@@ -316,7 +324,7 @@ function testarIntegracao(nome, btn) {
 </script>
 
 <style>
-.page-subtitle { color: var(--text-muted); font-size: .9rem; margin-top: -.5rem; }
+.page-subtitle { color: var(--text-muted); font-size: var(--fs-md); margin-top: -.5rem; }
 
 .integ-grid {
   display: grid;
@@ -341,20 +349,20 @@ function testarIntegracao(nome, btn) {
 }
 .integ-icon { font-size: 1.8rem; line-height: 1; }
 .integ-info { flex: 1; }
-.integ-info h3 { margin: 0; font-size: 1rem; font-weight: 600; }
-.integ-info p { margin: .25rem 0 0; font-size: .82rem; color: var(--text-muted); }
+.integ-info h3 { margin: 0; font-size: var(--fs-base); font-weight: 600; }
+.integ-info p { margin: .25rem 0 0; font-size: var(--fs-sm); color: var(--text-muted); }
 
 .integ-badge {
-  font-size: .72rem; padding: .2rem .5rem; border-radius: 6px; font-weight: 600; white-space: nowrap;
+  font-size: var(--fs-2xs); padding: .2rem .5rem; border-radius: 6px; font-weight: 600; white-space: nowrap;
 }
 .badge-on { background: rgba(39,174,96,.15); color: #27ae60; }
 .badge-off { background: rgba(149,165,166,.15); color: #95a5a6; }
 
 .integ-form { display: flex; flex-direction: column; gap: .75rem; }
 
-.integ-field span { display: block; font-size: .78rem; font-weight: 500; color: var(--text-secondary); margin-bottom: .25rem; }
+.integ-field span { display: block; font-size: var(--fs-xs); font-weight: 500; color: var(--text-secondary); margin-bottom: .25rem; }
 .integ-field input, .integ-field textarea {
-  width: 100%; padding: .5rem .7rem; font-size: .85rem;
+  width: 100%; padding: .5rem .7rem; font-size: var(--fs-sm);
   background: var(--bg-input); border: 1px solid var(--border-mid);
   border-radius: var(--radius-sm); color: var(--text-primary);
   font-family: inherit;
@@ -379,20 +387,20 @@ function testarIntegracao(nome, btn) {
 }
 .integ-toggle input:checked + .toggle-slider { background: #27ae60; }
 .integ-toggle input:checked + .toggle-slider::after { transform: translateX(16px); }
-.toggle-label { font-size: .82rem; color: var(--text-muted); }
+.toggle-label { font-size: var(--fs-sm); color: var(--text-muted); }
 
 .integ-btns { display: flex; gap: .4rem; }
 .btn-test {
-  padding: .35rem .7rem; font-size: .8rem; border-radius: var(--radius-sm);
+  padding: .35rem .7rem; font-size: var(--fs-xs); border-radius: var(--radius-sm);
   background: var(--bg-elev-2); border: 1px solid var(--border-mid);
   color: var(--text-primary); cursor: pointer;
 }
 .btn-save {
-  padding: .35rem .7rem; font-size: .8rem; border-radius: var(--radius-sm);
+  padding: .35rem .7rem; font-size: var(--fs-xs); border-radius: var(--radius-sm);
   background: #27ae60; border: none; color: #fff; cursor: pointer; font-weight: 500;
 }
 
-.alert { padding: .75rem 1rem; border-radius: var(--radius-sm); margin-bottom: 1rem; font-size: .88rem; }
+.alert { padding: .75rem 1rem; border-radius: var(--radius-sm); margin-bottom: 1rem; font-size: var(--fs-sm); }
 .alert-ok { background: rgba(39,174,96,.12); border: 1px solid rgba(39,174,96,.3); }
 .alert-erro { background: rgba(231,76,60,.12); border: 1px solid rgba(231,76,60,.3); }
 
