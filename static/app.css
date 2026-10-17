@@ -770,7 +770,7 @@ h1, h2, h3, h4 {
 /* ====================================================
    BUTTONS
    ==================================================== */
-button[type="submit"]:not(.btn-toggle):not(.icon-btn):not(.btn-logout):not(.mes-btn),
+button[type="submit"]:not(.btn-toggle):not(.icon-btn):not(.btn-logout):not(.mes-btn):not(.btn-action):not(.btn-mini):not(.btn-save):not(.btn-canal),
 [role="button"]:not(.outline):not(.secondary):not(.mes-btn):not(.tab-item):not(.nav-item):not(.nav-brand) {
   background: linear-gradient(135deg, var(--color-receita), var(--color-receita-2)) !important;
   border: none !important;
@@ -780,7 +780,7 @@ button[type="submit"]:not(.btn-toggle):not(.icon-btn):not(.btn-logout):not(.mes-
   padding: .65rem 1.2rem !important;
   transition: filter .15s, transform .15s, box-shadow .15s !important;
 }
-button[type="submit"]:not(.btn-toggle):not(.icon-btn):hover,
+button[type="submit"]:not(.btn-toggle):not(.icon-btn):not(.btn-logout):not(.mes-btn):not(.btn-action):not(.btn-mini):not(.btn-save):not(.btn-canal):hover,
 [role="button"]:not(.outline):not(.secondary):not(.tab-item):not(.nav-item):not(.nav-brand):hover {
   filter: brightness(1.1);
   box-shadow: var(--shadow-glow-green);
@@ -2068,19 +2068,24 @@ dialog footer > [role="button"].outline {
 /* ====================================================
    LOADING
    ==================================================== */
-.page-loading {
-  position: fixed;
-  inset: 0;
-  z-index: 1000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(10, 14, 18, .55);
+dialog.page-loading {
+  border: none !important;
+  background: transparent !important;
+  backdrop-filter: none !important;
+  padding: 0 !important;
+  margin: auto !important;
+  max-width: none !important;
+  max-height: none !important;
+  overflow: visible;
+  outline: none;
+}
+dialog.page-loading:not([open]) { display: none !important; }
+dialog.page-loading[open] { display: flex !important; animation: loading-in .15s ease-out; }
+dialog.page-loading::backdrop {
+  background: rgba(10, 14, 18, .6);
   backdrop-filter: blur(3px);
   -webkit-backdrop-filter: blur(3px);
-  animation: loading-in .15s ease-out;
 }
-.page-loading[hidden] { display: none; }
 .page-loading-box {
   display: flex;
   align-items: center;
@@ -2137,3 +2142,63 @@ button[aria-busy="true"]::before,
 .integ-ajuda { display: block; margin-top: .3rem; color: var(--text-muted); font-size: var(--fs-xs); overflow-wrap: anywhere; }
 .integ-campos-2 { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
 @media (max-width: 640px) { .integ-campos-2 { grid-template-columns: 1fr; gap: 0; } }
+
+
+/* ---- Celular: cartões das listas ----
+   - checkbox de seleção numa coluna própria à esquerda (antes virava o "título" do cartão)
+   - linhas de dados não esticam para acompanhar a coluna de ações
+   - 3 ou mais ações ficam em grade 2x, em vez de uma pilha alta */
+@media (max-width: 640px) {
+  .table-responsive tbody tr { align-content: start; }
+  .table-responsive tbody tr:has(> td.col-check) { grid-template-columns: auto 1fr auto !important; }
+  .table-responsive tbody tr:has(> td.col-check) > td { grid-column: 2 !important; }
+  .table-responsive tbody tr:has(> td.col-check) > td.col-check {
+    grid-column: 1 !important;
+    grid-row: 1 / -1 !important;
+    display: flex !important;
+    align-items: center;
+    padding: 0 0 0 .85rem !important;
+    width: auto !important;
+  }
+  .table-responsive tbody tr:has(> td.col-check) > td.actions { grid-column: 3 !important; }
+  .table-responsive tbody tr:has(> td.col-check) > td.col-check + td {
+    padding-top: .75rem !important;
+    font-weight: 700 !important;
+    font-size: var(--fs-md) !important;
+    color: var(--text-primary) !important;
+  }
+  /* "1 / -1" só cobre a 1ª linha quando as linhas não são explícitas: ocupar todas as linhas de dados */
+  .table-responsive tbody tr > td.actions,
+  .table-responsive tbody tr:has(> td.col-check) > td.col-check { grid-row: 1 / span 12 !important; }
+  .table-responsive tbody tr { grid-auto-rows: min-content !important; }
+  .table-responsive td.actions:has(> :nth-child(3)) {
+    display: grid !important;
+    grid-template-columns: repeat(2, auto);
+    place-content: center;
+    gap: .35rem !important;
+  }
+}
+
+/* Rodapé do menu: 🔔 e Sair não podem ser espremidos pelo nome do usuário */
+.user-chip .icon-btn, .user-chip form { flex-shrink: 0; }
+.user-chip .icon-btn { width: 36px !important; min-width: 36px; margin: 0; }
+.user-chip .user-meta { min-width: 0; flex: 1; }
+.user-chip .user-nome, .user-chip .user-family { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
+.user-chip a.icon-btn { text-decoration: none; }
+
+/* Celular: checkboxes de seleção grandes o bastante para o dedo */
+@media (max-width: 640px) {
+  .col-check input[type="checkbox"],
+  input.row-check { width: 22px !important; height: 22px !important; }
+}
+
+/* Celular: com o menu aberto, o ✕ fica no canto; o logo começa depois dele */
+@media (max-width: 960px) {
+  .sidebar-brand { padding-left: calc(48px + 1.25rem) !important; min-height: 64px; display: flex; align-items: center; }
+}
+
+/* Checkbox com cara de checkbox (a regra geral dos campos deixava redondo como rádio) */
+input[type="checkbox"]:not([role="switch"]) { border-radius: 5px !important; }
+@media (max-width: 640px) {
+  .ajuda-btn, .ajuda-btn-inline { width: 1.6rem; height: 1.6rem; font-size: var(--fs-xs); }
+}

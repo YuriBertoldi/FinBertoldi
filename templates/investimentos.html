@@ -141,7 +141,7 @@
           <td class="valor-positivo">{{brl .Valor}}</td>
           <td><small>{{date .Data}}</small></td>
           <td><small>{{.Notas}}</small></td>
-          <td>
+          <td class="actions">
             <button data-open-dialog="dialog-edit-inv-{{.ID}}" class="btn-action" title="Editar">✏️</button>
             <form method="POST" action="/investimentos/{{.ID}}/delete" style="display:inline"
                   onsubmit="return confirm('Excluir aporte?')">

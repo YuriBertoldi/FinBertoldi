@@ -210,7 +210,9 @@
           <span class="toggle-slider"></span>
           <span class="toggle-label">{{if and .PluggyConfig .PluggyConfig.Ativo}}Ativa{{else}}Inativa{{end}}</span>
         </label>
-        <button type="submit" class="btn-save">Salvar</button>
+        <div class="integ-btns">
+          <button type="submit" class="btn-save">Salvar</button>
+        </div>
       </div>
     </form>
   </div>
@@ -370,14 +372,14 @@ function testarIntegracao(nome, btn) {
 .integ-field textarea { resize: vertical; }
 
 .integ-actions {
-  display: flex; align-items: center; justify-content: space-between;
-  padding-top: .5rem; border-top: 1px solid var(--border-mid);
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap;
+  gap: .75rem; padding-top: .75rem; border-top: 1px solid var(--border-mid);
 }
 
-.integ-toggle { display: flex; align-items: center; gap: .5rem; cursor: pointer; }
+.integ-toggle { display: flex; align-items: center; gap: .5rem; cursor: pointer; margin: 0; flex-shrink: 0; }
 .integ-toggle input { display: none; }
 .toggle-slider {
-  width: 36px; height: 20px; background: #555; border-radius: 10px;
+  flex-shrink: 0; width: 36px; height: 20px; background: #555; border-radius: 10px;
   position: relative; transition: background .2s;
 }
 .toggle-slider::after {
@@ -389,7 +391,8 @@ function testarIntegracao(nome, btn) {
 .integ-toggle input:checked + .toggle-slider::after { transform: translateX(16px); }
 .toggle-label { font-size: var(--fs-sm); color: var(--text-muted); }
 
-.integ-btns { display: flex; gap: .4rem; }
+.integ-btns { display: flex; gap: .4rem; margin-left: auto; }
+.integ-btns .btn-test, .integ-btns .btn-save { width: auto !important; margin: 0 !important; }
 .btn-test {
   padding: .35rem .7rem; font-size: var(--fs-xs); border-radius: var(--radius-sm);
   background: var(--bg-elev-2); border: 1px solid var(--border-mid);

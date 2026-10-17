@@ -25,12 +25,12 @@
 <body class="has-sidebar">
 
   <!-- Tela de carregamento (navegação e formulários) -->
-  <div id="page-loading" class="page-loading" role="status" aria-live="polite" hidden>
-    <div class="page-loading-box">
+  <dialog id="page-loading" class="page-loading" aria-live="polite" aria-label="Carregando">
+    <div class="page-loading-box" role="status">
       <span class="page-loading-spinner" aria-hidden="true"></span>
       <span>Carregando…</span>
     </div>
-  </div>
+  </dialog>
 
   <!-- Botão menu mobile -->
   <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Abrir menu">
@@ -334,15 +334,17 @@
     (function () {
       const overlay = document.getElementById('page-loading');
       let timer = null, fallback = null;
+      // Abre como modal: fica na camada mais alta do navegador, acima do menu e de outros modais
+      overlay.addEventListener('cancel', e => e.preventDefault()); // Esc não fecha
       function mostrar() {
         clearTimeout(timer);
-        timer = setTimeout(() => { overlay.hidden = false; }, 150); // não pisca em respostas rápidas
+        timer = setTimeout(() => { if (!overlay.open) overlay.showModal(); }, 150); // não pisca em respostas rápidas
         clearTimeout(fallback);
         fallback = setTimeout(esconder, 15000); // segurança: nunca prende a tela
       }
       function esconder() {
         clearTimeout(timer); clearTimeout(fallback);
-        overlay.hidden = true;
+        if (overlay.open) overlay.close();
         document.querySelectorAll('[data-loading-btn]').forEach(b => { b.removeAttribute('aria-busy'); b.removeAttribute('data-loading-btn'); });
       }
       window.addEventListener('pageshow', esconder); // voltar/avançar do navegador
