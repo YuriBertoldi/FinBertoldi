@@ -17,7 +17,7 @@ Camada de acesso a dados. Todas as queries SQL do sistema estao neste pacote. Ta
 1. `DATABASE_URL` (prioridade, usado em producao)
 2. Variaveis individuais: `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASS`, `DB_NAME`
 
-## Migrations (v1-v15)
+## Migrations (v1-v18)
 
 Executadas automaticamente no startup via `RunMigrations()`. Cada migration e registrada na tabela `schema_migrations` (version + nome + data de aplicacao). Idempotentes: se ja aplicada, e ignorada.
 
@@ -38,6 +38,9 @@ Executadas automaticamente no startup via `RunMigrations()`. Cada migration e re
 | 13 | financiamento | Campos de financiamento em parcelamentos |
 | 14 | password_resets | Tabela de tokens de reset de senha |
 | 15 | integracoes_extras | Dados economicos, feriados, integracoes KV |
+| 16 | dashboard_widgets | Visibilidade/ordem dos widgets do dashboard por usuario |
+| 17 | user_notificacoes | Preferencias de envio mensal das contas (e-mail/Telegram, dia, mes atual/seguinte) |
+| 18 | dashboard_widgets_coluna | Coluna (esquerda/direita) escolhida para cada widget |
 
 ## Funcoes por dominio
 
@@ -122,7 +125,9 @@ Executadas automaticamente no startup via `RunMigrations()`. Cada migration e re
 - `CreatePasswordReset(db, userID, token, expiry)` — cria token de reset
 - `GetPasswordReset(db, token)` — busca token valido
 - `UsePasswordReset(db, token)` — marca como usado
-- `UpdateUserPassword(db, userID, hash)` — atualiza senha
+- `UpdateUserPassword(db, userID, hash)` — atualiza senha e encerra todas as sessoes do usuario
+- `ResetSenha(db, id, hash)` — redefinicao por admin; encerra todas as sessoes
+- `TrocarSenha(db, id, hash, manterToken)` — grava a senha e apaga as sessoes do usuario, exceto `manterToken` (sessao atual)
 - `GetUserIDByEmail(db, email)` — busca user por email
 
 ### Integracoes KV (por familia)
@@ -140,7 +145,19 @@ Executadas automaticamente no startup via `RunMigrations()`. Cada migration e re
 - `UpsertFeriado(db, data, nome, tipo)` — insere feriado
 - `GetFeriadosAno(db, ano)` — lista feriados do ano
 
+### Notificacoes (contas do mes)
+- `GetNotificacoes(db, userID)` — preferencias (padrao: dia 1, tudo desligado)
+- `SaveNotificacoes(db, userID, n)` — UPSERT das preferencias
+- `GetNotificacoesPendentes(db, hoje, mes)` — usuarios ativos com envio ligado cujo dia e hoje (ou o ultimo dia do mes, se o dia escolhido nao existir) e que ainda nao receberam no mes
+- `MarcarEnvioMensal(db, userID, mes)` — registra o envio do mes
+
+### Widgets do dashboard
+- `GetDashboardLayout(db, userID)` — todos os widgets na ordem salva, com coluna e visibilidade; widgets nao salvos entram no fim com o padrao do `widgetCatalogo`
+- `SaveDashboardLayout(db, userID, layout)` — grava ordem, coluna e visibilidade
+- `OrdenarTopo(layout)` — mantem o widget fixo (`resumo`) sempre em primeiro
+- `GetDashboardWidgets(db, userID)` — mapa de visibilidade (compatibilidade)
+
 ## Testes
 
 - `store_test.go` — testes unitarios (sem banco)
-- `integration_test.go` — testes de integracao (build tag: `integration`, requer postgres rodando)
+- `integration_test.go` e `notificacoes_integration_test.go` — testes de integracao (build tag `integration`, requer PostgreSQL; rodam no CI). Detalhes em `TESTES.md`.

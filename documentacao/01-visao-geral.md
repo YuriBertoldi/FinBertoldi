@@ -49,8 +49,9 @@ Sessoes em cookie HTTP-only com token aleatorio de 64 chars hex. Sessoes armazen
 | Indicadores BCB | API BCB (Selic, CDI, IPCA) |
 | Cotacoes | AwesomeAPI (USD, EUR, BTC) |
 | Feriados | BrasilAPI |
-| Alertas | Telegram Bot API |
-| Email | net/smtp (recuperacao de senha) |
+| Alertas e contas do mes | Telegram Bot API |
+| Planilha | Google Sheets API (Service Account, JWT RS256) |
+| Email | net/smtp — Gmail embutido (recuperacao de senha e contas do mes) |
 | Infra | Docker Compose + Caddy (HTTPS) |
 
 ## Modulos do sistema
@@ -60,22 +61,26 @@ finBertoldi/
 ├── main.go                          # Wiring: rotas + startup
 ├── internal/
 │   ├── models/models.go             # Structs de dominio e page data
-│   ├── store/store.go               # Queries SQL + migrations (v1-v15)
+│   ├── store/store.go               # Queries SQL + migrations (v1-v18)
 │   ├── auth/
 │   │   ├── auth.go                  # Sessoes, bcrypt, middlewares
-│   │   └── email.go                 # Envio de email SMTP (reset senha)
+│   │   └── email.go                 # Envio de e-mail SMTP (Gmail embutido)
 │   ├── handler/
 │   │   ├── handler.go               # Handlers HTTP principais
 │   │   ├── bankimport.go            # Importacao CSV/OFX + conciliacao
 │   │   ├── reports.go               # Relatorios PDF
-│   │   └── importexport.go          # Import/Export XLSX
+│   │   ├── importexport.go          # Import/Export XLSX
+│   │   └── whatsapp.go              # Contas do mes (WhatsApp/e-mail/Telegram) + Notificacoes
+│   ├── contas/
+│   │   ├── texto.go                 # Resumo das contas do mes
+│   │   └── envio.go                 # Envio por e-mail/Telegram + agendador mensal
 │   └── integrations/
 │       ├── scheduler.go             # Scheduler periodico (goroutines)
 │       ├── bcb.go                   # API Banco Central (Selic/CDI/IPCA)
 │       ├── cotacoes.go              # AwesomeAPI (USD/EUR/BTC)
-│       ├── telegram.go              # Telegram Bot (alertas)
+│       ├── telegram.go              # Telegram Bot (alertas, validacao de token, @ do bot)
 │       ├── brasilapi.go             # BrasilAPI (feriados)
-│       └── sheets.go                # Google Sheets (export)
+│       └── sheets.go                # Google Sheets (Service Account, 6 abas, 1x/dia)
 ├── templates/                       # Templates HTML (Go html/template)
 ├── static/app.css                   # Design system CSS
 ├── pluggy-service/                  # Microservico integracao bancaria Pluggy

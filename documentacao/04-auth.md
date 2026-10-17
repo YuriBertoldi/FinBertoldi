@@ -68,20 +68,31 @@ Usuario Comum
 
 `auth_test.go` — testa middlewares, geracao de token, manipulacao de cookies
 
-## Recuperacao de Senha (email.go)
+## E-mail (email.go)
+
+### `SendEmail(to, subject, htmlBody string) error`
+
+Envio de e-mail HTML usado pela recuperacao de senha e pelas contas do mes. Porta 465 usa TLS direto; as demais, STARTTLS. O assunto e codificado em UTF-8 e o remetente pode ter nome (`FinBertoldi <x@gmail.com>`).
+
+### Configuracao embutida para Gmail
+
+Para Gmail basta `SMTP_USER` + `SMTP_PASS` (senha de app de 16 letras; espacos sao removidos). O resto tem padrao no codigo (`lerSMTP`):
+
+| Variavel | Padrao | Descricao |
+|----------|--------|-----------|
+| `SMTP_USER` | — | Conta que envia (ex.: `finbertoldi.app@gmail.com`) |
+| `SMTP_PASS` | — | Senha de app do Google (requer verificacao em duas etapas) |
+| `SMTP_HOST` | `smtp.gmail.com` se o usuario for `@gmail.com` | Outros provedores (Brevo, Outlook...) |
+| `SMTP_PORT` | `587` | `465` = TLS direto |
+| `SMTP_FROM` | `FinBertoldi <SMTP_USER>` | Remetente |
+
+`SMTPConfigurado()` indica se ha servidor e remetente. Em producao as variaveis ficam no `.env.prod` e o `docker-compose.prod.yml` as repassa ao container `app`.
+
+## Recuperacao de Senha
 
 ### `SendResetEmail(to, token, baseURL string) error`
 
-Envia email HTML com link de reset de senha via SMTP. Se SMTP nao configurado, loga o link no console (fallback para dev).
-
-**Variaveis de ambiente:**
-| Variavel | Descricao | Exemplo |
-|----------|-----------|---------|
-| `SMTP_HOST` | Servidor SMTP | smtp.gmail.com |
-| `SMTP_PORT` | Porta SMTP | 587 |
-| `SMTP_USER` | Usuario SMTP | user@gmail.com |
-| `SMTP_PASS` | Senha/app password | xxxx |
-| `SMTP_FROM` | Remetente | noreply@finbertoldi.com |
+Envia o link de reset via `SendEmail`. Se o SMTP nao estiver configurado, loga o link no console (fallback para dev).
 
 ### Fluxo de recuperacao
 
@@ -90,4 +101,10 @@ Envia email HTML com link de reset de senha via SMTP. Se SMTP nao configurado, l
 3. Token salvo em `password_resets` no banco
 4. Email enviado com link `/reset-senha?token=XXX`
 5. Usuario clica no link, define nova senha
-6. Token marcado como usado, senha atualizada com bcrypt
+6. Token marcado como usado, senha atualizada com bcrypt e **todas as sessoes do usuario sao encerradas**
+
+## Troca de senha e sessoes
+
+- `/minha-senha` exige a **senha atual**, **minimo de 8 caracteres**, senha diferente da atual e recusa senhas conhecidas (`admin123`, `12345678`, `changeme`) — `validarNovaSenha` em `handler.go`.
+- Toda troca/redefinicao chama `store.TrocarSenha`, que grava o hash e apaga as sessoes do usuario em outros aparelhos (quem troca a propria senha continua logado; redefinicao por admin ou por e-mail encerra todas).
+- O admin inicial (`EnsureAdmin`) usa `ADMIN_PASSWORD` ou uma senha aleatoria exibida uma unica vez no log — nunca uma senha fixa.

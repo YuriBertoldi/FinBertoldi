@@ -14,10 +14,11 @@ Sistema de controle financeiro familiar em Go 1.24 + PostgreSQL 16 + HTMX.
 ## Estrutura de pacotes
 - `main.go` — wiring: rotas + startup
 - `internal/models/` — structs de dominio e page data
-- `internal/store/` — queries PostgreSQL + RunMigrations() (15 migrations)
+- `internal/store/` — queries PostgreSQL + RunMigrations() (18 migrations)
 - `internal/auth/` — sessoes, bcrypt, middlewares (Protected, AdminOnly, FamilyAdminOnly, ScreenProtected) + email.go (SMTP)
 - `internal/handler/` — handlers HTTP + InitTemplates() + reports.go + importexport.go + bankimport.go
-- `internal/integrations/` — integracoes gratuitas (BCB, cotacoes, Telegram, BrasilAPI, Sheets) + scheduler
+- `internal/integrations/` — integracoes gratuitas (BCB, cotacoes, Telegram, BrasilAPI, Google Sheets) + scheduler
+- `internal/contas/` — resumo das contas do mes (WhatsApp) + envio por e-mail/Telegram + agendador mensal
 - `static/app.css` — design system
 - `templates/` — templates HTML (kebab-case para nomes compostos)
 - `pluggy-service/` — microservico de integracao bancaria Pluggy (container separado)
@@ -34,7 +35,8 @@ Dados de acesso ao servidor de producao estao em `PRODUCAO.md` (ignorado pelo gi
 | GET/POST | `/reset-senha` | Redefinir senha via token |
 | GET | `/despesas` | Despesas fixas + parcelamentos |
 | GET | `/receitas` | Receitas |
-| GET | `/pagamentos` | Pagamentos do mes |
+| GET | `/pagamentos` | Pagamentos do mes (+ janela WhatsApp / envio Telegram e e-mail) |
+| GET/POST | `/notificacoes` | Envio mensal das contas por usuario |
 | GET | `/investimentos` | Investimentos + reserva EM |
 | GET | `/emprestimos` | Emprestimos |
 | GET | `/planejamento` | Planejamento FIRE |
@@ -57,12 +59,16 @@ Ativadas por familia via `/integracoes`. Scheduler em background coleta dados:
 - **AwesomeAPI** (USD/EUR/BTC) — a cada 6h
 - **BrasilAPI** (feriados) — a cada 6h
 - **Telegram** (alertas de vencimento) — a cada 24h
-- **Google Sheets** (export) — stub
+- **Google Sheets** — Service Account; abas Resumo/Contas/Receitas/Parcelamentos/Investimentos/Transacoes, 1x/dia
 
-## Tabelas do banco (15 migrations)
-`families` → `users` → `sessions` → `categorias` → `cartoes` → `despesas_fixas` → `despesas_fixas_mes` → `parcelamentos` → `parcelamentos_mes` → `receitas` → `investimentos` → `reserva_emergencia` → `emprestimos` → `emprestimos_pagamentos` → `screen_permissions` → `transacoes_banco` → `pluggy_items` → `integracoes_config` → `password_resets` → `dados_economicos` → `feriados` → `integracoes_kv`
+## Tabelas do banco (18 migrations)
+`families` → `users` → `sessions` → `categorias` → `cartoes` → `despesas_fixas` → `despesas_fixas_mes` → `parcelamentos` → `parcelamentos_mes` → `receitas` → `investimentos` → `reserva_emergencia` → `emprestimos` → `emprestimos_pagamentos` → `screen_permissions` → `transacoes_banco` → `pluggy_items` → `integracoes_config` → `password_resets` → `dados_economicos` → `feriados` → `integracoes_kv` → `dashboard_widgets` → `user_notificacoes`
 
 ## Documentacao
 Documentacao detalhada por modulo em `documentacao/`. Swagger da API em `documentacao/swagger.yaml`.
 
 Use `/finbertoldi` para contexto completo.
+
+## Testes
+- `go test ./...` (unit) · `go test -tags=integration ./...` (PostgreSQL; roda no CI com `INTEGRATION_REQUIRED=1`)
+- Push na `main` roda CI e faz deploy automatico (GitHub Actions); migrations aplicam no startup do app.

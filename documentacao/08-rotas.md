@@ -27,7 +27,10 @@
 | GET | `/dados/exportar` | HandleExport | Download dados XLSX |
 | POST | `/dados/importar` | HandleImport | Upload XLSX |
 | GET | `/relatorio/dashboard` | HandleRelatorioDashboard | Relatorio PDF |
-| POST | `/minha-senha` | HandleMinhaSenha | Alterar propria senha |
+| POST | `/api/dashboard/widgets` | HandleSaveWidgets | Salva visibilidade, ordem e coluna dos widgets |
+| POST | `/minha-senha` | HandleMinhaSenha | Alterar propria senha (exige `senha_atual`, minimo 8 caracteres; encerra as outras sessoes) |
+| GET | `/notificacoes` | HandleNotificacoes | Preferencias de envio mensal das contas (e-mail/Telegram, dia, mes atual/seguinte) |
+| POST | `/notificacoes` | HandleSaveNotificacoes | Salvar preferencias |
 
 ## ScreenProtected (controle de acesso por tela)
 
@@ -45,6 +48,8 @@
 | POST | `/parcelamentos/{id}/update` | HandleUpdateParcelamento |
 | POST | `/parcelamentos/{id}/delete` | HandleDeleteParcelamento |
 | GET | `/pagamentos` | HandlePagamentos |
+| GET | `/pagamentos/whatsapp?mes=AAAA-MM` | HandlePagamentosWhatsApp — texto das contas do mes (text/plain) |
+| POST | `/pagamentos/enviar?mes=AAAA-MM&canal=telegram\|email` | HandlePagamentosEnviar — envia ao usuario logado; sem `canal` envia pelos dois (resposta HTML para HTMX) |
 
 ### Receitas (`screen: "receitas"`)
 
@@ -120,17 +125,19 @@
 | POST | `/integracoes/{nome}` | HandleIntegracaoSalvar |
 | POST | `/integracoes/{nome}/testar` | HandleIntegracaoTestar |
 
+Ao salvar: valida o token do Telegram e o JSON da Service Account do Google Sheets; segredos em branco mantem o valor salvo; com a integracao ativa, testa o Telegram e exporta a planilha na hora.
+
 ## AdminOnly (admin global)
 
 ### Pluggy Integration
 
 | Metodo | Rota | Handler |
 |--------|------|---------|
-| POST | `/cadastros/pluggy/config` | HandleSavePluggyConfig |
-| POST | `/cadastros/pluggy/connect-token` | HandlePluggyConnectToken |
-| POST | `/cadastros/pluggy/items` | HandlePluggyRegisterItem |
-| POST | `/cadastros/pluggy/{item_id}/disconnect` | HandlePluggyDisconnect |
-| POST | `/cadastros/pluggy/{item_id}/sync` | HandlePluggySync |
+| POST | `/integracoes/pluggy/config` | HandleSavePluggyConfig |
+| POST | `/integracoes/pluggy/connect-token` | HandlePluggyConnectToken |
+| POST | `/integracoes/pluggy/items` | HandlePluggyRegisterItem |
+| POST | `/integracoes/pluggy/{item_id}/disconnect` | HandlePluggyDisconnect |
+| POST | `/integracoes/pluggy/{item_id}/sync` | HandlePluggySync |
 
 ### Usuarios
 
@@ -141,7 +148,7 @@
 | POST | `/usuarios/{id}/toggle-admin` | HandleToggleUsuarioAdmin |
 | POST | `/usuarios/{id}/toggle-family-admin` | HandleToggleFamilyAdminFlag |
 | POST | `/usuarios/{id}/toggle-ativo` | HandleToggleUsuarioAtivo |
-| POST | `/usuarios/{id}/reset-senha` | HandleResetSenha |
+| POST | `/usuarios/{id}/reset-senha` | HandleResetSenha — minimo 8 caracteres; encerra todas as sessoes do usuario |
 | POST | `/usuarios/{id}/delete` | HandleDeleteUsuario |
 | POST | `/usuarios/{id}/family` | HandleChangeUserFamily |
 
@@ -161,7 +168,7 @@
 | GET | `/minha-familia` | HandleMeuTime |
 | POST | `/minha-familia` | HandleMeuTimeCreateMembro |
 | POST | `/minha-familia/{id}/toggle-ativo` | HandleMeuTimeToggleAtivo |
-| POST | `/minha-familia/{id}/reset-senha` | HandleMeuTimeResetSenha |
+| POST | `/minha-familia/{id}/reset-senha` | HandleMeuTimeResetSenha — minimo 8 caracteres; encerra todas as sessoes do membro |
 | POST | `/minha-familia/{id}/permissoes/{tela}/toggle` | HandleToggleScreenPermission |
 
 ### Relatorios (ScreenProtected)

@@ -43,7 +43,11 @@ O campo `Grupo` de `Categoria` determina como a despesa aparece no dashboard:
 | Struct | Template | Campos principais |
 |--------|----------|-------------------|
 | `BasePage` | todos | CurrentUser, Active (sidebar), Title, BlockedScreens |
-| `DashboardData` | dashboard | Resumo, Despesas por grupo, Parcelamentos, Historico 6 meses |
+| `DashboardData` | dashboard | Resumo, Despesas por grupo, Parcelamentos, Historico 6 meses, `WidgetLayout`, `WidgetsEsquerda`, `WidgetsDireita` |
+| `DashboardWidget` | dashboard | Key, Label, Visivel, Coluna (`topo`/`esquerda`/`direita`) |
+| `Notificacoes` | notificacoes | EmailMensal, TelegramMensal, TelegramChatID, DiaEnvio, MesSeguinte, UltimoEnvio; metodos `MesReferencia(envio)` e `UltimoEnvioFmt()` |
+| `NotificacoesPage` | notificacoes | Notificacoes, TelegramBotUser, SMTPConfigurado, MesEnvio/MesEnvioDisplay |
+| `NotificacaoPendente` | agendador | User + Notificacoes de quem recebe hoje |
 | `DashboardResumo` | dashboard cards | TotalReceitas, TotalDespesas, Sobra, Caixa, TotalInvestido |
 | `DespesasPage` | despesas | Despesas, Parcelamentos, Categorias, Cartoes, mes navegavel |
 | `ReceitasPage` | receitas | Lista de Receitas |
@@ -55,7 +59,7 @@ O campo `Grupo` de `Categoria` determina como a despesa aparece no dashboard:
 | `UsuariosPage` | usuarios | Lista de usuarios + familias |
 | `MeuTimePage` | minha-familia | Membros da familia, Telas para controle de acesso |
 | `ImportExportPage` | importexport | Resultado de importacao XLSX |
-| `IntegracoesPage` | integracoes | Lista de integracoes com status e campos |
+| `IntegracoesPage` | integracoes | Lista de integracoes com status e campos (`IntegracaoCampo` tem `Segredo`, `Configurado` e `Ajuda`) |
 | `DashboardIntegracoes` | dashboard | Indicadores economicos + feriados |
 
 ## Status de TransacaoBanco

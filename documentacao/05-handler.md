@@ -139,3 +139,30 @@ Funcoes auxiliares:
 | `HandleIntegracoes` | GET /integracoes | Pagina de configuracao de integracoes |
 | `HandleIntegracaoSalvar` | POST /integracoes/{nome} | Salvar config (KV) e toggle ativa |
 | `HandleIntegracaoTestar` | POST /integracoes/{nome}/testar | Testar integracao (retorna JSON) |
+
+Ao salvar uma integracao: valida o token do Telegram (`ValidarTokenTelegram`) e o JSON da Service Account (`ParseServiceAccount`); normaliza o link da planilha (`ExtrairIDPlanilha`); segredos (`bot_token`, `service_account_json`) em branco mantem o valor salvo (`valorParaSalvar`) e nunca sao enviados de volta para a pagina. Com a integracao ativa, o Telegram e testado e a planilha e exportada na hora.
+
+### whatsapp.go — contas do mes e notificacoes
+
+| Handler | Rota | Descricao |
+|---------|------|-----------|
+| `HandlePagamentosWhatsApp` | GET /pagamentos/whatsapp | Texto das contas do mes (formato WhatsApp) |
+| `HandlePagamentosEnviar` | POST /pagamentos/enviar | Envia ao usuario logado; `canal=telegram\|email` (sem canal: os dois). Responde HTML para HTMX |
+| `HandleNotificacoes` | GET /notificacoes | Preferencias de envio mensal + @ do bot + mes que sera enviado |
+| `HandleSaveNotificacoes` | POST /notificacoes | Salva e-mail/Telegram, dia (1–31), mes atual/seguinte e Chat ID |
+
+Funcoes auxiliares testadas: `canaisEnvio`, `resultadoEnvioHTML` (escapa o erro), `valorParaSalvar`, `validarNovaSenha`, `montarLayoutWidgets`.
+
+## Senhas
+
+- `HandleMinhaSenha` — exige a senha atual; `validarNovaSenha` (minimo 8 caracteres, diferente da atual, recusa senhas conhecidas); usa `store.TrocarSenha` mantendo a sessao atual e encerrando as outras.
+- `HandleResetSenha` (admin) e `HandleMeuTimeResetSenha` (admin de familia) — mesma validacao; encerram todas as sessoes do usuario.
+
+## Dashboard: widgets
+
+`HandleDashboard` carrega `store.GetDashboardLayout` e separa as chaves visiveis em `WidgetsEsquerda`/`WidgetsDireita`. `HandleSaveWidgets` aplica a ordem (`ordem`), os marcados (`widgets`) e a coluna (`coluna_<chave>`) via `montarLayoutWidgets`.
+
+## Template helpers adicionais
+
+- `assetV` — versao do `static/app.css` (CRC32 do arquivo). O `base.html` usa `/static/app.css?v={{assetV}}` para o navegador nao reaproveitar CSS antigo apos um deploy.
+- `dict` — monta um mapa para passar mais de um valor a um template (`{{template "x" (dict "K" $k "P" $)}}`).

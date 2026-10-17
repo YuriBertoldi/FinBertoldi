@@ -297,3 +297,43 @@ Campos de financiamento adicionados na v13.
 |--------|------|-----------|
 | valor_pago | NUMERIC(14,2) | Valor efetivamente pago (null = cheio) |
 | antecipada | BOOLEAN | Parcela antecipada com desconto |
+
+### dashboard_widgets (v16 + v18)
+Configuracao dos widgets do dashboard por usuario (visibilidade, ordem e coluna).
+
+| Coluna | Tipo | Descricao |
+|--------|------|-----------|
+| user_id | INTEGER FK users (CASCADE) | Usuario |
+| widget_key | VARCHAR(40) | resumo, grafico_receitas_despesas, grafico_sobra, grafico_investimentos, detalhes_mes, parcelamentos, reserva_em, indicadores, feriados |
+| visivel | BOOLEAN | Exibe o widget |
+| posicao | INTEGER | Ordem escolhida pelo usuario |
+| coluna | VARCHAR(10) | `topo` (fixo: resumo), `esquerda` ou `direita` — **v18**; vazio = coluna padrao do widget |
+
+**PK:** `(user_id, widget_key)`. Widgets que nao estao salvos entram no fim com a configuracao padrao (`widgetCatalogo` em `store.go`).
+
+### user_notificacoes (v17)
+Preferencias de envio automatico das contas do mes (pagina `/notificacoes`).
+
+| Coluna | Tipo | Descricao |
+|--------|------|-----------|
+| user_id | INTEGER PK FK users (CASCADE) | Usuario |
+| email_mensal | BOOLEAN | Envia por e-mail (para o e-mail de cadastro) |
+| telegram_mensal | BOOLEAN | Envia pelo Telegram |
+| telegram_chat_id | VARCHAR(50) | Chat ID proprio (vazio = chat da familia) |
+| dia_envio | INTEGER CHECK 1..31 | Dia do envio; em meses mais curtos envia no ultimo dia |
+| mes_seguinte | BOOLEAN | `true` = envia as contas do mes seguinte ao do envio |
+| ultimo_envio | DATE | Primeiro dia do mes do ultimo envio automatico (evita repetir no mes) |
+
+## Migrations
+
+`RunMigrations()` roda no startup do app, e idempotente e registra cada versao em `schema_migrations`. Versao atual: **18**.
+
+| Versao | Nome | O que faz |
+|--------|------|-----------|
+| 16 | dashboard_widgets | Visibilidade/ordem dos widgets por usuario |
+| 17 | user_notificacoes | Preferencias de envio mensal das contas |
+| 18 | dashboard_widgets_coluna | Coluna escolhida para cada widget |
+
+## Sessoes e troca de senha
+
+Qualquer troca/redefinicao de senha (`TrocarSenha`, `ResetSenha`, `UpdateUserPassword`) apaga as linhas de `sessions` do usuario. Quem troca a propria senha mantem apenas a sessao atual.
