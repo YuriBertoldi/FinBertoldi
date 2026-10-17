@@ -23,7 +23,7 @@
         {{if eq .Nome "sheets"}}📊{{end}}
       </div>
       <div class="integ-info">
-        <h3>{{.Label}}</h3>
+        <h3>{{.Label}}{{if eq .Nome "telegram"}} <button type="button" class="ajuda-btn" data-open-dialog="dialog-ajuda-telegram-admin" title="Como configurar o bot do Telegram" aria-label="Como configurar o bot do Telegram">!</button>{{end}}</h3>
         <p>{{.Descricao}}</p>
       </div>
       <span class="integ-badge {{if .Ativa}}badge-on{{else}}badge-off{{end}}">
@@ -60,6 +60,24 @@
   </div>
   {{end}}
 </div>
+
+<dialog id="dialog-ajuda-telegram-admin">
+  <article>
+    <header>
+      <button data-close-dialog aria-label="Fechar"></button>
+      <h3>✈️ Configurar o bot do Telegram</h3>
+    </header>
+    <ol class="ajuda-passos">
+      <li>No Telegram, abra o <a href="https://t.me/BotFather" target="_blank" rel="noopener"><strong>@BotFather</strong></a> e envie <code>/newbot</code>.</li>
+      <li>Informe o <strong>nome</strong> (ex.: <em>FinBertoldi</em>) e o <strong>username</strong>, que precisa terminar em <code>bot</code> (ex.: <code>FinBertoldiBot</code>).</li>
+      <li>Copie o <strong>token</strong> inteiro que ele devolve, no formato <code>123456789:AAE...</code> (número, dois-pontos e código). Não compartilhe esse token.</li>
+      <li>Cole em <strong>Bot Token</strong> abaixo. Em <strong>Chat ID</strong>, coloque o chat padrão da família (cada pessoa também pode informar o seu em 🔔 Notificações).</li>
+      <li>Abra o seu bot no Telegram e toque em <strong>Iniciar</strong>; depois ative e salve aqui — o sistema envia uma mensagem de teste.</li>
+    </ol>
+    <p class="muted">Para descobrir um Chat ID, use o <a href="https://t.me/userinfobot" target="_blank" rel="noopener">@userinfobot</a>. Se o token vazar, gere outro no BotFather com <code>/revoke</code>.</p>
+    <footer><button type="button" class="outline" data-close-dialog>Entendi</button></footer>
+  </article>
+</dialog>
 
 <!-- ===== INTEGRACAO BANCARIA (Pluggy) ===== -->
 {{if or .CurrentUser.Admin .CurrentUser.FamilyAdmin}}

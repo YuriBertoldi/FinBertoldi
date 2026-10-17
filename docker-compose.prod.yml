@@ -8,6 +8,12 @@ services:
       DATABASE_URL: postgres://${DB_USER}:${DB_PASS}@postgres:5432/${DB_NAME}?sslmode=disable
       SESSION_SECRET: ${SESSION_SECRET}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      # E-mail: para Gmail basta SMTP_USER + SMTP_PASS (senha de app); o resto tem padrão no código
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-}
+      SMTP_FROM: ${SMTP_FROM:-}
       TZ: America/Sao_Paulo
     depends_on:
       postgres:

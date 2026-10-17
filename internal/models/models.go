@@ -446,6 +446,7 @@ type NotificacoesPage struct {
 	BasePage
 	Notificacoes    Notificacoes
 	TelegramBot     bool
+	TelegramBotUser string // @username do bot da família, sem "@"
 	TelegramChatFam string
 	SMTPConfigurado bool
 	MesEnvio        string // "2026-11" — mês enviado pelo botão "Enviar agora"

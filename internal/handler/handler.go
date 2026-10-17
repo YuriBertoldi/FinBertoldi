@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"net/url"
 	"strings"
 	"time"
 
@@ -597,13 +598,22 @@ func HandleIntegracaoSalvar(db *sql.DB) http.HandlerFunc {
 		ativa := r.FormValue("ativa") == "on"
 		store.SetIntegracaoAtiva(db, fid, nome, ativa)
 
+		if nome == "telegram" {
+			if tok := strings.TrimSpace(r.FormValue("bot_token")); tok != "" {
+				if err := integrations.ValidarTokenTelegram(tok); err != nil {
+					http.Redirect(w, r, "/integracoes?erro="+url.QueryEscape("Telegram: "+err.Error()), http.StatusSeeOther)
+					return
+				}
+			}
+		}
+
 		// Salvar campos extras
 		for key, vals := range r.Form {
 			if key == "ativa" {
 				continue
 			}
 			if len(vals) > 0 {
-				store.SetIntegracaoKV(db, fid, nome, key, vals[0])
+				store.SetIntegracaoKV(db, fid, nome, key, strings.TrimSpace(vals[0]))
 			}
 		}
 
@@ -621,7 +631,7 @@ func HandleIntegracaoSalvar(db *sql.DB) http.HandlerFunc {
 				chatID := r.FormValue("chat_id")
 				if botToken != "" && chatID != "" {
 					if err := integrations.TestTelegram(botToken, chatID); err != nil {
-						http.Redirect(w, r, "/integracoes?erro=Telegram: "+err.Error(), http.StatusSeeOther)
+						http.Redirect(w, r, "/integracoes?erro="+url.QueryEscape("Telegram: "+err.Error()), http.StatusSeeOther)
 						return
 					}
 				}

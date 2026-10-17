@@ -1,11 +1,15 @@
 package auth
 
 import (
+	"crypto/tls"
 	"fmt"
 	"log"
 	"mime"
+	"net"
+	"net/mail"
 	"net/smtp"
 	"os"
+	"strings"
 )
 
 // SendResetEmail envia email com link de recuperação de senha.
@@ -34,26 +38,93 @@ func SendResetEmail(to, token, baseURL string) error {
 	return SendEmail(to, subject, body)
 }
 
-// SMTPConfigurado indica se as variáveis SMTP mínimas estão definidas.
-func SMTPConfigurado() bool {
-	return os.Getenv("SMTP_HOST") != "" && os.Getenv("SMTP_FROM") != ""
+// smtpConfig é a configuração de envio já com os padrões embutidos.
+type smtpConfig struct {
+	host, port, user, pass string
+	from                   string // cabeçalho From (pode ter nome: "FinBertoldi <x@gmail.com>")
 }
 
-// SendEmail envia um e-mail HTML usando as variáveis SMTP_*.
+// lerSMTP lê as variáveis SMTP_*. Para contas Gmail basta SMTP_USER e SMTP_PASS
+// (senha de app): servidor, porta e remetente são preenchidos automaticamente.
+func lerSMTP() smtpConfig {
+	c := smtpConfig{
+		host: strings.TrimSpace(os.Getenv("SMTP_HOST")),
+		port: strings.TrimSpace(os.Getenv("SMTP_PORT")),
+		user: strings.TrimSpace(os.Getenv("SMTP_USER")),
+		pass: strings.ReplaceAll(os.Getenv("SMTP_PASS"), " ", ""), // senha de app do Google vem com espaços
+		from: strings.TrimSpace(os.Getenv("SMTP_FROM")),
+	}
+	dominio := strings.ToLower(c.user[strings.LastIndex(c.user, "@")+1:])
+	if c.host == "" && (dominio == "gmail.com" || dominio == "googlemail.com") {
+		c.host = "smtp.gmail.com"
+	}
+	if c.port == "" {
+		c.port = "587"
+	}
+	if c.from == "" && c.user != "" {
+		c.from = "FinBertoldi <" + c.user + ">"
+	}
+	return c
+}
+
+// SMTPConfigurado indica se há servidor e remetente para enviar e-mails.
+func SMTPConfigurado() bool {
+	c := lerSMTP()
+	return c.host != "" && c.from != ""
+}
+
+// SendEmail envia um e-mail HTML. Porta 465 usa TLS direto; as demais, STARTTLS.
 func SendEmail(to, subject, htmlBody string) error {
-	host := os.Getenv("SMTP_HOST")
-	port := os.Getenv("SMTP_PORT")
-	from := os.Getenv("SMTP_FROM")
-	if !SMTPConfigurado() {
+	c := lerSMTP()
+	if c.host == "" || c.from == "" {
 		return fmt.Errorf("SMTP não configurado")
 	}
-	if port == "" {
-		port = "587"
+	remetente, err := mail.ParseAddress(c.from)
+	if err != nil {
+		return fmt.Errorf("SMTP_FROM inválido: %w", err)
 	}
 
 	msg := fmt.Sprintf("From: %s\r\nTo: %s\r\nSubject: %s\r\nMIME-Version: 1.0\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n%s",
-		from, to, mime.QEncoding.Encode("utf-8", subject), htmlBody)
+		remetente.String(), to, mime.QEncoding.Encode("utf-8", subject), htmlBody)
 
-	auth := smtp.PlainAuth("", os.Getenv("SMTP_USER"), os.Getenv("SMTP_PASS"), host)
-	return smtp.SendMail(host+":"+port, auth, from, []string{to}, []byte(msg))
+	var auth smtp.Auth
+	if c.user != "" {
+		auth = smtp.PlainAuth("", c.user, c.pass, c.host)
+	}
+	addr := net.JoinHostPort(c.host, c.port)
+	if c.port != "465" {
+		return smtp.SendMail(addr, auth, remetente.Address, []string{to}, []byte(msg))
+	}
+
+	conn, err := tls.Dial("tcp", addr, &tls.Config{ServerName: c.host})
+	if err != nil {
+		return err
+	}
+	cl, err := smtp.NewClient(conn, c.host)
+	if err != nil {
+		return err
+	}
+	defer cl.Close()
+	if auth != nil {
+		if err := cl.Auth(auth); err != nil {
+			return err
+		}
+	}
+	if err := cl.Mail(remetente.Address); err != nil {
+		return err
+	}
+	if err := cl.Rcpt(to); err != nil {
+		return err
+	}
+	w, err := cl.Data()
+	if err != nil {
+		return err
+	}
+	if _, err := w.Write([]byte(msg)); err != nil {
+		return err
+	}
+	if err := w.Close(); err != nil {
+		return err
+	}
+	return cl.Quit()
 }

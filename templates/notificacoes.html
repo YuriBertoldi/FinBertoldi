@@ -43,14 +43,17 @@
       <label style="margin-top:1rem">
         <input type="checkbox" name="telegram_mensal" role="switch" {{if .Notificacoes.TelegramMensal}}checked{{end}}>
         ✈️ Enviar pelo Telegram
+        <button type="button" class="ajuda-btn" data-open-dialog="dialog-ajuda-telegram" title="Como configurar o Telegram" aria-label="Como configurar o Telegram">!</button>
       </label>
-      {{if not .TelegramBot}}<small class="muted">⚠️ O bot do Telegram da família ainda não foi configurado em Integrações.</small>{{end}}
+      {{if .TelegramBotUser}}
+      <small>As mensagens chegam pelo bot <a href="https://t.me/{{.TelegramBotUser}}" target="_blank" rel="noopener"><strong>@{{.TelegramBotUser}}</strong></a>. Abra a conversa com ele e toque em <strong>Iniciar</strong> antes de receber.</small>
+      {{else if not .TelegramBot}}<small class="muted">⚠️ O bot do Telegram da família ainda não foi configurado em Integrações.</small>{{end}}
     </fieldset>
 
     <label>Seu Chat ID do Telegram
       <input type="text" name="telegram_chat_id" value="{{.Notificacoes.TelegramChatID}}"
              placeholder="{{if .TelegramChatFam}}Vazio = usa o chat da família ({{.TelegramChatFam}}){{else}}Ex: 123456789{{end}}">
-      <small>Para descobrir, mande uma mensagem para o <strong>@userinfobot</strong> no Telegram. Antes, inicie uma conversa com o bot da família.</small>
+      <small>Não sabe o seu? Clique no <button type="button" class="ajuda-btn ajuda-btn-inline" data-open-dialog="dialog-ajuda-telegram" aria-label="Como configurar o Telegram">!</button> ao lado de "Enviar pelo Telegram".</small>
     </label>
 
     {{with .Notificacoes.UltimoEnvioFmt}}<p class="muted">Último envio automático: {{.}}</p>{{end}}
@@ -66,4 +69,31 @@
           hx-indicator="this" hx-disabled-elt="this">📧✈️ Enviar contas do mês</button>
   <div id="envio-resultado"></div>
 </article>
+
+<dialog id="dialog-ajuda-telegram">
+  <article>
+    <header>
+      <button data-close-dialog aria-label="Fechar"></button>
+      <h3>✈️ Como receber pelo Telegram</h3>
+    </header>
+    <ol class="ajuda-passos">
+      <li>
+        <strong>Abra o bot do FinBertoldi</strong> no Telegram:
+        {{if .TelegramBotUser}}
+          <a href="https://t.me/{{.TelegramBotUser}}" target="_blank" rel="noopener"><strong>@{{.TelegramBotUser}}</strong></a>
+        {{else}}
+          <em>o administrador ainda não configurou o bot em Integrações.</em>
+        {{end}}
+      </li>
+      <li>Toque em <strong>Iniciar</strong> (ou envie <code>/start</code>). Sem isso o Telegram não deixa o bot te mandar mensagens.</li>
+      <li>Descubra o seu <strong>Chat ID</strong>: abra o <a href="https://t.me/userinfobot" target="_blank" rel="noopener"><strong>@userinfobot</strong></a>, toque em Iniciar e copie o número que aparece em <strong>Id</strong> (ex.: <code>123456789</code>).</li>
+      <li>Cole o número no campo <strong>Seu Chat ID do Telegram</strong>, ligue <strong>Enviar pelo Telegram</strong> e clique em <strong>Salvar preferências</strong>.</li>
+      <li>Teste em <strong>Enviar agora</strong>. Se aparecer "chat não encontrado", confira o número e se você tocou em Iniciar no bot.</li>
+    </ol>
+    <footer>
+      {{if .TelegramBotUser}}<a href="https://t.me/{{.TelegramBotUser}}" target="_blank" rel="noopener" role="button">Abrir @{{.TelegramBotUser}}</a>{{end}}
+      <button type="button" class="outline" data-close-dialog>Entendi</button>
+    </footer>
+  </article>
+</dialog>
 {{end}}

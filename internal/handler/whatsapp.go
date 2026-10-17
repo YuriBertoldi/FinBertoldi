@@ -10,6 +10,7 @@ import (
 
 	"fincontrol/internal/auth"
 	"fincontrol/internal/contas"
+	"fincontrol/internal/integrations"
 	"fincontrol/internal/models"
 	"fincontrol/internal/store"
 )
@@ -65,6 +66,7 @@ func HandleNotificacoes(db *sql.DB) http.HandlerFunc {
 			MesEnvio:        mesEnvio.Format("2006-01"),
 			MesEnvioDisplay: contas.MesDisplay(mesEnvio),
 			TelegramBot:     store.GetIntegracaoKV(db, fid, "telegram", "bot_token") != "",
+			TelegramBotUser: integrations.TelegramBotUsername(store.GetIntegracaoKV(db, fid, "telegram", "bot_token")),
 			TelegramChatFam: store.GetIntegracaoKV(db, fid, "telegram", "chat_id"),
 			SMTPConfigurado: auth.SMTPConfigurado(),
 			Msg:             r.URL.Query().Get("ok"),
