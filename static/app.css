@@ -1912,3 +1912,21 @@ input[type="radio"]:checked {
 .ajuda-btn-inline { width: 1.1rem; height: 1.1rem; font-size: .7rem; margin: 0 .15rem; }
 .ajuda-passos { padding-left: 1.2rem; }
 .ajuda-passos li { margin-bottom: .6rem; line-height: 1.5; }
+
+/* Rodapé dos modais: links-botão e botões com a mesma altura e alinhados */
+dialog footer { align-items: center; flex-wrap: wrap; }
+dialog footer > button,
+dialog footer > [role="button"],
+dialog footer > input[type="submit"] {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  gap: .45rem;
+  box-sizing: border-box;
+  height: 2.75rem !important;
+  margin: 0 !important;
+  padding: 0 1.1rem !important;
+  font-size: 1rem;
+  line-height: 1.3;
+  width: auto;
+}

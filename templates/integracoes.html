@@ -23,7 +23,7 @@
         {{if eq .Nome "sheets"}}📊{{end}}
       </div>
       <div class="integ-info">
-        <h3>{{.Label}}{{if eq .Nome "telegram"}} <button type="button" class="ajuda-btn" data-open-dialog="dialog-ajuda-telegram-admin" title="Como configurar o bot do Telegram" aria-label="Como configurar o bot do Telegram">!</button>{{end}}</h3>
+        <h3>{{.Label}} <button type="button" class="ajuda-btn" data-open-dialog="dialog-ajuda-{{.Nome}}" title="Para que serve e como configurar" aria-label="Ajuda: {{.Label}}">!</button></h3>
         <p>{{.Descricao}}</p>
       </div>
       <span class="integ-badge {{if .Ativa}}badge-on{{else}}badge-off{{end}}">
@@ -61,20 +61,108 @@
   {{end}}
 </div>
 
-<dialog id="dialog-ajuda-telegram-admin">
+<dialog id="dialog-ajuda-bcb">
   <article>
     <header>
       <button data-close-dialog aria-label="Fechar"></button>
-      <h3>✈️ Configurar o bot do Telegram</h3>
+      <h3>🏦 Banco Central (BCB)</h3>
     </header>
+    <p><strong>Para que serve:</strong> busca as taxas oficiais <strong>Selic</strong>, <strong>CDI</strong> e <strong>IPCA</strong> no Banco Central e mostra no Dashboard. Ajuda a comparar o rendimento dos seus investimentos com a inflação e os juros do país.</p>
+    <p><strong>Como configurar:</strong> não precisa de cadastro nem chave — é uma API pública e gratuita.</p>
+    <ol class="ajuda-passos">
+      <li>Ligue a chave <strong>Ativa</strong> e clique em <strong>Salvar</strong>.</li>
+      <li>As taxas são atualizadas na hora e depois a cada 6 horas.</li>
+    </ol>
+    <footer><button type="button" class="outline" data-close-dialog>Entendi</button></footer>
+  </article>
+</dialog>
+
+<dialog id="dialog-ajuda-cotacoes">
+  <article>
+    <header>
+      <button data-close-dialog aria-label="Fechar"></button>
+      <h3>💱 Cotações (AwesomeAPI)</h3>
+    </header>
+    <p><strong>Para que serve:</strong> mostra no Dashboard as cotações do <strong>Dólar</strong>, <strong>Euro</strong> e <strong>Bitcoin</strong> em reais — útil para quem tem gastos, investimentos ou viagens em moeda estrangeira.</p>
+    <p><strong>Como configurar:</strong> não precisa de cadastro nem chave — é uma API pública e gratuita.</p>
+    <ol class="ajuda-passos">
+      <li>Ligue a chave <strong>Ativa</strong> e clique em <strong>Salvar</strong>.</li>
+      <li>As cotações são atualizadas a cada 6 horas. Se a API limitar o acesso por excesso de consultas, a próxima atualização tenta de novo.</li>
+    </ol>
+    <footer><button type="button" class="outline" data-close-dialog>Entendi</button></footer>
+  </article>
+</dialog>
+
+<dialog id="dialog-ajuda-telegram">
+  <article>
+    <header>
+      <button data-close-dialog aria-label="Fechar"></button>
+      <h3>✈️ Telegram Bot</h3>
+    </header>
+    <p><strong>Para que serve:</strong> envia mensagens da família pelo Telegram — <strong>contas do mês</strong> (botão em Pagamentos e envio mensal em 🔔 Notificações) e <strong>alertas de despesas pendentes</strong>.</p>
+    <p><strong>Como configurar</strong> (uma vez por família, pelo administrador):</p>
     <ol class="ajuda-passos">
       <li>No Telegram, abra o <a href="https://t.me/BotFather" target="_blank" rel="noopener"><strong>@BotFather</strong></a> e envie <code>/newbot</code>.</li>
       <li>Informe o <strong>nome</strong> (ex.: <em>FinBertoldi</em>) e o <strong>username</strong>, que precisa terminar em <code>bot</code> (ex.: <code>FinBertoldiBot</code>).</li>
       <li>Copie o <strong>token</strong> inteiro que ele devolve, no formato <code>123456789:AAE...</code> (número, dois-pontos e código). Não compartilhe esse token.</li>
-      <li>Cole em <strong>Bot Token</strong> abaixo. Em <strong>Chat ID</strong>, coloque o chat padrão da família (cada pessoa também pode informar o seu em 🔔 Notificações).</li>
-      <li>Abra o seu bot no Telegram e toque em <strong>Iniciar</strong>; depois ative e salve aqui — o sistema envia uma mensagem de teste.</li>
+      <li>Cole em <strong>Bot Token</strong>. Em <strong>Chat ID</strong>, coloque o chat padrão da família — descubra o seu no <a href="https://t.me/userinfobot" target="_blank" rel="noopener">@userinfobot</a>.</li>
+      <li>Abra o seu bot no Telegram e toque em <strong>Iniciar</strong>; depois ligue <strong>Ativa</strong> e salve — o sistema envia uma mensagem de teste.</li>
     </ol>
-    <p class="muted">Para descobrir um Chat ID, use o <a href="https://t.me/userinfobot" target="_blank" rel="noopener">@userinfobot</a>. Se o token vazar, gere outro no BotFather com <code>/revoke</code>.</p>
+    <p class="muted">Cada pessoa pode informar o próprio Chat ID em 🔔 Notificações. Se o token vazar, gere outro no BotFather com <code>/revoke</code>.</p>
+    <footer><button type="button" class="outline" data-close-dialog>Entendi</button></footer>
+  </article>
+</dialog>
+
+<dialog id="dialog-ajuda-brasilapi">
+  <article>
+    <header>
+      <button data-close-dialog aria-label="Fechar"></button>
+      <h3>📅 Feriados (BrasilAPI)</h3>
+    </header>
+    <p><strong>Para que serve:</strong> carrega os <strong>feriados nacionais</strong> do ano e mostra os próximos no Dashboard — ajuda a prever contas que vencem em feriado ou fim de semana e só compensam no dia útil seguinte.</p>
+    <p><strong>Como configurar:</strong> não precisa de cadastro nem chave — é uma API pública e gratuita.</p>
+    <ol class="ajuda-passos">
+      <li>Ligue a chave <strong>Ativa</strong> e clique em <strong>Salvar</strong>.</li>
+      <li>Os feriados do ano são importados na hora e conferidos a cada 6 horas.</li>
+    </ol>
+    <footer><button type="button" class="outline" data-close-dialog>Entendi</button></footer>
+  </article>
+</dialog>
+
+<dialog id="dialog-ajuda-sheets">
+  <article>
+    <header>
+      <button data-close-dialog aria-label="Fechar"></button>
+      <h3>📊 Google Sheets</h3>
+    </header>
+    <p><strong>Para que serve:</strong> exportar as transações bancárias do mês para uma planilha do Google, para quem quer montar relatórios próprios.</p>
+    <div class="alert alert-erro">⚠️ <strong>Em desenvolvimento:</strong> a exportação ainda não está implementada. Mesmo configurada, esta integração não envia dados para a planilha.</div>
+    <p><strong>Como será configurada</strong> (quando estiver pronta):</p>
+    <ol class="ajuda-passos">
+      <li>No <a href="https://console.cloud.google.com" target="_blank" rel="noopener">Google Cloud Console</a>, crie um projeto, ative a <strong>Google Sheets API</strong> e crie uma <strong>Service Account</strong> com uma chave JSON.</li>
+      <li>Compartilhe a planilha com o e-mail da service account (campo <code>client_email</code> do JSON) como <strong>Editor</strong>.</li>
+      <li>Copie o <strong>ID da planilha</strong> — o trecho entre <code>/d/</code> e <code>/edit</code> no endereço — e cole junto com o JSON da service account.</li>
+    </ol>
+    <footer><button type="button" class="outline" data-close-dialog>Entendi</button></footer>
+  </article>
+</dialog>
+
+<dialog id="dialog-ajuda-pluggy">
+  <article>
+    <header>
+      <button data-close-dialog aria-label="Fechar"></button>
+      <h3>🏦 Integração bancária (Pluggy)</h3>
+    </header>
+    <p><strong>Para que serve:</strong> conecta suas contas e cartões pelo <strong>Open Finance</strong> e traz as transações automaticamente para <strong>Transações</strong>, onde você concilia com despesas e receitas — sem baixar extrato nem digitar nada.</p>
+    <p><strong>Como configurar</strong> (administrador):</p>
+    <ol class="ajuda-passos">
+      <li>Crie uma conta em <a href="https://dashboard.pluggy.ai" target="_blank" rel="noopener">dashboard.pluggy.ai</a> e crie uma aplicação.</li>
+      <li>Copie o <strong>Client ID</strong> e o <strong>Client Secret</strong> da aplicação e cole aqui. Não compartilhe o secret.</li>
+      <li>Em <strong>URL do Serviço</strong>, mantenha <code>http://pluggy-service:8081</code> (serviço interno do FinBertoldi).</li>
+      <li>Ligue <strong>Ativa</strong> e salve. Depois clique em <strong>+ Conectar Banco</strong>, escolha o banco e autorize o acesso no próprio banco.</li>
+      <li>As transações são sincronizadas a cada 6 horas, ou na hora pelo botão de sincronizar de cada conta.</li>
+    </ol>
+    <p class="muted">O plano gratuito da Pluggy tem limites de uso; confira as condições no painel deles.</p>
     <footer><button type="button" class="outline" data-close-dialog>Entendi</button></footer>
   </article>
 </dialog>
@@ -88,7 +176,7 @@
     <div class="integ-header">
       <div class="integ-icon">🏦</div>
       <div class="integ-info">
-        <h3>Pluggy</h3>
+        <h3>Pluggy <button type="button" class="ajuda-btn" data-open-dialog="dialog-ajuda-pluggy" title="Para que serve e como configurar" aria-label="Ajuda: Pluggy">!</button></h3>
         <p>Sincronize transacoes bancarias automaticamente via Open Banking.</p>
       </div>
       <span class="integ-badge {{if eq .PluggyStatus "online"}}badge-on{{else if eq .PluggyStatus "offline"}}badge-off{{else}}badge-off{{end}}">

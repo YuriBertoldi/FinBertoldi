@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"hash/crc32"
 	"html/template"
 	"io"
 	"log"
@@ -28,8 +29,18 @@ import (
 
 var tmplPages = map[string]*template.Template{}
 
+// assetVersion muda sempre que static/app.css muda, para o navegador não usar CSS antigo do cache.
+var assetVersion = func() string {
+	b, err := os.ReadFile("static/app.css")
+	if err != nil {
+		return strconv.FormatInt(time.Now().Unix(), 36)
+	}
+	return strconv.FormatUint(uint64(crc32.ChecksumIEEE(b)), 36)
+}()
+
 func buildFuncMap() template.FuncMap {
 	return template.FuncMap{
+		"assetV": func() string { return assetVersion },
 		"brl": func(v float64) template.HTML {
 			return template.HTML(`<span class="money">` + formatBRL(v) + `</span>`)
 		},
