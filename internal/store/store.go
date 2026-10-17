@@ -899,8 +899,24 @@ func ToggleUserAtivo(db *sql.DB, id int) error {
 }
 
 func ResetSenha(db *sql.DB, id int, hash string) error {
-	_, err := db.Exec(`UPDATE users SET senha_hash=$1 WHERE id=$2`, hash, id)
-	return err
+	return TrocarSenha(db, id, hash, "")
+}
+
+// TrocarSenha grava a nova senha e encerra as sessões do usuário em outros aparelhos.
+// manterToken é a sessão atual (quem trocou a própria senha continua logado); vazio encerra todas.
+func TrocarSenha(db *sql.DB, id int, hash, manterToken string) error {
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if _, err := tx.Exec(`UPDATE users SET senha_hash=$1 WHERE id=$2`, hash, id); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`DELETE FROM sessions WHERE user_id=$1 AND token<>$2`, id, manterToken); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
 func DeleteUser(db *sql.DB, id int) error {
@@ -1398,8 +1414,7 @@ func UsePasswordReset(db *sql.DB, token string) error {
 }
 
 func UpdateUserPassword(db *sql.DB, userID int, hashedPassword string) error {
-	_, err := db.Exec(`UPDATE users SET senha_hash=$1 WHERE id=$2`, hashedPassword, userID)
-	return err
+	return TrocarSenha(db, userID, hashedPassword, "")
 }
 
 func GetUserIDByEmail(db *sql.DB, email string) (int, error) {

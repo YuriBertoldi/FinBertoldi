@@ -124,7 +124,7 @@
           <form method="POST" action="/usuarios/{{.ID}}/reset-senha">
             <label>
               Nova Senha
-              <input type="password" name="nova_senha" placeholder="Mínimo 6 caracteres" minlength="6" required autofocus>
+              <input type="password" name="nova_senha" placeholder="Mínimo 8 caracteres" minlength="8" autocomplete="new-password" required autofocus>
             </label>
             <footer>
               <button data-close-dialog type="button" class="secondary">Cancelar</button>

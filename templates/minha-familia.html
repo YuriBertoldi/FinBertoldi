@@ -88,12 +88,17 @@
           </header>
           {{if eq .ID $.CurrentUser.ID}}
           <form method="POST" action="/minha-senha">
+            <label>
+              Senha atual
+              <input type="password" name="senha_atual" autocomplete="current-password" required autofocus>
+            </label>
           {{else}}
           <form method="POST" action="/minha-familia/{{.ID}}/reset-senha">
           {{end}}
             <label>
               Nova Senha
-              <input type="password" name="nova_senha" placeholder="Mínimo 6 caracteres" minlength="6" required autofocus>
+              <input type="password" name="nova_senha" placeholder="Mínimo 8 caracteres" minlength="8" autocomplete="new-password" required>
+              <small>Use uma frase longa que você não use em outro lugar. Ao salvar, os outros aparelhos conectados nesta conta são desconectados.</small>
             </label>
             <footer>
               <button data-close-dialog type="button" class="secondary">Cancelar</button>

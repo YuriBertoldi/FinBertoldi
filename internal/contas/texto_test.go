@@ -11,7 +11,7 @@ import (
 func TestBuildTexto(t *testing.T) {
 	despesas := []models.DespesaMes{
 		{Nome: "Energia", Valor: 500, Pago: true},
-		{Nome: "Plano saude Eloah/Rhaizza", Valor: 1000},
+		{Nome: "Plano de saude familiar", Valor: 1000},
 	}
 	parcs := []models.Parcelamento{
 		{Descricao: "Carro", ValorParcela: 2514, ParcelaAtual: 3, TotalParcelas: 36},
@@ -31,14 +31,14 @@ func TestBuildTexto(t *testing.T) {
 		}
 	}
 	// maior valor primeiro dentro da seção
-	if strings.Index(txt, "Plano saude") > strings.Index(txt, "Energia") {
+	if strings.Index(txt, "Plano de saude") > strings.Index(txt, "Energia") {
 		t.Error("fixas deveriam estar ordenadas por valor decrescente")
 	}
 }
 
 func TestWaLinhaLargura(t *testing.T) {
 	for _, l := range []string{
-		waLinha("Plano saude Eloah/Rhaizza", 1000),
+		waLinha("Plano de saude familiar", 1000),
 		waLinha("Água", 5.4),
 		waLinha("TOTAL", 12946.95),
 		waLinha("Sobra", -49.95),

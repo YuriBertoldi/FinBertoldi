@@ -103,3 +103,19 @@ func TestValorParaSalvar(t *testing.T) {
 		}
 	}
 }
+
+func TestValidarNovaSenha(t *testing.T) {
+	cases := map[[2]string]bool{ // {nova, atual} -> aceita?
+		{"curta", ""}:     false,
+		{"admin123", "x"}: false, // senha padrão conhecida
+		{"ADMIN123", "x"}: false,
+		{"mesma-senha-longa", "mesma-senha-longa"}: false,
+		{"Elo@h", ""}:                           false, // 5 caracteres
+		{"cavalo-bateria-grampo-7", "admin123"}: true,
+	}
+	for in, aceita := range cases {
+		if got := validarNovaSenha(in[0], in[1]) == ""; got != aceita {
+			t.Errorf("validarNovaSenha(%q, %q) aceita=%v; want %v", in[0], in[1], got, aceita)
+		}
+	}
+}

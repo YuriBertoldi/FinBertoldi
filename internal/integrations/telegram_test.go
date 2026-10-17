@@ -3,8 +3,8 @@ package integrations
 import "testing"
 
 func TestValidarTokenTelegram(t *testing.T) {
-	validos := []string{"123456789:AAEqVGlDSGflf40M0NHOrb-YtGUZbaBYwoX"}
-	invalidos := []string{"", "AAEqVGlDSGflf40M0NHOrb-YtGUZbaBYwoX", "123:abc", "123456789 AAEqVGlDSGflf40M0NHOrb-YtGUZbaBYwoX"}
+	validos := []string{"123456789:TOKEN_FALSO_DE_TESTE_000000000000000"}
+	invalidos := []string{"", "TOKEN_FALSO_DE_TESTE_000000000000000", "123:abc", "123456789 TOKEN_FALSO_DE_TESTE_000000000000000"}
 	for _, v := range validos {
 		if err := ValidarTokenTelegram(v); err != nil {
 			t.Errorf("%q deveria ser válido: %v", v, err)

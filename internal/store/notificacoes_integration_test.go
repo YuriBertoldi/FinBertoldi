@@ -145,3 +145,41 @@ func TestDashboardLayout(t *testing.T) {
 		t.Errorf("GetDashboardWidgets = %v", vis)
 	}
 }
+
+func TestTrocarSenha_EncerraOutrasSessoes(t *testing.T) {
+	db := setupTestDB(t)
+	fA, _ := criarDuasFamilias(t, db)
+	uid := criarUsuario(t, db, "senha@teste.com", fA)
+	outro := criarUsuario(t, db, "outro@teste.com", fA)
+	expira := time.Now().Add(time.Hour)
+	for _, tok := range []string{"atual", "celular", "invasor"} {
+		CreateSession(db, uid, tok, expira)
+	}
+	CreateSession(db, outro, "do-outro", expira)
+
+	if err := TrocarSenha(db, uid, "novo-hash", "atual"); err != nil {
+		t.Fatalf("TrocarSenha: %v", err)
+	}
+	if u, _ := GetUserBySession(db, "atual"); u == nil {
+		t.Error("a sessão de quem trocou a senha deve continuar")
+	}
+	for _, tok := range []string{"celular", "invasor"} {
+		if u, _ := GetUserBySession(db, tok); u != nil {
+			t.Errorf("sessão %q deveria ter sido encerrada", tok)
+		}
+	}
+	if u, _ := GetUserBySession(db, "do-outro"); u == nil {
+		t.Error("sessões de outros usuários não podem ser afetadas")
+	}
+	if _, hash, _ := GetUserByEmail(db, "senha@teste.com"); hash != "novo-hash" {
+		t.Errorf("hash = %q; want novo-hash", hash)
+	}
+
+	// redefinição por admin/recuperação encerra todas, inclusive a "atual"
+	if err := ResetSenha(db, uid, "outro-hash"); err != nil {
+		t.Fatal(err)
+	}
+	if u, _ := GetUserBySession(db, "atual"); u != nil {
+		t.Error("ResetSenha deve encerrar todas as sessões do usuário")
+	}
+}
