@@ -19,6 +19,10 @@
 - **Integracao bancaria** — importacao CSV/OFX + sync automatico via Pluggy API
 - **Indicadores economicos** — Selic, CDI, IPCA, USD, EUR, BTC (atualizados automaticamente)
 - **Relatorios PDF** — 5 relatorios otimizados para impressao
+- **Contas do mes** — resumo pronto para WhatsApp, envio por e-mail e Telegram, e envio mensal automatico no dia escolhido
+- **Google Sheets** — planilha atualizada diariamente com contas, receitas, parcelamentos e investimentos
+- **Dashboard personalizavel** — cada usuario escolhe quais widgets aparecem, a ordem e a coluna
+- **Mobile first** — listas viram cartoes, menu proprio e indicador de carregamento
 - **Tema dark/light** com glassmorphism + opcao de ocultar valores
 
 ---
@@ -69,10 +73,10 @@ Browser (HTMX) ──── :443 ────► Caddy (HTTPS)
 |--------|-----------|
 | Backend | Go 1.24 — `net/http` + `html/template` (stdlib puro, sem frameworks) |
 | Frontend | HTMX 1.9.12 · Chart.js 4.4.1 · Pico CSS v2 · CSS custom (dark/glassmorphism) |
-| Banco de dados | PostgreSQL 16 · lib/pq · 15 migrations automaticas |
-| Autenticacao | Sessoes HTTP-only + bcrypt · recuperacao de senha via email |
+| Banco de dados | PostgreSQL 16 · lib/pq · 18 migrations automaticas |
+| Autenticacao | Sessoes HTTP-only + bcrypt · recuperacao de senha via email · troca de senha encerra as outras sessoes |
 | Importacao | excelize/v2 (XLSX) · ofxgo (OFX/QFX) · CSV com auto-deteccao |
-| Integracoes | Pluggy API · BCB · AwesomeAPI · BrasilAPI · Telegram Bot |
+| Integracoes | Pluggy API · BCB · AwesomeAPI · BrasilAPI · Telegram Bot · Google Sheets · SMTP (Gmail) |
 | Infra | Docker Compose · Caddy (HTTPS/Let's Encrypt) · Oracle Cloud |
 
 ---
@@ -98,8 +102,14 @@ Browser (HTMX) ──── :443 ────► Caddy (HTTPS)
 - **BCB** — Selic, CDI, IPCA (API Banco Central)
 - **AwesomeAPI** — cotacoes USD, EUR, BTC
 - **BrasilAPI** — feriados nacionais
-- **Telegram Bot** — alertas de despesas pendentes
+- **Telegram Bot** — contas do mes e alertas de despesas pendentes
+- **Google Sheets** — abas Resumo, Contas do mes, Receitas, Parcelamentos, Investimentos e Transacoes (Service Account, 1x por dia)
 - Widget de indicadores no dashboard
+- Cada integracao tem um botao **!** explicando para que serve e como configurar
+
+### Contas do mes e notificacoes
+- **Pagamentos → 📱 WhatsApp** — previa da mensagem, copiar, abrir no WhatsApp, enviar por Telegram ou e-mail
+- **🔔 Notificacoes** (por usuario) — envio mensal automatico por e-mail e/ou Telegram, no dia escolhido (1–31), com as contas do mes atual ou do mes seguinte
 
 ### Administrativo
 - **Multi-familia** — dados isolados por familia
@@ -114,7 +124,10 @@ Browser (HTMX) ──── :443 ────► Caddy (HTTPS)
 - Ordenacao por coluna em todas as tabelas
 - Selecao com barra flutuante de totalizacao
 - Filtros por busca textual e selects
-- Sidebar responsiva com menu mobile
+- Sidebar responsiva com menu mobile e barra superior propria
+- Tabelas viram cartoes no celular (selecao, acoes laterais)
+- Tela de carregamento ao navegar/salvar e botoes com indicador de ocupado
+- Escala tipografica unica (8 tamanhos)
 
 ---
 
@@ -147,7 +160,7 @@ No primeiro startup, um usuario admin e criado automaticamente com senha aleator
 docker compose logs app | grep "admin criado"
 ```
 
-> As 15 migrations do banco sao executadas automaticamente.
+> As 18 migrations do banco sao executadas automaticamente.
 
 ---
 
@@ -166,11 +179,11 @@ docker compose logs app | grep "admin criado"
 | `PORT` | `8080` | Porta HTTP |
 | `ADMIN_EMAIL` | `admin@localhost` | Email do admin inicial |
 | `ADMIN_PASSWORD` | *(aleatorio)* | Senha do admin inicial |
-| `SMTP_HOST` | — | Servidor SMTP (para reset de senha) |
-| `SMTP_PORT` | — | Porta SMTP |
-| `SMTP_USER` | — | Usuario SMTP |
-| `SMTP_PASS` | — | Senha SMTP |
-| `SMTP_FROM` | — | Remetente dos emails |
+| `SMTP_USER` | — | Conta que envia os e-mails (reset de senha e contas do mes) |
+| `SMTP_PASS` | — | Senha (para Gmail: senha de app) |
+| `SMTP_HOST` | `smtp.gmail.com` se `SMTP_USER` for Gmail | Servidor SMTP |
+| `SMTP_PORT` | `587` | Porta (`465` = TLS direto) |
+| `SMTP_FROM` | `FinBertoldi <SMTP_USER>` | Remetente |
 | `TZ` | `America/Sao_Paulo` | Timezone |
 
 ### Pluggy Service
@@ -196,22 +209,24 @@ finBertoldi/
 ├── docker-compose.prod.yml          # Producao
 ├── internal/
 │   ├── models/models.go             # Structs de dominio e page data
-│   ├── store/store.go               # Queries SQL + migrations (v1-v15)
+│   ├── store/store.go               # Queries SQL + migrations (v1-v18)
 │   ├── auth/
 │   │   ├── auth.go                  # Middlewares + sessoes + bcrypt
-│   │   └── email.go                 # Envio de email SMTP (reset senha)
+│   │   └── email.go                 # Envio de e-mail SMTP (Gmail embutido)
 │   ├── handler/
 │   │   ├── handler.go               # Handlers HTTP principais
 │   │   ├── bankimport.go            # Parsers CSV/OFX + conciliacao
 │   │   ├── reports.go               # Relatorios PDF (5 telas)
-│   │   └── importexport.go          # Import/Export XLSX
+│   │   ├── importexport.go          # Import/Export XLSX
+│   │   └── whatsapp.go              # Contas do mes + Notificacoes
+│   ├── contas/                      # Resumo das contas do mes + envio e-mail/Telegram + agendador
 │   └── integrations/
 │       ├── scheduler.go             # Scheduler periodico (goroutines)
 │       ├── bcb.go                   # API Banco Central (Selic/CDI/IPCA)
 │       ├── cotacoes.go              # AwesomeAPI (USD/EUR/BTC)
-│       ├── telegram.go              # Telegram Bot (alertas)
+│       ├── telegram.go              # Telegram Bot (contas do mes, alertas)
 │       ├── brasilapi.go             # BrasilAPI (feriados)
-│       └── sheets.go                # Google Sheets (export)
+│       └── sheets.go                # Google Sheets (Service Account, 6 abas)
 ├── templates/                       # 24 templates HTML
 ├── static/app.css                   # Design system completo
 ├── pluggy-service/                  # Microservico integracao bancaria
@@ -234,11 +249,13 @@ docker compose up postgres -d
 go test -tags=integration ./...
 ```
 
+O GitHub Actions roda os dois a cada push (com um PostgreSQL de teste) e so faz o deploy se tudo passar. Detalhes em [`TESTES.md`](TESTES.md).
+
 ---
 
 ## Deploy em producao
 
-O sistema roda em Oracle Cloud com Caddy como reverse proxy HTTPS (Let's Encrypt automatico).
+O sistema roda em Oracle Cloud com Caddy como reverse proxy HTTPS (Let's Encrypt automatico). Todo push na `main` passa pelo CI e, se os testes passarem, e publicado automaticamente via GitHub Actions; as migrations rodam no startup do app.
 
 ```bash
 # Copiar .env.prod.example e configurar
@@ -268,7 +285,7 @@ Documentacao detalhada por modulo em [`documentacao/`](documentacao/):
 | [08-rotas](documentacao/08-rotas.md) | Mapa completo de rotas |
 | [09-banco-de-dados](documentacao/09-banco-de-dados.md) | Schema de todas as tabelas |
 | [10-deploy](documentacao/10-deploy.md) | Deploy Oracle Cloud + Caddy |
-| [11-integracoes](documentacao/11-integracoes.md) | BCB, cotacoes, Telegram, BrasilAPI |
+| [11-integracoes](documentacao/11-integracoes.md) | BCB, cotacoes, Telegram, BrasilAPI, Google Sheets, contas do mes e notificacoes |
 
 ---
 

@@ -16,9 +16,11 @@ Comandos de deploy e backup estao la tambem.
 ```
 internal/
   models/   — structs de dominio + page data
-  store/    — queries PostgreSQL + RunMigrations() (v1-v12) + EnsureAdmin()
+  store/    — queries PostgreSQL + RunMigrations() (v1-v18) + EnsureAdmin()
   auth/     — sessoes, bcrypt, middlewares
-  handler/  — handlers HTTP, InitTemplates(), reports.go, importexport.go, bankimport.go
+  handler/  — handlers HTTP, InitTemplates(), reports.go, importexport.go, bankimport.go, whatsapp.go
+  contas/   — contas do mes (WhatsApp) + envio e-mail/Telegram + agendador mensal
+  integrations/ — BCB, cotacoes, Telegram, BrasilAPI, Google Sheets + scheduler
 main.go     — wiring de rotas
 pluggy-service/ — microservico de integracao bancaria Pluggy
 ```
@@ -41,8 +43,8 @@ pluggy-service/ — microservico de integracao bancaria Pluggy
 Todos os dados isolados por `family_id`. Toda query inclui `WHERE family_id = $X`.
 
 ## Migracao (RunMigrations)
-Idempotente, roda no startup. 12 migrations.
-Tabelas: `families` → `users` → `sessions` → `categorias` → `cartoes` → `despesas_fixas` → `despesas_fixas_mes` → `parcelamentos` → `receitas` → `investimentos` → `reserva_emergencia` → `emprestimos` → `emprestimos_pagamentos` → `screen_permissions` → `transacoes_banco` → `pluggy_items` → `integracoes_config`
+Idempotente, roda no startup. 18 migrations.
+Tabelas: `families` → `users` → `sessions` → `categorias` → `cartoes` → `despesas_fixas` → `despesas_fixas_mes` → `parcelamentos` → `receitas` → `investimentos` → `reserva_emergencia` → `emprestimos` → `emprestimos_pagamentos` → `screen_permissions` → `transacoes_banco` → `pluggy_items` → `integracoes_config` → `password_resets` → `dados_economicos` → `feriados` → `integracoes_kv` → `dashboard_widgets` → `user_notificacoes`
 
 ## Grupos de categoria (dashboard)
 - `basica` → Contas Basicas
@@ -61,21 +63,25 @@ Tabelas: `families` → `users` → `sessions` → `categorias` → `cartoes` �
 - Minha Familia (membros + controle de acesso por tela)
 - Usuarios / Familias (admin global)
 - Relatorios PDF — 5 telas
+- Contas do mes: WhatsApp, e-mail e Telegram; envio mensal em /notificacoes
+- Integracoes: BCB, cotacoes, feriados, Telegram, Google Sheets
+- Dashboard com widgets reordenaveis (ordem e coluna)
 - Importar / Exportar XLSX — `/dados` (multi-aba: 5 tipos de dados)
 - Tema dark/light + ocultar valores
 
 ## Padroes de codigo
 - Handlers: `HandleX(db *sql.DB) http.HandlerFunc`
-- Template helpers: `brl` (HTML span), `date`, `mesDisplay`, `sub`, `pct`, `progress`, `seq`, `json`, `contains`
+- Template helpers: `brl` (HTML span), `date`, `mesDisplay`, `sub`, `pct`, `progress`, `seq`, `json`, `contains`, `assetV`, `dict`
 - CSS: variaveis em `:root`; `.page-actions` para agrupar botoes no page-header
-- Responsivo: tabelas → scroll; sidebar → overlay em <=768px
+- Responsivo: tabelas `.table-responsive` → cartoes em <=640px; sidebar → overlay em <=960px; fontes via `--fs-*`
 
 ## Testes
 ```bash
 go test ./...                          # unit (sem banco)
 go test -tags=integration ./...        # integracao (precisa postgres)
 ```
-Arquivos: `internal/handler/handler_test.go`, `internal/store/store_test.go`, `internal/store/integration_test.go`, `internal/auth/auth_test.go`
+Push na `main` roda CI (unit + integracao com PostgreSQL) e faz deploy automatico; migrations aplicam no startup.
+Arquivos: `internal/*/*_test.go`; integracao em `internal/store/*integration_test.go` e `internal/integrations/sheets_integration_test.go` (ver `TESTES.md`)
 
 ## Documentacao
 Documentacao detalhada por modulo em `documentacao/`. Swagger em `documentacao/swagger.yaml`.

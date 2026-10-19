@@ -16,9 +16,11 @@ Este arquivo e a memoria operacional do Codex para este repositorio.
 ## Estrutura de pacotes
 - `main.go` — wiring: rotas + startup
 - `internal/models/` — structs de dominio e page data
-- `internal/store/` — queries PostgreSQL + RunMigrations() (v1-v12) + EnsureAdmin()
+- `internal/store/` — queries PostgreSQL + RunMigrations() (v1-v18) + EnsureAdmin()
 - `internal/auth/` — sessoes, bcrypt, middlewares (Protected, AdminOnly, FamilyAdminOnly, ScreenProtected)
-- `internal/handler/` — handlers HTTP + InitTemplates() + helpers + reports.go + importexport.go + bankimport.go
+- `internal/handler/` — handlers HTTP + InitTemplates() + helpers + reports.go + importexport.go + bankimport.go + whatsapp.go
+- `internal/contas/` — resumo das contas do mes + envio e-mail/Telegram + agendador mensal
+- `internal/integrations/` — BCB, cotacoes, Telegram, BrasilAPI, Google Sheets + scheduler
 - `static/app.css` — design system
 - `templates/base.html` — layout + sidebar mobile + JS utilitarios
 - `pluggy-service/` — microservico de integracao bancaria Pluggy
@@ -47,7 +49,9 @@ Dados de acesso ao servidor (IP, SSH key, credenciais) estao em `PRODUCAO.md` (i
 | GET/POST | `/login` | Login |
 | GET | `/despesas` | Despesas fixas + parcelamentos |
 | GET | `/receitas` | Receitas |
-| GET | `/pagamentos` | Pagamentos do mes |
+| GET | `/pagamentos` | Pagamentos do mes (+ WhatsApp / envio Telegram e e-mail) |
+| GET/POST | `/notificacoes` | Envio mensal das contas por usuario |
+| GET | `/integracoes` | Integracoes (BCB, cotacoes, Telegram, feriados, Google Sheets) |
 | GET | `/investimentos` | Investimentos + reserva EM |
 | GET | `/emprestimos` | Emprestimos |
 | GET | `/planejamento` | Planejamento FIRE |
@@ -68,6 +72,9 @@ Dados de acesso ao servidor (IP, SSH key, credenciais) estao em `PRODUCAO.md` (i
 - Minha Familia: membros + controle de acesso por tela
 - Usuarios / Familias para admin global
 - Relatorios PDF em 5 telas
+- Contas do mes: WhatsApp, e-mail e Telegram; envio mensal em /notificacoes
+- Integracoes: BCB, cotacoes, feriados, Telegram, Google Sheets
+- Dashboard com widgets reordenaveis (ordem e coluna)
 - Importar / Exportar XLSX multi-aba
 - Tema dark/light + ocultar valores
 
@@ -75,22 +82,23 @@ Dados de acesso ao servidor (IP, SSH key, credenciais) estao em `PRODUCAO.md` (i
 Todos os dados isolados por `family_id`. Toda query inclui `WHERE family_id = $X`.
 
 ## Migracoes
-`RunMigrations()` e idempotente e roda no startup. 12 migrations.
+`RunMigrations()` e idempotente e roda no startup. 18 migrations.
 
 Tabelas:
-`families` → `users` → `sessions` → `categorias` → `cartoes` → `despesas_fixas` → `despesas_fixas_mes` → `parcelamentos` → `receitas` → `investimentos` → `reserva_emergencia` → `emprestimos` → `emprestimos_pagamentos` → `screen_permissions` → `transacoes_banco` → `pluggy_items` → `integracoes_config`
+`families` → `users` → `sessions` → `categorias` → `cartoes` → `despesas_fixas` → `despesas_fixas_mes` → `parcelamentos` → `receitas` → `investimentos` → `reserva_emergencia` → `emprestimos` → `emprestimos_pagamentos` → `screen_permissions` → `transacoes_banco` → `pluggy_items` → `integracoes_config` → `password_resets` → `dados_economicos` → `feriados` → `integracoes_kv` → `dashboard_widgets` → `user_notificacoes`
 
 ## Padroes de codigo
 - Handlers seguem o formato `HandleX(db *sql.DB) http.HandlerFunc`
-- Template helpers: `brl`, `date`, `mesDisplay`, `sub`, `pct`, `progress`, `seq`, `json`, `contains`
+- Template helpers: `brl`, `date`, `mesDisplay`, `sub`, `pct`, `progress`, `seq`, `json`, `contains`, `assetV`, `dict`
 - CSS usa variaveis em `:root`
-- Responsivo: tabelas viram scroll; sidebar vira overlay em `<=768px`
+- Responsivo: tabelas `.table-responsive` viram cartoes em `<=640px`; sidebar vira overlay em `<=960px`; tamanhos de fonte via variaveis `--fs-*`
 
 ## Testes
 ```bash
 go test ./...                          # unitarios, sem banco
 go test -tags=integration ./...        # integracao, precisa PostgreSQL
 ```
+Push na `main` roda CI (unit + integracao com PostgreSQL) e faz deploy automatico; migrations aplicam no startup.
 
 ## Documentacao
 Documentacao detalhada por modulo em `documentacao/`. Swagger em `documentacao/swagger.yaml`.

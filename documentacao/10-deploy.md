@@ -33,7 +33,30 @@ PLUGGY_CLIENT_SECRET=<client-secret-pluggy> # opcional, pode configurar pela UI
 
 ---
 
-## Processo de deploy completo
+## Deploy automatico (GitHub Actions) — caminho padrao
+
+Todo push na `main` dispara `.github/workflows/deploy.yml`:
+
+1. **build-and-test** — `go build`, testes unitarios e testes de integracao contra um PostgreSQL 16 do proprio CI (`INTEGRATION_REQUIRED=1`).
+2. **deploy** — so roda se o passo anterior passar: conecta por SSH (segredos `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY` no GitHub), faz `git pull` e `docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build app pluggy-service`.
+3. O app aplica as migrations pendentes ao iniciar (log `[migrate] vN (...) aplicada`). O container do PostgreSQL nao e recriado.
+
+Antes de um deploy que muda o banco, faca o backup do Passo 1 abaixo. O CSS e versionado (`app.css?v=<hash>`), entao os navegadores pegam o novo visual sem limpar cache.
+
+### E-mail (SMTP) em producao
+
+Adicione ao `.env.prod` do servidor (o `docker-compose.prod.yml` repassa ao app):
+
+```
+SMTP_USER=conta-do-sistema@gmail.com
+SMTP_PASS=senha-de-app-de-16-letras
+```
+
+Para Gmail o restante (servidor, porta, remetente) vem do codigo. Use `ssh -t` ao editar com `nano`, senao os atalhos nao funcionam. Depois: `docker compose -f docker-compose.prod.yml --env-file .env.prod up -d app`.
+
+## Deploy manual (contingencia)
+
+### Processo de deploy completo
 
 ### Passo 1 — Backup do banco (OBRIGATORIO antes de deploy)
 

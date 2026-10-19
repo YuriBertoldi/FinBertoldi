@@ -300,6 +300,112 @@ paths:
         '200':
           description: Pagina HTML de pagamentos
 
+  /pagamentos/whatsapp:
+    get:
+      tags: [Despesas]
+      summary: Contas do mes no formato do WhatsApp
+      security: [cookieAuth: []]
+      parameters:
+        - name: mes
+          in: query
+          description: Mes no formato AAAA-MM (padrao = mes atual)
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Texto pronto para colar no WhatsApp
+          content:
+            text/plain:
+              schema:
+                type: string
+
+  /pagamentos/enviar:
+    post:
+      tags: [Despesas]
+      summary: Envia as contas do mes ao usuario logado (e-mail de cadastro e/ou Telegram)
+      security: [cookieAuth: []]
+      parameters:
+        - name: mes
+          in: query
+          schema:
+            type: string
+        - name: canal
+          in: query
+          description: telegram, email ou vazio (os dois)
+          schema:
+            type: string
+            enum: [telegram, email]
+      responses:
+        '200':
+          description: Fragmento HTML (HTMX) com o resultado de cada canal
+
+  /notificacoes:
+    get:
+      tags: [Notificacoes]
+      summary: Preferencias de envio mensal das contas
+      security: [cookieAuth: []]
+      responses:
+        '200':
+          description: Pagina HTML
+    post:
+      tags: [Notificacoes]
+      summary: Salvar preferencias de envio mensal
+      security: [cookieAuth: []]
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                dia_envio:
+                  type: integer
+                  minimum: 1
+                  maximum: 31
+                mes_referencia:
+                  type: string
+                  enum: [atual, seguinte]
+                email_mensal:
+                  type: string
+                  description: "on" para ligar
+                telegram_mensal:
+                  type: string
+                  description: "on" para ligar
+                telegram_chat_id:
+                  type: string
+                  description: Vazio = chat padrao da familia
+      responses:
+        '303':
+          description: Redirect
+
+  /api/dashboard/widgets:
+    post:
+      tags: [Dashboard]
+      summary: Salvar visibilidade, ordem e coluna dos widgets
+      security: [cookieAuth: []]
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                ordem:
+                  type: array
+                  items:
+                    type: string
+                  description: Chaves dos widgets na ordem desejada
+                widgets:
+                  type: array
+                  items:
+                    type: string
+                  description: Chaves visiveis
+                coluna_CHAVE:
+                  type: string
+                  enum: [esquerda, direita]
+                  description: Um campo por widget (ex. coluna_feriados)
+      responses:
+        '303':
+          description: Redirect para o dashboard
+
   # ==================== RECEITAS ====================
   /receitas:
     get:
@@ -1388,13 +1494,17 @@ paths:
           application/x-www-form-urlencoded:
             schema:
               type: object
-              required: [nova_senha]
+              required: [senha_atual, nova_senha]
               properties:
+                senha_atual:
+                  type: string
                 nova_senha:
                   type: string
+                  minLength: 8
+                  description: Diferente da atual; senhas conhecidas sao recusadas
       responses:
         '303':
-          description: Redirect
+          description: Redirect. Em caso de sucesso as sessoes em outros aparelhos sao encerradas
 
   # ==================== PLUGGY SERVICE (porta 8081) ====================
   /api/pluggy/status:
