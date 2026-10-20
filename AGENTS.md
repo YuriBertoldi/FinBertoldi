@@ -32,7 +32,8 @@ Este arquivo e a memoria operacional do Codex para este repositorio.
 | `internal/models/models.go` | Structs de dominio e page data |
 | `internal/store/store.go` | Queries SQL + RunMigrations() |
 | `internal/auth/auth.go` | Middlewares Protected/AdminOnly/FamilyAdminOnly/ScreenProtected |
-| `internal/handler/handler.go` | Handlers HTTP + InitTemplates() + helpers + Pluggy admin |
+| `internal/handler/<tela>.go` | Um arquivo por tela (`despesas.go`, `receitas.go`, `autenticacao.go`...); mapa em `documentacao/05-handler.md` |
+| `internal/handler/templates.go` | InitTemplates() + render |
 | `internal/handler/bankimport.go` | Parsers CSV/OFX + handlers transacoes bancarias |
 | `internal/handler/reports.go` | Handlers de relatorio PDF das telas principais |
 | `internal/handler/importexport.go` | Import/export XLSX via excelize |

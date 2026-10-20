@@ -66,7 +66,9 @@ finBertoldi/
 │   │   ├── auth.go                  # Sessoes, bcrypt, middlewares
 │   │   └── email.go                 # Envio de e-mail SMTP (Gmail embutido)
 │   ├── handler/
-│   │   ├── handler.go               # Handlers HTTP principais
+│   │   ├── <tela>.go                # Um arquivo por tela (despesas.go, receitas.go, ...) — mapa em 05-handler.md
+│   │   ├── autenticacao.go          # Login, cadastro, recuperacao de senha
+│   │   ├── templates.go             # InitTemplates + render
 │   │   ├── bankimport.go            # Importacao CSV/OFX + conciliacao
 │   │   ├── reports.go               # Relatorios PDF
 │   │   ├── importexport.go          # Import/Export XLSX
