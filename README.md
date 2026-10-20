@@ -2,7 +2,7 @@
 
 **Sistema completo de controle financeiro familiar** — multi-tenant, com dashboard interativo, planejamento FIRE, integracao bancaria automatica e indicadores economicos em tempo real.
 
-![Go](https://img.shields.io/badge/Go-1.24-00ADD8?logo=go&logoColor=white)
+![Go](https://img.shields.io/badge/Go-1.27-00ADD8?logo=go&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)
 ![HTMX](https://img.shields.io/badge/HTMX-1.9-3366CC)
 ![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
@@ -71,7 +71,7 @@ Browser (HTMX) ──── :443 ────► Caddy (HTTPS)
 
 | Camada | Tecnologia |
 |--------|-----------|
-| Backend | Go 1.24 — `net/http` + `html/template` (stdlib puro, sem frameworks) |
+| Backend | Go 1.27 — `net/http` + `html/template` (stdlib puro, sem frameworks) |
 | Frontend | HTMX 1.9.12 · Chart.js 4.4.1 · Pico CSS v2 · CSS custom (dark/glassmorphism) |
 | Banco de dados | PostgreSQL 16 · lib/pq · 18 migrations automaticas |
 | Autenticacao | Sessoes HTTP-only + bcrypt · recuperacao de senha via email · troca de senha encerra as outras sessoes |
@@ -204,7 +204,7 @@ docker compose logs app | grep "admin criado"
 ```
 finBertoldi/
 ├── main.go                          # Wiring: rotas + startup
-├── Dockerfile                       # Multi-stage: golang:1.24 → alpine
+├── Dockerfile                       # Multi-stage: golang:1.27 → alpine
 ├── docker-compose.yml               # Desenvolvimento local
 ├── docker-compose.prod.yml          # Producao
 ├── internal/

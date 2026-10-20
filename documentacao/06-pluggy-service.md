@@ -12,7 +12,7 @@ Integracao com a API da Pluggy (https://pluggy.ai) para sincronizacao automatica
 ```
 pluggy-service/
 ├── main.go              # HTTP server + sync scheduler
-├── Dockerfile           # Multi-stage: golang:1.24 → alpine
+├── Dockerfile           # Multi-stage: golang:1.27 → alpine
 ├── go.mod / go.sum
 ├── pluggy/
 │   ├── client.go        # REST client para API Pluggy

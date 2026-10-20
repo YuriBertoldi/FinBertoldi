@@ -29,10 +29,13 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      # Mesma linha de versao das imagens Docker (golang:1.27-alpine), sempre no
+      # patch mais recente: a versao minima do go.mod nao recebe correcoes de seguranca.
       - name: Set up Go
         uses: actions/setup-go@v7
         with:
-          go-version-file: go.mod
+          go-version: '1.27.x'
+          check-latest: true
 
       - name: Build
         run: go build ./...

@@ -35,7 +35,7 @@ Sessoes em cookie HTTP-only com token aleatorio de 64 chars hex. Sessoes armazen
 
 | Componente | Tecnologia |
 |------------|-----------|
-| Linguagem | Go 1.24 |
+| Linguagem | Go 1.27 |
 | HTTP Router | net/http (stdlib, Go 1.22+ com path params) |
 | Templates | html/template (stdlib) |
 | Banco | PostgreSQL 16 via lib/pq |

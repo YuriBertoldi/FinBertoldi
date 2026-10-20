@@ -196,7 +196,7 @@ Pluggy service iniciado em :8081
 go: go.mod requires go >= X.Y.Z (running go A.B.C; GOTOOLCHAIN=local)
 ```
 
-**Causa:** O `go.mod` de algum modulo (app ou pluggy-service) tem versao de Go mais alta que a imagem Docker (`golang:1.24-alpine`).
+**Causa:** O `go.mod` de algum modulo (app ou pluggy-service) tem versao de Go mais alta que a imagem Docker (`golang:1.27-alpine`).
 
 **Solucao:** Alinhar a versao no `go.mod` com a imagem Docker:
 
@@ -205,7 +205,7 @@ go: go.mod requires go >= X.Y.Z (running go A.B.C; GOTOOLCHAIN=local)
 grep "FROM golang" Dockerfile pluggy-service/Dockerfile
 
 # Ajustar go.mod para a mesma versao
-# Em go.mod: go 1.24.0
+# Em go.mod: go 1.26.0 (versao minima; a imagem 1.27 atende)
 # Em pluggy-service/go.mod: go 1.24.0
 ```
 
@@ -275,15 +275,15 @@ ssh -i <SSH_KEY_PATH> <USER>@<SERVER_IP> \
 
 ### App principal (Dockerfile)
 
-Multi-stage build: compila em `golang:1.24-alpine`, roda em `alpine:3.20`.
+Multi-stage build: compila em `golang:1.27-alpine`, roda em `alpine:3.24`.
 
 ```dockerfile
-FROM golang:1.24-alpine AS builder    # Stage de compilacao
+FROM golang:1.27-alpine AS builder    # Stage de compilacao
 WORKDIR /app
 COPY . .
 RUN go mod tidy && CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o fincontrol .
 
-FROM alpine:3.20                      # Stage de runtime (imagem minima)
+FROM alpine:3.24                      # Stage de runtime (imagem minima)
 RUN apk add --no-cache ca-certificates tzdata
 WORKDIR /app
 COPY --from=builder /app/fincontrol . # Binario compilado
@@ -299,14 +299,14 @@ CMD ["./fincontrol"]
 Mesmo padrao multi-stage:
 
 ```dockerfile
-FROM golang:1.24-alpine AS builder
+FROM golang:1.27-alpine AS builder
 WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download                   # Cache de dependencias
 COPY . .
 RUN CGO_ENABLED=0 go build -o pluggy-service .
 
-FROM alpine:3.20
+FROM alpine:3.24
 RUN apk add --no-cache ca-certificates tzdata
 WORKDIR /app
 COPY --from=builder /app/pluggy-service .

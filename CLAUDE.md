@@ -1,9 +1,9 @@
 # FinBertoldi
 
-Sistema de controle financeiro familiar em Go 1.24 + PostgreSQL 16 + HTMX.
+Sistema de controle financeiro familiar em Go 1.27 + PostgreSQL 16 + HTMX.
 
 ## Stack
-- Go 1.24 · net/http · html/template
+- Go 1.27 · net/http · html/template
 - PostgreSQL 16 · lib/pq
 - HTMX 1.9.12 · Chart.js 4.4.1 · Pico CSS v2 (green) · CSS puro (dark/glassmorphism)
 - excelize/v2 (geracao/leitura de XLSX)
