@@ -1,7 +1,7 @@
 # Modulo: handler
 
 **Pacote:** `internal/handler`
-**Arquivos:** `handler.go`, `bankimport.go`, `reports.go`, `importexport.go`
+**Arquivos:** um por tela ou assunto (tabela abaixo)
 
 ## Responsabilidade
 
@@ -9,20 +9,36 @@ Todos os handlers HTTP do sistema. Recebe requests, processa dados, chama store,
 
 ## Arquivos
 
-### handler.go (principal)
+### Mapa dos arquivos
 
-Contem:
-- `InitTemplates()` — carrega e compila todos os templates HTML
-- `render(w, template, data)` — renderiza template com dados
-- Helpers de parsing: `parseFloat`, `parseInt`, `parseDate`, `parseBool`, `boolStr`, `str`
-- `mesFromRequest(r)` — extrai mes da query string com fallback para mes atual
-- `mesDisplay(mes)` — converte "2026-01" para "Janeiro/2026"
-- `formatBRL(v)` — formata float como "R$ 1.234,56"
-- `calcResumo(...)` — calcula totais do dashboard (despesas, pago, pendente, sobra, caixa)
-- Handlers de todas as telas (Dashboard, Despesas, Receitas, etc)
-- Handlers de integracao Pluggy (admin only)
-- Handlers de recuperacao de senha (forgot/reset)
-- Handlers de integracoes (listar, salvar, testar)
+| Arquivo | Conteudo |
+|---|---|
+| `templates.go` | `InitTemplates()`, `render`, `renderLogin`, `renderStandalone` e funcoes dos templates |
+| `pagina_base.go` | `bp` (dados comuns da pagina), `mesFromRequest`, `mesDisplay` |
+| `conversao_de_valores.go` | `formatBRL`, `parseInt`, `parseFloat`, `parseDate` |
+| `autenticacao.go` | Login (com limite de tentativas), logout, login com Google, cadastro, recuperacao e redefinicao de senha |
+| `minha_senha.go` | Troca da propria senha e `validarNovaSenha` (regra usada tambem por usuarios e minha familia) |
+| `dashboard.go` | Dashboard, widgets, `calcResumo` e marcar pago pelo dashboard (HTMX) |
+| `despesas.go` | Despesas fixas |
+| `parcelamentos.go` | Parcelamentos e antecipacao de parcelas |
+| `receitas.go` | Receitas |
+| `investimentos.go` | Investimentos e reserva de emergencia |
+| `pagamentos.go` | Pagamentos do mes |
+| `emprestimos.go` | Emprestimos e pagamentos parciais |
+| `planejamento.go` | Planejamento FIRE |
+| `cadastros.go` | Categorias e cartoes |
+| `usuarios.go` | Usuarios (admin geral) |
+| `familias.go` | Familias (admin geral) |
+| `minha_familia.go` | Membros e permissao por tela (`TelasDispo`) |
+| `integracoes.go` | Integracoes gratuitas: listar, salvar, testar |
+| `integracao_pluggy.go` | Administracao da integracao Pluggy (proxy para o pluggy-service) |
+| `saude.go` | `/healthz` |
+| `bankimport.go` | Importacao CSV/OFX e conciliacao de transacoes |
+| `reports.go` | Relatorios PDF |
+| `importexport.go` | Importar/Exportar XLSX |
+| `whatsapp.go` | Contas do mes (WhatsApp/e-mail/Telegram) e notificacoes |
+
+Regra: handler novo vai no arquivo da tela dele; funcao usada por varias telas fica no arquivo do assunto principal dela (ex.: `validarNovaSenha` em `minha_senha.go`). Nada de `utils.go`.
 
 ### bankimport.go
 

@@ -123,6 +123,6 @@ Envia o link de reset via `SendEmail`. Se o SMTP nao estiver configurado, loga o
 
 ## Troca de senha e sessoes
 
-- `/minha-senha` exige a **senha atual**, **minimo de 8 caracteres**, senha diferente da atual e recusa senhas conhecidas (`admin123`, `12345678`, `changeme`) — `validarNovaSenha` em `handler.go`.
+- `/minha-senha` exige a **senha atual**, **minimo de 8 caracteres**, senha diferente da atual e recusa senhas conhecidas (`admin123`, `12345678`, `changeme`) — `validarNovaSenha` em `internal/handler/minha_senha.go`.
 - Toda troca/redefinicao chama `store.TrocarSenha`, que grava o hash e apaga as sessoes do usuario em outros aparelhos (quem troca a propria senha continua logado; redefinicao por admin ou por e-mail encerra todas).
 - O admin inicial (`EnsureAdmin`) usa `ADMIN_PASSWORD` ou uma senha aleatoria exibida uma unica vez no log — nunca uma senha fixa.

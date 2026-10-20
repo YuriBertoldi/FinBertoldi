@@ -16,7 +16,7 @@ Sistema de controle financeiro familiar em Go 1.27 + PostgreSQL 16 + HTMX.
 - `internal/models/` — structs de dominio e page data
 - `internal/store/` — queries PostgreSQL + RunMigrations() (18 migrations)
 - `internal/auth/` — sessoes, bcrypt, middlewares (Protected, AdminOnly, FamilyAdminOnly, ScreenProtected) + email.go (SMTP)
-- `internal/handler/` — handlers HTTP + InitTemplates() + reports.go + importexport.go + bankimport.go
+- `internal/handler/` — handlers HTTP, um arquivo por tela (`despesas.go`, `receitas.go`, `autenticacao.go`...); `templates.go` (InitTemplates/render); mapa em `documentacao/05-handler.md`
 - `internal/integrations/` — integracoes gratuitas (BCB, cotacoes, Telegram, BrasilAPI, Google Sheets) + scheduler
 - `internal/contas/` — resumo das contas do mes (WhatsApp) + envio por e-mail/Telegram + agendador mensal
 - `static/app.css` — design system
