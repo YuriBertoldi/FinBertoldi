@@ -33,15 +33,41 @@ PLUGGY_CLIENT_SECRET=<client-secret-pluggy> # opcional, pode configurar pela UI
 
 ---
 
-## Deploy automatico (GitHub Actions) — caminho padrao
+## Deploy pelo GitHub Actions — caminho padrao
 
-Todo push na `main` dispara `.github/workflows/deploy.yml`:
+`.github/workflows/deploy.yml` separa **testar** de **publicar**:
+
+| Evento | Testes | Deploy |
+|---|---|---|
+| PR para a `main` | sim | nao |
+| Merge / push na `main` | sim | **nao** |
+| Push de tag `v*` (ex.: `v1.4.0`) | sim | **sim** |
+| Botao *Run workflow* na aba Actions (branch `main`) | sim | **sim** |
+
+Para publicar o que esta na `main`:
+
+```bash
+git switch main && git pull
+git tag v1.4.0
+git push origin v1.4.0
+```
+
+Ou, sem tag: GitHub > Actions > *CI & Deploy* > *Run workflow* > branch `main`.
+
+Etapas do deploy:
 
 1. **build-and-test** — `go build`, testes unitarios e testes de integracao contra um PostgreSQL 16 do proprio CI (`INTEGRATION_REQUIRED=1`).
-2. **deploy** — so roda se o passo anterior passar: conecta por SSH (segredos `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY` no GitHub), faz `git pull` e `docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build app pluggy-service`.
-3. O app aplica as migrations pendentes ao iniciar (log `[migrate] vN (...) aplicada`). O container do PostgreSQL nao e recriado.
+2. **backup** — so roda se os testes passarem: conecta por SSH (segredos `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY` no GitHub) e grava `~/backups/fincontrol_<data>_<hora>.sql.gz` com `pg_dump`. Se o dump falhar ou sair vazio, o deploy para antes de mexer em qualquer coisa. Ficam os 7 backups automaticos mais recentes.
+3. **publicacao** — `git checkout --detach <commit da tag>` e `docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build app pluggy-service`.
+4. O app aplica as migrations pendentes ao iniciar (log `[migrate] vN (...) aplicada`). O container do PostgreSQL nao e recriado.
 
-Antes de um deploy que muda o banco, faca o backup do Passo 1 abaixo. O CSS e versionado (`app.css?v=<hash>`), entao os navegadores pegam o novo visual sem limpar cache.
+Dois deploys nunca rodam ao mesmo tempo (`concurrency: deploy-producao`). Depois do primeiro deploy por tag o checkout do servidor fica em *detached HEAD*, no commit publicado; isso e esperado.
+
+Para restaurar um backup automatico:
+
+```bash
+gunzip -c ~/backups/fincontrol_AAAAMMDD_HHMMSS.sql.gz | docker compose -f docker-compose.prod.yml --env-file .env.prod exec -T postgres sh -c 'psql -U "$POSTGRES_USER" "$POSTGRES_DB"'
+``` O CSS e versionado (`app.css?v=<hash>`), entao os navegadores pegam o novo visual sem limpar cache.
 
 ### E-mail (SMTP) em producao
 
@@ -55,6 +81,8 @@ SMTP_PASS=senha-de-app-de-16-letras
 Para Gmail o restante (servidor, porta, remetente) vem do codigo. Use `ssh -t` ao editar com `nano`, senao os atalhos nao funcionam. Depois: `docker compose -f docker-compose.prod.yml --env-file .env.prod up -d app`.
 
 ## Deploy manual (contingencia)
+
+> O checkout do servidor pode estar em *detached HEAD* depois de um deploy por tag. Antes do `git pull` manual, rode `git checkout main`.
 
 ### Processo de deploy completo
 

@@ -1,10 +1,14 @@
 name: CI & Deploy
 
+# Merge na main so testa. Producao so recebe deploy por tag v* (ex.: v1.4.0)
+# ou pelo botao "Run workflow" na aba Actions, sempre a partir da main.
 on:
   push:
     branches: [main]
+    tags: ['v*']
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 jobs:
   build-and-test:
@@ -45,16 +49,42 @@ jobs:
 
   deploy:
     needs: build-and-test
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: >-
+      startsWith(github.ref, 'refs/tags/v') ||
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-producao
+      cancel-in-progress: false
     steps:
-      - name: Deploy via SSH
+      - name: Deploy via SSH (backup do banco antes)
         uses: appleboy/ssh-action@v1.2.5
+        env:
+          VERSAO_PUBLICADA: ${{ github.sha }}
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
+          envs: VERSAO_PUBLICADA
           script: |
+            set -euo pipefail
             cd /home/ubuntu/finBertoldi
-            git pull origin main
-            docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build app pluggy-service
+            compose="docker compose -f docker-compose.prod.yml --env-file .env.prod"
+
+            # Backup antes de qualquer mudanca: se o dump falhar, o deploy para aqui.
+            mkdir -p "$HOME/backups"
+            arquivo_backup="$HOME/backups/fincontrol_$(date +%Y%m%d_%H%M%S).sql.gz"
+            $compose exec -T postgres sh -c 'pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB"' | gzip > "$arquivo_backup"
+            if [ ! -s "$arquivo_backup" ]; then
+              echo "Backup vazio, deploy cancelado: $arquivo_backup"
+              exit 1
+            fi
+            echo "Backup criado: $arquivo_backup ($(du -h "$arquivo_backup" | cut -f1))"
+
+            # Mantem so os 7 backups automaticos mais recentes.
+            ls -1t "$HOME"/backups/fincontrol_*.sql.gz | tail -n +8 | xargs -r rm --
+
+            git fetch --tags origin
+            git checkout --detach "$VERSAO_PUBLICADA"
+            $compose up -d --build app pluggy-service
+            echo "Publicado: $(git log -1 --format='%h %s')"
