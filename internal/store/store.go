@@ -1075,7 +1075,6 @@ func GetTransacoesBanco(db *sql.DB, fid int, mes, origem, status, banco string) 
 	if banco != "" {
 		q += fmt.Sprintf(` AND banco = $%d`, n)
 		args = append(args, banco)
-		n++
 	}
 	q += ` ORDER BY data DESC, id DESC`
 	rows, err := db.Query(q, args...)
@@ -2051,7 +2050,7 @@ var migrations = []migration{
 	},
 	{
 		version: 14,
-		name: "password_resets",
+		name:    "password_resets",
 		stmts: []string{
 			`CREATE TABLE IF NOT EXISTS password_resets (
 				id SERIAL PRIMARY KEY,
@@ -2065,7 +2064,7 @@ var migrations = []migration{
 	},
 	{
 		version: 15,
-		name: "integracoes_extras",
+		name:    "integracoes_extras",
 		stmts: []string{
 			`CREATE TABLE IF NOT EXISTS dados_economicos (
 				id SERIAL PRIMARY KEY,
@@ -2093,7 +2092,7 @@ var migrations = []migration{
 	},
 	{
 		version: 16,
-		name: "dashboard_widgets",
+		name:    "dashboard_widgets",
 		stmts: []string{
 			`CREATE TABLE IF NOT EXISTS dashboard_widgets (
 				user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -2106,7 +2105,7 @@ var migrations = []migration{
 	},
 	{
 		version: 17,
-		name: "user_notificacoes",
+		name:    "user_notificacoes",
 		stmts: []string{
 			`CREATE TABLE IF NOT EXISTS user_notificacoes (
 				user_id          INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,

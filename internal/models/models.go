@@ -11,7 +11,7 @@ type DespesaFixa struct {
 	Categoria string
 	Grupo     string
 	Ativa     bool
-	CriadoEm time.Time
+	CriadoEm  time.Time
 }
 
 type DespesaMes struct {
@@ -59,7 +59,7 @@ type Parcelamento struct {
 	// Financiamento
 	Financiamento    bool
 	ValorOriginal    float64
-	TaxaJuros        float64  // taxa mensal % (ex: 1.99)
+	TaxaJuros        float64 // taxa mensal % (ex: 1.99)
 	TotalEconomizado float64
 	TotalJuros       float64  // calculado: (ValorParcela * TotalParcelas) - ValorOriginal
 	Antecipada       bool     // contexto parcelamentos_mes
@@ -81,7 +81,7 @@ type Receita struct {
 	Data       time.Time
 	Tipo       string
 	Recorrente bool
-	CriadoEm  time.Time
+	CriadoEm   time.Time
 }
 
 type Investimento struct {
@@ -91,7 +91,7 @@ type Investimento struct {
 	Valor       float64
 	Data        time.Time
 	Notas       string
-	CriadoEm   time.Time
+	CriadoEm    time.Time
 }
 
 type ReservaEM struct {
@@ -206,11 +206,11 @@ type MesResumo struct {
 
 type DespesasPage struct {
 	BasePage
-	TabAtivo        string
-	Despesas        []DespesaFixa
-	Parcelamentos   []Parcelamento
-	Categorias      []Categoria
-	Cartoes         []Cartao
+	TabAtivo         string
+	Despesas         []DespesaFixa
+	Parcelamentos    []Parcelamento
+	Categorias       []Categoria
+	Cartoes          []Cartao
 	MesStr           string
 	MesDisplay       string
 	MesPrev          string
@@ -342,8 +342,8 @@ type TransacoesFiltros struct {
 }
 
 type ImportBancoResultado struct {
-	Total     int
-	Novos     int
+	Total      int
+	Novos      int
 	Duplicados int
 }
 
@@ -362,12 +362,12 @@ func (r ImportResultado) Total() int {
 // --- Integrações ---
 
 type DadoEconomico struct {
-	ID        int
-	Tipo      string  // "selic", "cdi", "ipca", "usd", "eur", "btc"
-	Valor     float64
-	Data      time.Time
-	Fonte     string // "bcb", "awesomeapi"
-	CriadoEm  time.Time
+	ID       int
+	Tipo     string // "selic", "cdi", "ipca", "usd", "eur", "btc"
+	Valor    float64
+	Data     time.Time
+	Fonte    string // "bcb", "awesomeapi"
+	CriadoEm time.Time
 }
 
 type Feriado struct {
@@ -377,12 +377,12 @@ type Feriado struct {
 }
 
 type IntegracaoStatus struct {
-	Nome       string // "bcb", "cotacoes", "telegram", "brasilapi", "sheets"
-	Label      string
-	Descricao  string
-	Ativa      bool
-	Campos     []IntegracaoCampo
-	StatusMsg  string
+	Nome      string // "bcb", "cotacoes", "telegram", "brasilapi", "sheets"
+	Label     string
+	Descricao string
+	Ativa     bool
+	Campos    []IntegracaoCampo
+	StatusMsg string
 }
 
 type IntegracaoCampo struct {
@@ -398,12 +398,12 @@ type IntegracaoCampo struct {
 
 type IntegracoesPage struct {
 	BasePage
-	Integracoes   []IntegracaoStatus
-	PluggyConfig  *IntegracaoConfig
-	PluggyContas  []PluggyItem
-	PluggyStatus  string
-	Erro          string
-	Sucesso       string
+	Integracoes  []IntegracaoStatus
+	PluggyConfig *IntegracaoConfig
+	PluggyContas []PluggyItem
+	PluggyStatus string
+	Erro         string
+	Sucesso      string
 }
 
 type DashboardIntegracoes struct {

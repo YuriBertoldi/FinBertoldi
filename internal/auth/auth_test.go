@@ -27,7 +27,6 @@ func TestGenerateToken(t *testing.T) {
 	}
 }
 
-
 func TestSetSessionCookie(t *testing.T) {
 	w := httptest.NewRecorder()
 	expiry := time.Now().Add(7 * 24 * time.Hour)

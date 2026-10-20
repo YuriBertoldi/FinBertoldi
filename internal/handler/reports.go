@@ -93,13 +93,13 @@ type rEmprestimos struct {
 
 type rDashboard struct {
 	rBase
-	TotalReceitas  string
-	TotalDespesas  string
-	Sobra          string
-	Sobra_f        float64
-	TotalInvestido string
-	ReservaEM      string
-	TaxaPoupanca   string
+	TotalReceitas   string
+	TotalDespesas   string
+	Sobra           string
+	Sobra_f         float64
+	TotalInvestido  string
+	ReservaEM       string
+	TaxaPoupanca    string
 	DespesasBasicas []models.DespesaMes
 	DespesasCartao  []models.DespesaMes
 	DespesasVR      []models.DespesaMes
@@ -247,10 +247,18 @@ func HandleRelatorioDashboard(db *sql.DB) http.HandlerFunc {
 		historico, _ := store.GetHistoricoMeses(db, fid, mes, 6)
 
 		var totalDespesas float64
-		for _, d := range basicas { totalDespesas += d.Valor }
-		for _, d := range cartao  { totalDespesas += d.Valor }
-		for _, d := range vr      { totalDespesas += d.Valor }
-		for _, p := range parcelamentos { totalDespesas += p.ValorParcela }
+		for _, d := range basicas {
+			totalDespesas += d.Valor
+		}
+		for _, d := range cartao {
+			totalDespesas += d.Valor
+		}
+		for _, d := range vr {
+			totalDespesas += d.Valor
+		}
+		for _, p := range parcelamentos {
+			totalDespesas += p.ValorParcela
+		}
 
 		sobra := totalReceitas - totalDespesas
 		taxaPoup := 0.0

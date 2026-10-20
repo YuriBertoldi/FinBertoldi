@@ -40,6 +40,34 @@ jobs:
       - name: Build
         run: go build ./...
 
+      # Analise estatica no app e no pluggy-service (modulo separado).
+      # Versoes fixas para o CI nao quebrar sozinho quando sair versao nova.
+      - name: Formatacao (gofmt)
+        run: |
+          arquivos_sem_formatacao=$(gofmt -l .)
+          if [ -n "$arquivos_sem_formatacao" ]; then
+            echo "Rode gofmt -w nestes arquivos:"
+            echo "$arquivos_sem_formatacao"
+            exit 1
+          fi
+
+      - name: go vet
+        run: |
+          go vet ./...
+          (cd pluggy-service && go vet ./...)
+
+      - name: staticcheck
+        run: |
+          go install honnef.co/go/tools/cmd/staticcheck@v0.8.2
+          staticcheck ./...
+          (cd pluggy-service && staticcheck ./...)
+
+      - name: govulncheck
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@v1.9.0
+          govulncheck ./...
+          (cd pluggy-service && govulncheck ./...)
+
       - name: Test
         run: go test ./... -v -count=1
 

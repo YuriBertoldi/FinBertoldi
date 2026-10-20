@@ -133,7 +133,6 @@ func TestMesFromRequest(t *testing.T) {
 	}
 }
 
-
 func TestParseBool(t *testing.T) {
 	cases := []struct {
 		in   string

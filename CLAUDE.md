@@ -71,4 +71,4 @@ Use `/finbertoldi` para contexto completo.
 
 ## Testes
 - `go test ./...` (unit) · `go test -tags=integration ./...` (PostgreSQL; roda no CI com `INTEGRATION_REQUIRED=1`)
-- PR e push na `main` rodam CI. Deploy so manual, por *Run workflow* na `main` (GitHub Actions), com backup `pg_dump` antes; migrations aplicam no startup do app.
+- PR e push na `main` rodam CI: build, `gofmt`, `go vet`, `staticcheck`, `govulncheck` e testes (app e pluggy-service). Deploy so manual, por *Run workflow* na `main` (GitHub Actions), com backup `pg_dump` antes; migrations aplicam no startup do app.

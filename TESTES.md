@@ -127,14 +127,19 @@ Cada execução cria um schema PostgreSQL temporário (`test_<timestamp>`) e o d
 
 `.github/workflows/deploy.yml` roda os testes a cada PR e a cada push na `main`:
 
-1. `go build ./...` e `go test ./...` (unit)
-2. Sobe um serviço **PostgreSQL 16** e roda `go test -tags=integration ./internal/store/ ./internal/integrations/` com `INTEGRATION_REQUIRED=1` — sem banco o teste **falha** em vez de ser pulado
-3. Só se tudo passar **e** o gatilho for o botão *Run workflow* na `main`: backup do banco (`pg_dump`) e deploy via SSH; as migrations rodam no startup do app. Merge na `main` sozinho **não** publica. Detalhes em [`documentacao/10-deploy.md`](documentacao/10-deploy.md).
+1. `go build ./...`
+2. Análise estática no app e no `pluggy-service`: `gofmt -l` (falha se houver arquivo sem formatar), `go vet`, `staticcheck` e `govulncheck` (falha se houver vulnerabilidade **alcançável** pelo código)
+3. `go test ./...` (unit)
+4. Sobe um serviço **PostgreSQL 16** e roda `go test -tags=integration ./internal/store/ ./internal/integrations/` com `INTEGRATION_REQUIRED=1` — sem banco o teste **falha** em vez de ser pulado
+5. Só se tudo passar **e** o gatilho for o botão *Run workflow* na `main`: backup do banco (`pg_dump`) e deploy via SSH; as migrations rodam no startup do app. Merge na `main` sozinho **não** publica. Detalhes em [`documentacao/10-deploy.md`](documentacao/10-deploy.md).
 
 Localmente:
 
 ```bash
 go build ./... && go test ./...
+gofmt -l . && go vet ./...
+go run honnef.co/go/tools/cmd/staticcheck@v0.8.2 ./...
+go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
 docker compose up postgres -d
 go test -tags=integration ./...
 ```

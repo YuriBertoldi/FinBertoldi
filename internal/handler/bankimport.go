@@ -374,17 +374,17 @@ func HandleImportOFX(db *sql.DB) http.HandlerFunc {
 		}
 		defer file.Close()
 
-		txns, banco, err := parseOFXFile(file)
+		// O banco lido do OFX ja vem preenchido em cada transacao.
+		txns, _, err := parseOFXFile(file)
 		if err != nil {
 			renderTransacoesComErro(w, r, db, u, err.Error())
 			return
 		}
 
 		// Allow manual bank name override
-		if b := r.FormValue("banco"); b != "" {
-			banco = b
+		if bancoInformado := r.FormValue("banco"); bancoInformado != "" {
 			for i := range txns {
-				txns[i].Banco = banco
+				txns[i].Banco = bancoInformado
 			}
 		}
 

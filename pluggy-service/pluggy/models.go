@@ -16,13 +16,13 @@ type ConnectTokenResponse struct {
 }
 
 type Connector struct {
-	ID              int    `json:"id"`
-	Name            string `json:"name"`
-	InstitutionURL  string `json:"institutionUrl"`
-	ImageURL        string `json:"imageUrl"`
-	Type            string `json:"type"`
-	Country         string `json:"country"`
-	IsOpenFinance   bool   `json:"isOpenFinance"`
+	ID             int    `json:"id"`
+	Name           string `json:"name"`
+	InstitutionURL string `json:"institutionUrl"`
+	ImageURL       string `json:"imageUrl"`
+	Type           string `json:"type"`
+	Country        string `json:"country"`
+	IsOpenFinance  bool   `json:"isOpenFinance"`
 }
 
 type ConnectorsResponse struct {
@@ -33,12 +33,12 @@ type ConnectorsResponse struct {
 }
 
 type Item struct {
-	ID            string    `json:"id"`
-	Connector     Connector `json:"connector"`
-	Status        string    `json:"status"`
-	Error         *Error    `json:"error"`
-	CreatedAt     time.Time `json:"createdAt"`
-	UpdatedAt     time.Time `json:"updatedAt"`
+	ID        string    `json:"id"`
+	Connector Connector `json:"connector"`
+	Status    string    `json:"status"`
+	Error     *Error    `json:"error"`
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
 }
 
 type Error struct {
@@ -47,14 +47,14 @@ type Error struct {
 }
 
 type Account struct {
-	ID          string  `json:"id"`
-	ItemID      string  `json:"itemId"`
-	Type        string  `json:"type"`
-	Subtype     string  `json:"subtype"`
-	Name        string  `json:"name"`
-	Balance     float64 `json:"balance"`
-	CurrencyCode string `json:"currencyCode"`
-	Number      string  `json:"number"`
+	ID           string  `json:"id"`
+	ItemID       string  `json:"itemId"`
+	Type         string  `json:"type"`
+	Subtype      string  `json:"subtype"`
+	Name         string  `json:"name"`
+	Balance      float64 `json:"balance"`
+	CurrencyCode string  `json:"currencyCode"`
+	Number       string  `json:"number"`
 }
 
 type AccountsResponse struct {
@@ -63,18 +63,18 @@ type AccountsResponse struct {
 }
 
 type Transaction struct {
-	ID              string    `json:"id"`
-	AccountID       string    `json:"accountId"`
-	Date            time.Time `json:"date"`
-	Description     string    `json:"description"`
-	DescriptionRaw  string    `json:"descriptionRaw"`
-	Amount          float64   `json:"amount"`
-	Balance         float64   `json:"balance"`
-	CurrencyCode    string    `json:"currencyCode"`
-	Category        *string   `json:"category"`
-	ProviderCode    string    `json:"providerCode"`
-	Status          string    `json:"status"`
-	Type            string    `json:"type"`
+	ID             string    `json:"id"`
+	AccountID      string    `json:"accountId"`
+	Date           time.Time `json:"date"`
+	Description    string    `json:"description"`
+	DescriptionRaw string    `json:"descriptionRaw"`
+	Amount         float64   `json:"amount"`
+	Balance        float64   `json:"balance"`
+	CurrencyCode   string    `json:"currencyCode"`
+	Category       *string   `json:"category"`
+	ProviderCode   string    `json:"providerCode"`
+	Status         string    `json:"status"`
+	Type           string    `json:"type"`
 }
 
 type TransactionsResponse struct {
