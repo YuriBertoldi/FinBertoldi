@@ -17,11 +17,11 @@ import (
 // --- Cabeçalhos padrão por aba ---
 
 var xlsHeaders = map[string][]string{
-	"Despesas Fixas":  {"Nome", "Valor", "Categoria", "Ativa (S/N)"},
-	"Parcelamentos":   {"Descrição", "Cartão", "Valor Parcela", "Parcela Atual", "Total Parcelas", "Data Início (AAAA-MM-DD)"},
-	"Receitas":        {"Descrição", "Valor", "Data (AAAA-MM-DD)", "Tipo", "Recorrente (S/N)"},
-	"Investimentos":   {"Instituição", "Tipo", "Valor", "Data (AAAA-MM-DD)", "Notas"},
-	"Empréstimos":     {"Pessoa", "Valor", "Direção (devo/me_devem)", "Data (AAAA-MM-DD)", "Notas"},
+	"Despesas Fixas": {"Nome", "Valor", "Categoria", "Ativa (S/N)"},
+	"Parcelamentos":  {"Descrição", "Cartão", "Valor Parcela", "Parcela Atual", "Total Parcelas", "Data Início (AAAA-MM-DD)"},
+	"Receitas":       {"Descrição", "Valor", "Data (AAAA-MM-DD)", "Tipo", "Recorrente (S/N)"},
+	"Investimentos":  {"Instituição", "Tipo", "Valor", "Data (AAAA-MM-DD)", "Notas"},
+	"Empréstimos":    {"Pessoa", "Valor", "Direção (devo/me_devem)", "Data (AAAA-MM-DD)", "Notas"},
 }
 
 var xlsSheets = []string{"Despesas Fixas", "Parcelamentos", "Receitas", "Investimentos", "Empréstimos"}

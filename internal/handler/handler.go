@@ -12,9 +12,9 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"strconv"
-	"net/url"
 	"strings"
 	"time"
 
@@ -54,20 +54,29 @@ func buildFuncMap() template.FuncMap {
 		"brl": func(v float64) template.HTML {
 			return template.HTML(`<span class="money">` + formatBRL(v) + `</span>`)
 		},
-		"date":       func(t time.Time) string { return t.Format("02/01/2006") },
-		"dateInput":  func(t time.Time) string { return t.Format("2006-01-02") },
-		"neg":        func(v float64) bool { return v < 0 },
-		"abs":        func(v float64) float64 { if v < 0 { return -v }; return v },
-		"progress":   func(atual, total int) string { return fmt.Sprintf("%dx%d", atual, total) },
-		"sub":        func(a, b float64) float64 { return a - b },
+		"date":      func(t time.Time) string { return t.Format("02/01/2006") },
+		"dateInput": func(t time.Time) string { return t.Format("2006-01-02") },
+		"neg":       func(v float64) bool { return v < 0 },
+		"abs": func(v float64) float64 {
+			if v < 0 {
+				return -v
+			}
+			return v
+		},
+		"progress": func(atual, total int) string { return fmt.Sprintf("%dx%d", atual, total) },
+		"sub":      func(a, b float64) float64 { return a - b },
 		"pct": func(v, total float64) string {
-			if total == 0 { return "0%" }
+			if total == 0 {
+				return "0%"
+			}
 			return fmt.Sprintf("%.0f%%", (v/total)*100)
 		},
 		"mesDisplay": mesDisplay,
 		"seq": func(n int) []int {
 			s := make([]int, n)
-			for i := range s { s[i] = i + 1 }
+			for i := range s {
+				s[i] = i + 1
+			}
 			return s
 		},
 		"json": func(v any) template.JS {
@@ -75,12 +84,16 @@ func buildFuncMap() template.FuncMap {
 			return template.JS(b)
 		},
 		"deref": func(p *float64) float64 {
-			if p == nil { return 0 }
+			if p == nil {
+				return 0
+			}
 			return *p
 		},
 		"contains": func(slice []string, s string) bool {
 			for _, v := range slice {
-				if v == s { return true }
+				if v == s {
+					return true
+				}
 			}
 			return false
 		},
@@ -165,20 +178,26 @@ func mesDisplay(s string) string {
 
 func formatBRL(v float64) string {
 	neg := v < 0
-	if neg { v = -v }
+	if neg {
+		v = -v
+	}
 	cents := int64(v*100+0.5) % 100
 	whole := int64(v)
 	s := strconv.FormatInt(whole, 10)
 	if len(s) > 3 {
 		var b strings.Builder
 		for i, c := range s {
-			if i > 0 && (len(s)-i)%3 == 0 { b.WriteRune('.') }
+			if i > 0 && (len(s)-i)%3 == 0 {
+				b.WriteRune('.')
+			}
 			b.WriteRune(c)
 		}
 		s = b.String()
 	}
 	result := fmt.Sprintf("R$ %s,%02d", s, cents)
-	if neg { result = "-" + result }
+	if neg {
+		result = "-" + result
+	}
 	return result
 }
 
@@ -206,7 +225,9 @@ func parseFloat(s string) float64 {
 
 func parseDate(s string) time.Time {
 	t, err := time.Parse("2006-01-02", strings.TrimSpace(s))
-	if err != nil { return time.Now() }
+	if err != nil {
+		return time.Now()
+	}
 	return t
 }
 
@@ -955,7 +976,9 @@ func HandleDespesas(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		fid := auth.CurrentUser(r).FamilyID
 		tab := r.URL.Query().Get("tab")
-		if tab == "" { tab = "fixas" }
+		if tab == "" {
+			tab = "fixas"
+		}
 		mes, mesStr := mesFromRequest(r)
 		despesas, _ := store.GetDespesasFixas(db, fid)
 		parcelamentos, _ := store.GetParcelamentos(db, fid, false)
@@ -1254,7 +1277,9 @@ func HandleEmprestimos(db *sql.DB) http.HandlerFunc {
 		list, _ := store.GetEmprestimos(db, fid)
 		var totalDevo, totalAReceber float64
 		for _, e := range list {
-			if e.Pago { continue }
+			if e.Pago {
+				continue
+			}
 			if e.Direcao == "devo" {
 				totalDevo += e.ValorRestante
 			} else {
@@ -1378,7 +1403,9 @@ func HandleCadastros(db *sql.DB) http.HandlerFunc {
 		u := auth.CurrentUser(r)
 		fid := u.FamilyID
 		tab := r.URL.Query().Get("tab")
-		if tab == "" { tab = "categorias" }
+		if tab == "" {
+			tab = "categorias"
+		}
 		categorias, _ := store.GetCategorias(db, fid)
 		cartoes, _ := store.GetCartoes(db, fid)
 
@@ -1398,7 +1425,9 @@ func HandleCreateCategoria(db *sql.DB) http.HandlerFunc {
 		r.ParseForm()
 		fid := auth.CurrentUser(r).FamilyID
 		cor := r.FormValue("cor")
-		if cor == "" { cor = "#607d8b" }
+		if cor == "" {
+			cor = "#607d8b"
+		}
 		store.CreateCategoria(db, fid, r.FormValue("nome"), r.FormValue("grupo"), cor)
 		http.Redirect(w, r, "/cadastros?tab=categorias", http.StatusSeeOther)
 	}
@@ -1409,7 +1438,9 @@ func HandleUpdateCategoria(db *sql.DB) http.HandlerFunc {
 		r.ParseForm()
 		fid := auth.CurrentUser(r).FamilyID
 		cor := r.FormValue("cor")
-		if cor == "" { cor = "#607d8b" }
+		if cor == "" {
+			cor = "#607d8b"
+		}
 		store.UpdateCategoria(db, fid, parseInt(r.PathValue("id")), r.FormValue("nome"), r.FormValue("grupo"), cor)
 		http.Redirect(w, r, "/cadastros?tab=categorias", http.StatusSeeOther)
 	}
@@ -1434,7 +1465,9 @@ func HandleCreateCartao(db *sql.DB) http.HandlerFunc {
 		r.ParseForm()
 		fid := auth.CurrentUser(r).FamilyID
 		cor := r.FormValue("cor")
-		if cor == "" { cor = "#607d8b" }
+		if cor == "" {
+			cor = "#607d8b"
+		}
 		store.CreateCartao(db, fid, r.FormValue("nome"), r.FormValue("bandeira"),
 			parseFloat(r.FormValue("limite")), cor)
 		http.Redirect(w, r, "/cadastros?tab=cartoes", http.StatusSeeOther)
@@ -1446,7 +1479,9 @@ func HandleUpdateCartao(db *sql.DB) http.HandlerFunc {
 		r.ParseForm()
 		fid := auth.CurrentUser(r).FamilyID
 		cor := r.FormValue("cor")
-		if cor == "" { cor = "#607d8b" }
+		if cor == "" {
+			cor = "#607d8b"
+		}
 		store.UpdateCartao(db, fid, parseInt(r.PathValue("id")), r.FormValue("nome"),
 			r.FormValue("bandeira"), parseFloat(r.FormValue("limite")), cor)
 		http.Redirect(w, r, "/cadastros?tab=cartoes", http.StatusSeeOther)
@@ -1485,12 +1520,12 @@ func HandleUsuarios(db *sql.DB) http.HandlerFunc {
 func HandleCreateUsuario(db *sql.DB) http.HandlerFunc {
 	return auth.AdminOnly(db, func(w http.ResponseWriter, r *http.Request) {
 		r.ParseForm()
-		nome          := strings.TrimSpace(r.FormValue("nome"))
-		email         := strings.TrimSpace(r.FormValue("email"))
-		senha         := r.FormValue("senha")
-		admin         := r.FormValue("admin") == "on"
-		familyOpt     := r.FormValue("family_opt")
-		familyIDStr   := r.FormValue("family_id")
+		nome := strings.TrimSpace(r.FormValue("nome"))
+		email := strings.TrimSpace(r.FormValue("email"))
+		senha := r.FormValue("senha")
+		admin := r.FormValue("admin") == "on"
+		familyOpt := r.FormValue("family_opt")
+		familyIDStr := r.FormValue("family_id")
 		newFamilyName := strings.TrimSpace(r.FormValue("new_family_name"))
 
 		if nome == "" || email == "" || senha == "" {
@@ -1505,7 +1540,9 @@ func HandleCreateUsuario(db *sql.DB) http.HandlerFunc {
 
 		var familyID int
 		if familyOpt == "nova" {
-			if newFamilyName == "" { newFamilyName = nome }
+			if newFamilyName == "" {
+				newFamilyName = nome
+			}
 			familyID, err = store.CreateFamily(db, newFamilyName)
 			if err != nil {
 				log.Printf("create family: %v", err)
@@ -1533,7 +1570,9 @@ func HandleChangeUserFamily(db *sql.DB) http.HandlerFunc {
 		r.ParseForm()
 		uid := parseInt(r.PathValue("id"))
 		fid := parseInt(r.FormValue("family_id"))
-		if fid > 0 { store.SetUserFamily(db, uid, fid) }
+		if fid > 0 {
+			store.SetUserFamily(db, uid, fid)
+		}
 		http.Redirect(w, r, "/usuarios", http.StatusSeeOther)
 	})
 }
@@ -1565,7 +1604,7 @@ func HandleToggleUsuarioAtivo(db *sql.DB) http.HandlerFunc {
 func HandleResetSenha(db *sql.DB) http.HandlerFunc {
 	return auth.AdminOnly(db, func(w http.ResponseWriter, r *http.Request) {
 		r.ParseForm()
-		id    := parseInt(r.PathValue("id"))
+		id := parseInt(r.PathValue("id"))
 		senha := r.FormValue("nova_senha")
 		if msg := validarNovaSenha(senha, ""); msg != "" {
 			http.Redirect(w, r, "/usuarios?erro="+url.QueryEscape(msg), http.StatusSeeOther)
@@ -1593,7 +1632,9 @@ func HandleDeleteUsuario(db *sql.DB) http.HandlerFunc {
 func HandleToggleFamilyAdminFlag(db *sql.DB) http.HandlerFunc {
 	return auth.AdminOnly(db, func(w http.ResponseWriter, r *http.Request) {
 		id := parseInt(r.PathValue("id"))
-		if id != auth.CurrentUser(r).ID { store.ToggleFamilyAdmin(db, id) }
+		if id != auth.CurrentUser(r).ID {
+			store.ToggleFamilyAdmin(db, id)
+		}
 		http.Redirect(w, r, "/usuarios", http.StatusSeeOther)
 	})
 }
@@ -1628,7 +1669,9 @@ func HandleRenameFamilia(db *sql.DB) http.HandlerFunc {
 		r.ParseForm()
 		id := parseInt(r.PathValue("id"))
 		nome := strings.TrimSpace(r.FormValue("nome"))
-		if nome != "" { store.RenameFamily(db, id, nome) }
+		if nome != "" {
+			store.RenameFamily(db, id, nome)
+		}
 		http.Redirect(w, r, "/familias", http.StatusSeeOther)
 	})
 }
@@ -1714,7 +1757,7 @@ func HandleMeuTimeCreateMembro(db *sql.DB) http.HandlerFunc {
 	return auth.FamilyAdminOnly(db, func(w http.ResponseWriter, r *http.Request) {
 		r.ParseForm()
 		cu := auth.CurrentUser(r)
-		nome  := strings.TrimSpace(r.FormValue("nome"))
+		nome := strings.TrimSpace(r.FormValue("nome"))
 		email := strings.TrimSpace(r.FormValue("email"))
 		senha := r.FormValue("senha")
 		if nome == "" || email == "" || senha == "" {
@@ -1758,7 +1801,7 @@ func HandleMeuTimeResetSenha(db *sql.DB) http.HandlerFunc {
 	return auth.FamilyAdminOnly(db, func(w http.ResponseWriter, r *http.Request) {
 		r.ParseForm()
 		cu := auth.CurrentUser(r)
-		id    := parseInt(r.PathValue("id"))
+		id := parseInt(r.PathValue("id"))
 		senha := r.FormValue("nova_senha")
 		if msg := validarNovaSenha(senha, ""); msg != "" {
 			http.Redirect(w, r, "/minha-familia?erro="+url.QueryEscape(msg), http.StatusSeeOther)
