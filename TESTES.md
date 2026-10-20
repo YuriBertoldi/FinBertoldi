@@ -125,11 +125,11 @@ Cada execução cria um schema PostgreSQL temporário (`test_<timestamp>`) e o d
 
 ## CI / Deploy (GitHub Actions)
 
-`.github/workflows/deploy.yml` roda a cada push/PR na `main`:
+`.github/workflows/deploy.yml` roda os testes a cada PR e a cada push na `main`:
 
 1. `go build ./...` e `go test ./...` (unit)
 2. Sobe um serviço **PostgreSQL 16** e roda `go test -tags=integration ./internal/store/ ./internal/integrations/` com `INTEGRATION_REQUIRED=1` — sem banco o teste **falha** em vez de ser pulado
-3. Só se tudo passar (e for push na `main`): deploy via SSH (`git pull` + `docker compose up -d --build app pluggy-service`); as migrations rodam no startup do app
+3. Só se tudo passar **e** o gatilho for o botão *Run workflow* na `main`: backup do banco (`pg_dump`) e deploy via SSH; as migrations rodam no startup do app. Merge na `main` sozinho **não** publica. Detalhes em [`documentacao/10-deploy.md`](documentacao/10-deploy.md).
 
 Localmente:
 

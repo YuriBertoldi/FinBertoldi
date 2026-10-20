@@ -98,7 +98,7 @@ Tabelas:
 go test ./...                          # unitarios, sem banco
 go test -tags=integration ./...        # integracao, precisa PostgreSQL
 ```
-Push na `main` roda CI (unit + integracao com PostgreSQL) e faz deploy automatico; migrations aplicam no startup.
+PR e push na `main` rodam CI (unit + integracao com PostgreSQL). Deploy so manual, por *Run workflow* na `main`, com `pg_dump` antes; migrations aplicam no startup.
 
 ## Documentacao
 Documentacao detalhada por modulo em `documentacao/`. Swagger em `documentacao/swagger.yaml`.

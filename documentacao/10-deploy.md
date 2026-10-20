@@ -33,15 +33,36 @@ PLUGGY_CLIENT_SECRET=<client-secret-pluggy> # opcional, pode configurar pela UI
 
 ---
 
-## Deploy automatico (GitHub Actions) — caminho padrao
+## Deploy pelo GitHub Actions — caminho padrao
 
-Todo push na `main` dispara `.github/workflows/deploy.yml`:
+`.github/workflows/deploy.yml` separa **testar** de **publicar**:
+
+| Evento | Testes | Deploy |
+|---|---|---|
+| PR para a `main` | sim | nao |
+| Merge / push na `main` | sim | **nao** |
+| Botao *Run workflow* na aba Actions (branch `main`) | sim | **sim** |
+
+Os PRs vao sendo integrados na `main` sem publicar. Quando o conjunto estiver pronto, publique de uma vez: GitHub > Actions > *CI & Deploy* > *Run workflow* > branch `main`. Pela linha de comando:
+
+```bash
+gh workflow run deploy.yml --ref main
+```
+
+Etapas do deploy:
 
 1. **build-and-test** — `go build`, testes unitarios e testes de integracao contra um PostgreSQL 16 do proprio CI (`INTEGRATION_REQUIRED=1`).
-2. **deploy** — so roda se o passo anterior passar: conecta por SSH (segredos `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY` no GitHub), faz `git pull` e `docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build app pluggy-service`.
-3. O app aplica as migrations pendentes ao iniciar (log `[migrate] vN (...) aplicada`). O container do PostgreSQL nao e recriado.
+2. **backup** — so roda se os testes passarem: conecta por SSH (segredos `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY` no GitHub) e grava `~/backups/fincontrol_<data>_<hora>.sql.gz` com `pg_dump`. Se o dump falhar ou sair vazio, o deploy para antes de mexer em qualquer coisa. Ficam os 7 backups automaticos mais recentes.
+3. **publicacao** — avanca a `main` do servidor ate o commit testado (`git merge --ff-only`) e roda `docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build app pluggy-service`.
+4. O app aplica as migrations pendentes ao iniciar (log `[migrate] vN (...) aplicada`). O container do PostgreSQL nao e recriado.
 
-Antes de um deploy que muda o banco, faca o backup do Passo 1 abaixo. O CSS e versionado (`app.css?v=<hash>`), entao os navegadores pegam o novo visual sem limpar cache.
+Dois deploys nunca rodam ao mesmo tempo (`concurrency: deploy-producao`).
+
+Para restaurar um backup automatico:
+
+```bash
+gunzip -c ~/backups/fincontrol_AAAAMMDD_HHMMSS.sql.gz | docker compose -f docker-compose.prod.yml --env-file .env.prod exec -T postgres sh -c 'psql -U "$POSTGRES_USER" "$POSTGRES_DB"'
+``` O CSS e versionado (`app.css?v=<hash>`), entao os navegadores pegam o novo visual sem limpar cache.
 
 ### E-mail (SMTP) em producao
 

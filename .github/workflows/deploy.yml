@@ -1,10 +1,13 @@
 name: CI & Deploy
 
+# PR e merge na main so testam. O deploy para producao e manual: botao
+# "Run workflow" na aba Actions, sempre a partir da main.
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 jobs:
   build-and-test:
@@ -45,16 +48,42 @@ jobs:
 
   deploy:
     needs: build-and-test
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-producao
+      cancel-in-progress: false
     steps:
-      - name: Deploy via SSH
+      - name: Deploy via SSH (backup do banco antes)
         uses: appleboy/ssh-action@v1.2.5
+        env:
+          VERSAO_PUBLICADA: ${{ github.sha }}
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
+          envs: VERSAO_PUBLICADA
           script: |
+            set -euo pipefail
             cd /home/ubuntu/finBertoldi
-            git pull origin main
-            docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build app pluggy-service
+            compose="docker compose -f docker-compose.prod.yml --env-file .env.prod"
+
+            # Backup antes de qualquer mudanca: se o dump falhar, o deploy para aqui.
+            mkdir -p "$HOME/backups"
+            arquivo_backup="$HOME/backups/fincontrol_$(date +%Y%m%d_%H%M%S).sql.gz"
+            $compose exec -T postgres sh -c 'pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB"' | gzip > "$arquivo_backup"
+            if [ ! -s "$arquivo_backup" ]; then
+              echo "Backup vazio, deploy cancelado: $arquivo_backup"
+              exit 1
+            fi
+            echo "Backup criado: $arquivo_backup ($(du -h "$arquivo_backup" | cut -f1))"
+
+            # Mantem so os 7 backups automaticos mais recentes.
+            ls -1t "$HOME"/backups/fincontrol_*.sql.gz | tail -n +8 | xargs -r rm --
+
+            # Publica exatamente o commit testado, mesmo que a main tenha andado depois.
+            git fetch origin main
+            git checkout main
+            git merge --ff-only "$VERSAO_PUBLICADA"
+            $compose up -d --build app pluggy-service
+            echo "Publicado: $(git log -1 --format='%h %s')"
