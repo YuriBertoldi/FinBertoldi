@@ -3,7 +3,7 @@
 Voce esta trabalhando no **FinBertoldi** — sistema de controle financeiro familiar.
 
 ## Projeto
-- **Stack:** Go 1.24 · net/http · html/template · PostgreSQL 16 · HTMX 1.9.12 · Chart.js · Pico CSS v2 · excelize/v2 · ofxgo
+- **Stack:** Go 1.27 · net/http · html/template · PostgreSQL 16 · HTMX 1.9.12 · Chart.js · Pico CSS v2 · excelize/v2 · ofxgo
 - **Modulo Go:** `fincontrol`
 - **Local:** `C:/Go/finBertoldi`
 - **Containers:** app (8080), postgres (5432), pluggy-service (8081)
