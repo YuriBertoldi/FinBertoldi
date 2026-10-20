@@ -400,6 +400,15 @@ var migrations = []migration{
 			`ALTER TABLE dashboard_widgets ADD COLUMN IF NOT EXISTS coluna VARCHAR(10) NOT NULL DEFAULT ''`,
 		},
 	},
+	{
+		version: 19,
+		name:    "orcamento_mensal_por_categoria",
+		stmts: []string{
+			// NULL = categoria sem orcamento.
+			`ALTER TABLE categorias ADD COLUMN IF NOT EXISTS orcamento_mensal NUMERIC(14,2)
+				CHECK (orcamento_mensal IS NULL OR orcamento_mensal > 0)`,
+		},
+	},
 }
 
 // RunMigrations executa as migrations pendentes registrando cada uma em schema_migrations.

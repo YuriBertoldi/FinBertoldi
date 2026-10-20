@@ -19,6 +19,7 @@
 | `integracoes.go` · `integracao_pluggy.go` | Configuracao e chave-valor das integracoes, itens Pluggy |
 | `dados_economicos.go` · `feriados.go` | Dados coletados pelas integracoes gratuitas |
 | `dashboard_widgets.go` | Layout dos widgets do dashboard |
+| `orcamentos.go` | Orcamento mensal por categoria: `DefinirOrcamentoMensalDaCategoria` e `OrcamentosDoMes` (gasto = despesas fixas ativas + debitos do extrato no mes, sem transacoes convertidas ou ignoradas) |
 | `notificacoes.go` | Envio mensal das contas |
 
 Funcao nova vai no arquivo do dominio dela, sempre com `WHERE family_id = $N` quando o dado e da familia.
@@ -37,7 +38,7 @@ Camada de acesso a dados. Todas as queries SQL do sistema estao neste pacote. Ta
 1. `DATABASE_URL` (prioridade, usado em producao)
 2. Variaveis individuais: `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASS`, `DB_NAME`
 
-## Migrations (v1-v18)
+## Migrations (v1-v19)
 
 Executadas automaticamente no startup via `RunMigrations()`. Cada migration e registrada na tabela `schema_migrations` (version + nome + data de aplicacao). Idempotentes: se ja aplicada, e ignorada.
 
@@ -61,6 +62,7 @@ Executadas automaticamente no startup via `RunMigrations()`. Cada migration e re
 | 16 | dashboard_widgets | Visibilidade/ordem dos widgets do dashboard por usuario |
 | 17 | user_notificacoes | Preferencias de envio mensal das contas (e-mail/Telegram, dia, mes atual/seguinte) |
 | 18 | dashboard_widgets_coluna | Coluna (esquerda/direita) escolhida para cada widget |
+| 19 | orcamento_mensal_por_categoria | Coluna `orcamento_mensal` em `categorias` (NULL = sem orcamento; CHECK > 0) |
 
 ## Funcoes por dominio
 

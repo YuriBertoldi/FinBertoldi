@@ -7,7 +7,7 @@ import (
 
 func GetCategorias(db *sql.DB, fid int) ([]models.Categoria, error) {
 	rows, err := db.Query(`
-		SELECT id, nome, grupo, cor, ativo, criado_em
+		SELECT id, nome, grupo, cor, ativo, criado_em, orcamento_mensal
 		FROM categorias WHERE family_id=$1 ORDER BY grupo, nome`, fid)
 	if err != nil {
 		return nil, err
@@ -16,7 +16,7 @@ func GetCategorias(db *sql.DB, fid int) ([]models.Categoria, error) {
 	var list []models.Categoria
 	for rows.Next() {
 		var c models.Categoria
-		rows.Scan(&c.ID, &c.Nome, &c.Grupo, &c.Cor, &c.Ativo, &c.CriadoEm)
+		rows.Scan(&c.ID, &c.Nome, &c.Grupo, &c.Cor, &c.Ativo, &c.CriadoEm, &c.OrcamentoMensal)
 		list = append(list, c)
 	}
 	return list, nil

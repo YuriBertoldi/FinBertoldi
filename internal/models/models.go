@@ -25,12 +25,54 @@ type DespesaMes struct {
 }
 
 type Categoria struct {
-	ID       int
-	Nome     string
-	Grupo    string
-	Cor      string
-	Ativo    bool
-	CriadoEm time.Time
+	ID              int
+	Nome            string
+	Grupo           string
+	Cor             string
+	Ativo           bool
+	CriadoEm        time.Time
+	OrcamentoMensal *float64 // nil = sem orcamento
+}
+
+// Limites de uso do orcamento: a partir deles a categoria muda de situacao.
+const (
+	PercentualDeAlertaDoOrcamento  = 80.0
+	PercentualDeEstouroDoOrcamento = 100.0
+)
+
+// OrcamentoDaCategoria e o gasto do mes de uma categoria com orcamento.
+type OrcamentoDaCategoria struct {
+	Categoria            string
+	Cor                  string
+	Limite               float64
+	GastoEmDespesasFixas float64
+	GastoEmTransacoes    float64 // debitos do extrato, sem convertidas e ignoradas
+}
+
+func (orcamento OrcamentoDaCategoria) Gasto() float64 {
+	return orcamento.GastoEmDespesasFixas + orcamento.GastoEmTransacoes
+}
+
+func (orcamento OrcamentoDaCategoria) PercentualUsado() float64 {
+	return orcamento.Gasto() / orcamento.Limite * 100
+}
+
+// LarguraDaBarra e o percentual usado limitado a 100, para a barra nao vazar.
+func (orcamento OrcamentoDaCategoria) LarguraDaBarra() float64 {
+	return min(orcamento.PercentualUsado(), 100)
+}
+
+// Situacao devolve "dentro", "alerta" (a partir de 80%) ou "estourado" (acima de 100%).
+func (orcamento OrcamentoDaCategoria) Situacao() string {
+	percentual := orcamento.PercentualUsado()
+	switch {
+	case percentual > PercentualDeEstouroDoOrcamento:
+		return "estourado"
+	case percentual >= PercentualDeAlertaDoOrcamento:
+		return "alerta"
+	default:
+		return "dentro"
+	}
 }
 
 type Cartao struct {
@@ -179,6 +221,7 @@ type DashboardData struct {
 	WidgetLayout    []DashboardWidget // todos os widgets na ordem escolhida (para o diálogo)
 	WidgetsEsquerda []string          // chaves visíveis da coluna esquerda, em ordem
 	WidgetsDireita  []string          // chaves visíveis da coluna direita, em ordem
+	Orcamentos      []OrcamentoDaCategoria
 }
 
 // DashboardWidget é a configuração de um widget do dashboard para um usuário.

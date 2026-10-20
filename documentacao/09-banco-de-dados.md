@@ -51,6 +51,7 @@ Categorias de despesas por familia.
 | cor | VARCHAR(20) | Cor hex |
 | ativo | BOOLEAN | Ativa |
 | criado_em | TIMESTAMPTZ | Data de criacao |
+| orcamento_mensal | NUMERIC(14,2) NULL | Limite mensal da categoria; NULL = sem orcamento; CHECK > 0 (v19) |
 
 ### cartoes
 Cartoes de credito/debito.
@@ -326,13 +327,14 @@ Preferencias de envio automatico das contas do mes (pagina `/notificacoes`).
 
 ## Migrations
 
-`RunMigrations()` roda no startup do app, e idempotente e registra cada versao em `schema_migrations`. Versao atual: **18**.
+`RunMigrations()` roda no startup do app, e idempotente e registra cada versao em `schema_migrations`. Versao atual: **19**.
 
 | Versao | Nome | O que faz |
 |--------|------|-----------|
 | 16 | dashboard_widgets | Visibilidade/ordem dos widgets por usuario |
 | 17 | user_notificacoes | Preferencias de envio mensal das contas |
 | 18 | dashboard_widgets_coluna | Coluna escolhida para cada widget |
+| 19 | orcamento_mensal_por_categoria | Orcamento mensal por categoria |
 
 ## Sessoes e troca de senha
 
