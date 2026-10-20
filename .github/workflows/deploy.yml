@@ -116,5 +116,13 @@ jobs:
             git fetch origin main
             git checkout main
             git merge --ff-only "$VERSAO_PUBLICADA"
-            $compose up -d --build app pluggy-service
+            # --wait so retorna quando os healthchecks ficam saudaveis; se nao
+            # ficarem, mostra o log e marca o deploy como falho.
+            if ! $compose up -d --build --wait --wait-timeout 180 app pluggy-service; then
+              echo "Containers nao ficaram saudaveis. Ultimas linhas do log:"
+              $compose logs --tail 60 app pluggy-service
+              echo "Backup feito antes deste deploy: $arquivo_backup"
+              exit 1
+            fi
+            $compose ps app pluggy-service
             echo "Publicado: $(git log -1 --format='%h %s')"

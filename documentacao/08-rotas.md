@@ -6,6 +6,7 @@
 
 | Metodo | Rota | Handler | Descricao |
 |--------|------|---------|-----------|
+| GET | `/healthz` | HandleVerificarSaude | 200 `ok` se o app fala com o banco, 503 se nao (healthcheck do Docker e do deploy) |
 | GET | `/static/*` | FileServer | Arquivos estaticos (CSS, JS) |
 | GET | `/login` | HandleLogin | Tela de login |
 | POST | `/login` | HandleLogin | Processar login |
