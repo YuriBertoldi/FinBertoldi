@@ -259,7 +259,7 @@ function moverWidget(btn, dir) {
 </div>
 {{end}}
 
-{{define "dash-widget"}}{{$p := .P}}{{if eq .K "grafico_receitas_despesas"}}{{template "dw-grafico_receitas_despesas" $p}}{{else if eq .K "grafico_sobra"}}{{template "dw-grafico_sobra" $p}}{{else if eq .K "grafico_investimentos"}}{{template "dw-grafico_investimentos" $p}}{{else if eq .K "detalhes_mes"}}{{template "dw-detalhes_mes" $p}}{{else if eq .K "parcelamentos"}}{{template "dw-parcelamentos" $p}}{{else if eq .K "reserva_em"}}{{template "dw-reserva_em" $p}}{{else if eq .K "indicadores"}}{{template "dw-indicadores" $p}}{{else if eq .K "feriados"}}{{template "dw-feriados" $p}}{{end}}{{end}}
+{{define "dash-widget"}}{{$p := .P}}{{if eq .K "grafico_receitas_despesas"}}{{template "dw-grafico_receitas_despesas" $p}}{{else if eq .K "grafico_sobra"}}{{template "dw-grafico_sobra" $p}}{{else if eq .K "grafico_investimentos"}}{{template "dw-grafico_investimentos" $p}}{{else if eq .K "detalhes_mes"}}{{template "dw-detalhes_mes" $p}}{{else if eq .K "parcelamentos"}}{{template "dw-parcelamentos" $p}}{{else if eq .K "reserva_em"}}{{template "dw-reserva_em" $p}}{{else if eq .K "indicadores"}}{{template "dw-indicadores" $p}}{{else if eq .K "feriados"}}{{template "dw-feriados" $p}}{{else if eq .K "orcamento"}}{{template "dw-orcamento" $p}}{{end}}{{end}}
 
 {{define "dw-grafico_receitas_despesas"}}
     <section class="dash-section">
@@ -368,6 +368,30 @@ function moverWidget(btn, dir) {
       <a href="/investimentos" class="outline secondary" role="button" style="font-size:var(--fs-xs);padding:.3rem .8rem">
         Gerenciar →
       </a>
+    </section>
+{{end}}
+
+{{define "dw-orcamento"}}
+    <section class="dash-section orcamento-section">
+      <h3 class="section-title">🎯 Orçamento do mês</h3>
+      {{if .Orcamentos}}
+      <ul class="orcamento-lista">
+        {{range .Orcamentos}}
+        <li class="orcamento-item orcamento-{{.Situacao}}">
+          <div class="orcamento-linha">
+            <span class="orcamento-nome"><span class="color-swatch" style="background:{{.Cor}}"></span> {{.Categoria}}</span>
+            <span class="orcamento-valores">{{brl .Gasto}} <span class="muted">de {{brl .Limite}}</span></span>
+          </div>
+          <div class="orcamento-barra" role="progressbar" aria-label="{{.Categoria}}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{printf "%.0f" .LarguraDaBarra}}">
+            <span style="width: {{printf "%.1f" .LarguraDaBarra}}%"></span>
+          </div>
+          <small class="muted">{{printf "%.0f" .PercentualUsado}}% usado · despesas fixas {{brl .GastoEmDespesasFixas}} · extrato {{brl .GastoEmTransacoes}}</small>
+        </li>
+        {{end}}
+      </ul>
+      {{else}}
+      <p class="muted">Nenhuma categoria com orçamento. Defina um limite mensal ao editar a categoria em <a href="/cadastros?tab=categorias">Cadastros → Categorias</a>.</p>
+      {{end}}
     </section>
 {{end}}
 

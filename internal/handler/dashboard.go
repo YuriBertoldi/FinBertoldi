@@ -34,6 +34,10 @@ func HandleDashboard(db *sql.DB) http.HandlerFunc {
 		investidoNoMes := store.GetInvestidoNoMes(db, fid, mes)
 		reservaEM, _ := store.GetReservaEM(db, fid)
 		historico, _ := store.GetHistoricoMeses(db, fid, mes, 6)
+		orcamentos, err := store.OrcamentosDoMes(db, fid, mes)
+		if err != nil {
+			log.Printf("orcamentos do mes: %v", err)
+		}
 
 		// Reserva de emergência conta como investimento no total
 		resumo := calcResumo(basicas, cartao, vr, parcelamentos, totalReceitas, totalInvestido+reservaEM, investidoNoMes)
@@ -78,6 +82,7 @@ func HandleDashboard(db *sql.DB) http.HandlerFunc {
 			WidgetLayout:    layout,
 			WidgetsEsquerda: esquerda,
 			WidgetsDireita:  direita,
+			Orcamentos:      orcamentos,
 		})
 	}
 }

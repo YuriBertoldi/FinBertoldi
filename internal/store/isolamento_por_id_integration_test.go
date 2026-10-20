@@ -35,6 +35,10 @@ func TestIsolamento_OperacoesPorIDNaoAlteramOutraFamilia(t *testing.T) {
 		{"ativar/desativar categoria", func(db *sql.DB, fid int, r registrosDaFamilia) error {
 			return ToggleCategoriaAtiva(db, fid, r.categoriaID)
 		}},
+		{"definir orcamento da categoria", func(db *sql.DB, fid int, r registrosDaFamilia) error {
+			limite := 750.0
+			return DefinirOrcamentoMensalDaCategoria(db, fid, r.categoriaID, &limite)
+		}},
 		{"atualizar cartao", func(db *sql.DB, fid int, r registrosDaFamilia) error {
 			return UpdateCartao(db, fid, r.cartaoID, "Alterado", "visa", 1, "#000000")
 		}},

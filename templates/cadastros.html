@@ -46,6 +46,7 @@
         <th>Cor</th>
         <th>Nome</th>
         <th>Grupo (Dashboard)</th>
+        <th>Orçamento mensal</th>
         <th>Ativa</th>
         <th>Ações</th>
       </tr>
@@ -66,6 +67,7 @@
             <span class="badge badge-grupo-basica">📋 Básicas</span>
           {{end}}
         </td>
+        <td>{{if .OrcamentoMensal}}{{brl (deref .OrcamentoMensal)}}{{else}}<span class="muted">—</span>{{end}}</td>
         <td>
           <form method="POST" action="/cadastros/categorias/{{.ID}}/toggle-ativa" style="display:inline">
             <button type="submit" class="btn-mini {{if .Ativo}}active{{end}}">
@@ -105,6 +107,11 @@
                 <option value="vr"     {{if eq .Grupo "vr"}}selected{{end}}>🍽️ VR / Alimentação</option>
               </select>
             </label>
+            <label>Orçamento mensal (opcional)
+              <input type="text" inputmode="decimal" name="orcamento_mensal" placeholder="Ex.: 1.200,00 — vazio = sem orçamento"
+                     value="{{if .OrcamentoMensal}}{{printf "%.2f" (deref .OrcamentoMensal)}}{{end}}">
+              <small class="muted">Soma as despesas fixas da categoria e os débitos do extrato no mês. Aparece no widget "Orçamento do mês" do Dashboard.</small>
+            </label>
             <footer>
               <button data-close-dialog type="button" class="secondary">Cancelar</button>
               <button type="submit">Salvar</button>
@@ -113,7 +120,7 @@
         </article>
       </dialog>
       {{else}}
-      <tr><td colspan="5" class="muted center">Nenhuma categoria cadastrada.</td></tr>
+      <tr><td colspan="6" class="muted center">Nenhuma categoria cadastrada.</td></tr>
       {{end}}
     </tbody>
   </table>
@@ -126,7 +133,7 @@
     searchId: 'fc-busca',
     filters: [
       { id: 'fc-grupo',  col: 2 },
-      { id: 'fc-status', col: 3 }
+      { id: 'fc-status', col: 4 }
     ],
     countId: 'fc-count',
     noResultsId: 'fc-no-results'

@@ -726,6 +726,17 @@ h1, h2, h3, h4 {
 .detalhes-mes summary:hover { background: var(--border-soft); }
 .detalhes-mes > div { padding: 0 1.5rem 1.5rem; }
 
+/* Orcamento do mes: barra verde ate 80%, amarela ate 100%, vermelha acima. */
+.orcamento-lista { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: .9rem; }
+.orcamento-item { list-style: none; }
+.orcamento-linha { display: flex; justify-content: space-between; align-items: baseline; gap: .5rem; flex-wrap: wrap; font-size: var(--fs-sm); }
+.orcamento-nome { display: inline-flex; align-items: center; gap: .4rem; font-weight: 600; }
+.orcamento-barra { height: .5rem; margin: .35rem 0 .25rem; border-radius: 999px; background: var(--border-soft); overflow: hidden; }
+.orcamento-barra > span { display: block; height: 100%; border-radius: inherit; background: var(--color-receita); }
+.orcamento-alerta .orcamento-barra > span { background: var(--color-warn); }
+.orcamento-estourado .orcamento-barra > span { background: var(--color-despesa); }
+.orcamento-estourado .orcamento-valores { color: var(--color-despesa); }
+
 .em-section { text-align: center; }
 .em-valor {
   font-size: var(--fs-2xl) !important;
