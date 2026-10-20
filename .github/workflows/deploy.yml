@@ -1,11 +1,10 @@
 name: CI & Deploy
 
-# Merge na main so testa. Producao so recebe deploy por tag v* (ex.: v1.4.0)
-# ou pelo botao "Run workflow" na aba Actions, sempre a partir da main.
+# PR e merge na main so testam. O deploy para producao e manual: botao
+# "Run workflow" na aba Actions, sempre a partir da main.
 on:
   push:
     branches: [main]
-    tags: ['v*']
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -49,9 +48,7 @@ jobs:
 
   deploy:
     needs: build-and-test
-    if: >-
-      startsWith(github.ref, 'refs/tags/v') ||
-      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     concurrency:
       group: deploy-producao
@@ -84,7 +81,9 @@ jobs:
             # Mantem so os 7 backups automaticos mais recentes.
             ls -1t "$HOME"/backups/fincontrol_*.sql.gz | tail -n +8 | xargs -r rm --
 
-            git fetch --tags origin
-            git checkout --detach "$VERSAO_PUBLICADA"
+            # Publica exatamente o commit testado, mesmo que a main tenha andado depois.
+            git fetch origin main
+            git checkout main
+            git merge --ff-only "$VERSAO_PUBLICADA"
             $compose up -d --build app pluggy-service
             echo "Publicado: $(git log -1 --format='%h %s')"

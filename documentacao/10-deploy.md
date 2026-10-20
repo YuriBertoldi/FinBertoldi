@@ -41,27 +41,22 @@ PLUGGY_CLIENT_SECRET=<client-secret-pluggy> # opcional, pode configurar pela UI
 |---|---|---|
 | PR para a `main` | sim | nao |
 | Merge / push na `main` | sim | **nao** |
-| Push de tag `v*` (ex.: `v1.4.0`) | sim | **sim** |
 | Botao *Run workflow* na aba Actions (branch `main`) | sim | **sim** |
 
-Para publicar o que esta na `main`:
+Os PRs vao sendo integrados na `main` sem publicar. Quando o conjunto estiver pronto, publique de uma vez: GitHub > Actions > *CI & Deploy* > *Run workflow* > branch `main`. Pela linha de comando:
 
 ```bash
-git switch main && git pull
-git tag v1.4.0
-git push origin v1.4.0
+gh workflow run deploy.yml --ref main
 ```
-
-Ou, sem tag: GitHub > Actions > *CI & Deploy* > *Run workflow* > branch `main`.
 
 Etapas do deploy:
 
 1. **build-and-test** — `go build`, testes unitarios e testes de integracao contra um PostgreSQL 16 do proprio CI (`INTEGRATION_REQUIRED=1`).
 2. **backup** — so roda se os testes passarem: conecta por SSH (segredos `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY` no GitHub) e grava `~/backups/fincontrol_<data>_<hora>.sql.gz` com `pg_dump`. Se o dump falhar ou sair vazio, o deploy para antes de mexer em qualquer coisa. Ficam os 7 backups automaticos mais recentes.
-3. **publicacao** — `git checkout --detach <commit da tag>` e `docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build app pluggy-service`.
+3. **publicacao** — avanca a `main` do servidor ate o commit testado (`git merge --ff-only`) e roda `docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build app pluggy-service`.
 4. O app aplica as migrations pendentes ao iniciar (log `[migrate] vN (...) aplicada`). O container do PostgreSQL nao e recriado.
 
-Dois deploys nunca rodam ao mesmo tempo (`concurrency: deploy-producao`). Depois do primeiro deploy por tag o checkout do servidor fica em *detached HEAD*, no commit publicado; isso e esperado.
+Dois deploys nunca rodam ao mesmo tempo (`concurrency: deploy-producao`).
 
 Para restaurar um backup automatico:
 
@@ -81,8 +76,6 @@ SMTP_PASS=senha-de-app-de-16-letras
 Para Gmail o restante (servidor, porta, remetente) vem do codigo. Use `ssh -t` ao editar com `nano`, senao os atalhos nao funcionam. Depois: `docker compose -f docker-compose.prod.yml --env-file .env.prod up -d app`.
 
 ## Deploy manual (contingencia)
-
-> O checkout do servidor pode estar em *detached HEAD* depois de um deploy por tag. Antes do `git pull` manual, rode `git checkout main`.
 
 ### Processo de deploy completo
 

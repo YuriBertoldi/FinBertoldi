@@ -255,7 +255,7 @@ O GitHub Actions roda os dois a cada PR e a cada push na `main` (com um PostgreS
 
 ## Deploy em producao
 
-O sistema roda em Oracle Cloud com Caddy como reverse proxy HTTPS (Let's Encrypt automatico). O merge na `main` so roda os testes; a publicacao acontece ao criar uma tag `v*` (ou pelo botao *Run workflow*), sempre com backup do banco antes. As migrations rodam no startup do app. Detalhes em [`documentacao/10-deploy.md`](documentacao/10-deploy.md).
+O sistema roda em Oracle Cloud com Caddy como reverse proxy HTTPS (Let's Encrypt automatico). O merge na `main` so roda os testes; a publicacao e manual, pelo botao *Run workflow* na `main`, sempre com backup do banco antes. As migrations rodam no startup do app. Detalhes em [`documentacao/10-deploy.md`](documentacao/10-deploy.md).
 
 ```bash
 # Copiar .env.prod.example e configurar

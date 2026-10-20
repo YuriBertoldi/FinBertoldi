@@ -129,7 +129,7 @@ Cada execução cria um schema PostgreSQL temporário (`test_<timestamp>`) e o d
 
 1. `go build ./...` e `go test ./...` (unit)
 2. Sobe um serviço **PostgreSQL 16** e roda `go test -tags=integration ./internal/store/ ./internal/integrations/` com `INTEGRATION_REQUIRED=1` — sem banco o teste **falha** em vez de ser pulado
-3. Só se tudo passar **e** o gatilho for uma tag `v*` ou o botão *Run workflow* na `main`: backup do banco (`pg_dump`) e deploy via SSH; as migrations rodam no startup do app. Merge na `main` sozinho **não** publica. Detalhes em [`documentacao/10-deploy.md`](documentacao/10-deploy.md).
+3. Só se tudo passar **e** o gatilho for o botão *Run workflow* na `main`: backup do banco (`pg_dump`) e deploy via SSH; as migrations rodam no startup do app. Merge na `main` sozinho **não** publica. Detalhes em [`documentacao/10-deploy.md`](documentacao/10-deploy.md).
 
 Localmente:
 
