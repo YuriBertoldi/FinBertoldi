@@ -30,7 +30,8 @@ pluggy-service/ — microservico de integracao bancaria Pluggy
 |---------|-----------------|
 | `main.go` | Inicializacao, todas as rotas |
 | `internal/models/models.go` | Structs de dominio e page data |
-| `internal/store/store.go` | Queries SQL + RunMigrations() |
+| `internal/store/<dominio>.go` | Queries SQL, um arquivo por dominio (`despesas.go`, `usuarios.go`...); mapa em `documentacao/03-store.md` |
+| `internal/store/migrations.go` | Migrations + RunMigrations() |
 | `internal/auth/auth.go` | Middlewares Protected/AdminOnly/FamilyAdminOnly/ScreenProtected |
 | `internal/handler/<tela>.go` | Um arquivo por tela (`despesas.go`, `receitas.go`, `autenticacao.go`...); mapa em `documentacao/05-handler.md` |
 | `internal/handler/templates.go` | InitTemplates() + render |

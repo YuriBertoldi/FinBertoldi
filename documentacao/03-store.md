@@ -1,7 +1,27 @@
 # Modulo: store
 
 **Pacote:** `internal/store`
-**Arquivo:** `store.go`
+**Arquivos:** um por dominio
+
+| Arquivo | Conteudo |
+|---|---|
+| `conexao.go` | `NewDB` e registro do driver PostgreSQL (`lib/pq`) |
+| `migrations.go` | Lista de migrations e `RunMigrations` |
+| `categorias.go` · `cartoes.go` | Cadastros |
+| `despesas.go` · `parcelamentos.go` | Despesas fixas, instancias mensais, parcelamentos e antecipacao |
+| `receitas.go` · `historico.go` | Receitas e historico mensal do dashboard |
+| `investimentos.go` · `reserva_emergencia.go` | Investimentos e reserva de emergencia |
+| `emprestimos.go` | Emprestimos e pagamentos parciais |
+| `autenticacao.go` | Hash de senha, sessoes e cadastro pendente via Google |
+| `recuperacao_de_senha.go` | Tokens de redefinicao de senha |
+| `usuarios.go` · `familias.go` · `permissoes_de_tela.go` | Usuarios, familias, permissoes e `EnsureAdmin` |
+| `transacoes_bancarias.go` | Importacao, conversao e conciliacao de transacoes |
+| `integracoes.go` · `integracao_pluggy.go` | Configuracao e chave-valor das integracoes, itens Pluggy |
+| `dados_economicos.go` · `feriados.go` | Dados coletados pelas integracoes gratuitas |
+| `dashboard_widgets.go` | Layout dos widgets do dashboard |
+| `notificacoes.go` | Envio mensal das contas |
+
+Funcao nova vai no arquivo do dominio dela, sempre com `WHERE family_id = $N` quando o dado e da familia.
 
 ## Responsabilidade
 

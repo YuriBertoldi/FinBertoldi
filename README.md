@@ -209,7 +209,7 @@ finBertoldi/
 ├── docker-compose.prod.yml          # Producao
 ├── internal/
 │   ├── models/models.go             # Structs de dominio e page data
-│   ├── store/store.go               # Queries SQL + migrations (v1-v18)
+│   ├── store/                       # Queries SQL, um arquivo por dominio + migrations.go (v1-v18)
 │   ├── auth/
 │   │   ├── auth.go                  # Middlewares + sessoes + bcrypt
 │   │   └── email.go                 # Envio de e-mail SMTP (Gmail embutido)
