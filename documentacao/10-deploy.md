@@ -53,7 +53,7 @@ Etapas do deploy:
 
 1. **build-and-test** — `go build`, testes unitarios e testes de integracao contra um PostgreSQL 16 do proprio CI (`INTEGRATION_REQUIRED=1`).
 2. **backup** — so roda se os testes passarem: conecta por SSH (segredos `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY` no GitHub) e grava `~/backups/fincontrol_<data>_<hora>.sql.gz` com `pg_dump`. Se o dump falhar ou sair vazio, o deploy para antes de mexer em qualquer coisa. Ficam os 7 backups automaticos mais recentes.
-3. **publicacao** — avanca a `main` do servidor ate o commit testado (`git merge --ff-only`) e roda `docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build app pluggy-service`.
+3. **publicacao** — avanca a `main` do servidor ate o commit testado (`git merge --ff-only`) e roda `docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build --wait app pluggy-service`. O `--wait` so termina quando os healthchecks ficam saudaveis (app: `GET /healthz`, que testa o banco; pluggy-service: `GET /api/pluggy/status`). Se em 3 minutos nao ficarem, o job mostra as ultimas linhas do log, informa o backup feito antes e termina com falha.
 4. O app aplica as migrations pendentes ao iniciar (log `[migrate] vN (...) aplicada`). O container do PostgreSQL nao e recriado.
 
 Dois deploys nunca rodam ao mesmo tempo (`concurrency: deploy-producao`).

@@ -29,6 +29,7 @@ Dados de acesso ao servidor de producao estao em `PRODUCAO.md` (ignorado pelo gi
 ## Rotas principais
 | Metodo | Rota | Handler |
 |--------|------|---------|
+| GET | `/healthz` | Saude: 200 se o banco responde, 503 se nao (publica) |
 | GET | `/` | Dashboard (requer auth) |
 | GET/POST | `/login` | Login |
 | GET/POST | `/forgot-password` | Recuperacao de senha |

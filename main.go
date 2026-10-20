@@ -33,6 +33,9 @@ func main() {
 	handler.InitTemplates()
 	mux := http.NewServeMux()
 
+	// Saude da aplicacao (sem auth): healthcheck do Docker e do deploy
+	mux.HandleFunc("GET /healthz", handler.HandleVerificarSaude(db))
+
 	// Estáticos (sem auth)
 	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 

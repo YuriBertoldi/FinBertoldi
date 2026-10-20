@@ -18,6 +18,14 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    # /healthz responde 200 so quando o app fala com o banco.
+    # start_period cobre as migrations que rodam no startup.
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/healthz"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
 
   postgres:
     image: postgres:16-alpine
@@ -48,6 +56,12 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8081/api/pluggy/status"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
 
 volumes:
   pgdata:

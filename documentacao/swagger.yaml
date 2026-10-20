@@ -53,8 +53,28 @@ tags:
     description: Gerenciamento de membros (family admin)
   - name: Pluggy Service
     description: API interna do microservico Pluggy (porta 8081)
+  - name: Saude
+    description: Verificacao de saude da aplicacao
 
 paths:
+  # ==================== SAUDE ====================
+  /healthz:
+    get:
+      tags: [Saude]
+      summary: Verifica se o app consegue falar com o banco
+      description: Publica, sem autenticacao. Usada pelo healthcheck do Docker e pelo deploy. Nao revela detalhes do erro.
+      responses:
+        '200':
+          description: App e banco respondendo
+          content:
+            text/plain:
+              example: "ok"
+        '503':
+          description: Banco indisponivel (ping falhou ou passou de 2s)
+          content:
+            text/plain:
+              example: "banco indisponivel"
+
   # ==================== AUTH ====================
   /login:
     get:
