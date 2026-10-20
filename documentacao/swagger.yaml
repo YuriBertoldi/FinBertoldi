@@ -101,6 +101,8 @@ paths:
       responses:
         '303':
           description: Redirect para dashboard (sucesso) ou login (erro)
+        '429':
+          description: E-mail ou IP bloqueado por excesso de senhas erradas (5 por e-mail ou 20 por IP em 15 min). Pagina de login com a mensagem de espera.
 
   /logout:
     post:

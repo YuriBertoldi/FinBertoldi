@@ -40,8 +40,9 @@ func main() {
 	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 
 	// Login / Logout (sem auth)
-	mux.HandleFunc("GET /login", handler.HandleLogin(db))
-	mux.HandleFunc("POST /login", handler.HandleLogin(db))
+	limiteDeTentativasDeLogin := auth.NovoLimiteDeTentativasDeLogin()
+	mux.HandleFunc("GET /login", handler.HandleLogin(db, limiteDeTentativasDeLogin))
+	mux.HandleFunc("POST /login", handler.HandleLogin(db, limiteDeTentativasDeLogin))
 	mux.HandleFunc("POST /logout", handler.HandleLogout(db))
 	mux.HandleFunc("POST /auth/google/callback", handler.HandleGoogleCallback(db))
 	mux.HandleFunc("GET /register", handler.HandleRegister(db))
