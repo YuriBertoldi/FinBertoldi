@@ -83,6 +83,12 @@ DATABASE_URL="postgres://user:pass@host:5432/db?sslmode=disable" \
 - Família B não lê dados da família A em despesas, receitas, investimentos, reserva, parcelamentos, empréstimos
 - Família B não faz UPDATE/DELETE em registros da família A
 - Família B não marca como pago despesa/empréstimo da família A
+- `TestIsolamento_OperacoesPorIDNaoAlteramOutraFamilia` (`isolamento_por_id_integration_test.go`) — 20 operações por id (categorias, cartões, exclusões, pagamento de empréstimo, parcelamentos e antecipação, transações bancárias, conexão Pluggy): pela família B, nada da família A muda; pela própria família A (controle), algo muda — prova que a operação foi de fato exercitada
+
+**Rotas que dependem de checagem no handler ou no middleware** (`internal/handler`, `internal/auth`):
+- `TestMinhaFamilia_AdministradorNaoAlteraUsuarioDeOutraFamilia` — o administrador da família B não desativa, não troca a senha e não bloqueia tela de usuário da família A (o store dessas rotas recebe só o id do usuário; a proteção é a checagem de pertencimento no handler). Controle: o administrador da própria família consegue
+- `TestScreenProtected_RecusaTelaBloqueadaParaOUsuario` — tela bloqueada responde 403 sem executar o handler; outra tela segue liberada
+- Helper compartilhado: `internal/bancodeteste` (schema isolado + migrations, usuário e sessão)
 
 **Regras de negócio:**
 - Parcelamentos auto-finalizam após total de parcelas
@@ -131,7 +137,7 @@ Cada execução cria um schema PostgreSQL temporário (`test_<timestamp>`) e o d
 2. Análise estática no app e no `pluggy-service`: `gofmt -l` (falha se houver arquivo sem formatar), `go vet`, `staticcheck` e `govulncheck` (falha se houver vulnerabilidade **alcançável** pelo código)
 3. `go test ./...` (unit)
 4. Em paralelo, job `docker-images`: `docker build` das imagens do app e do `pluggy-service` (Dockerfile quebrado falha no PR, nao no deploy)
-5. Sobe um serviço **PostgreSQL 16** e roda `go test -tags=integration ./internal/store/ ./internal/integrations/` com `INTEGRATION_REQUIRED=1` — sem banco o teste **falha** em vez de ser pulado
+5. Sobe um serviço **PostgreSQL 16** e roda `go test -tags=integration ./internal/store/ ./internal/integrations/ ./internal/handler/ ./internal/auth/` com `INTEGRATION_REQUIRED=1` — sem banco o teste **falha** em vez de ser pulado
 6. Só se tudo passar **e** o gatilho for o botão *Run workflow* na `main`: backup do banco (`pg_dump`) e deploy via SSH; as migrations rodam no startup do app. Merge na `main` sozinho **não** publica. Detalhes em [`documentacao/10-deploy.md`](documentacao/10-deploy.md).
 
 Localmente:
