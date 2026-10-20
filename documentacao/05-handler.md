@@ -38,7 +38,7 @@ Todos os handlers HTTP do sistema. Recebe requests, processa dados, chama store,
 | `importexport.go` | Importar/Exportar XLSX |
 | `whatsapp.go` | Contas do mes (WhatsApp/e-mail/Telegram) e notificacoes |
 
-Regra: handler novo vai no arquivo da tela dele; funcao usada por varias telas fica no arquivo do assunto principal dela (ex.: `validarNovaSenha` em `minha_senha.go`). Nada de `utils.go`.
+Regra: HTML sempre por `html/template`, nunca por `fmt.Fprintf`/concatenacao com dado do usuario. Handler novo vai no arquivo da tela dele; funcao usada por varias telas fica no arquivo do assunto principal dela (ex.: `validarNovaSenha` em `minha_senha.go`). Nada de `utils.go`.
 
 ### bankimport.go
 
@@ -54,6 +54,7 @@ Parsers de importacao bancaria e handlers de transacoes:
 - `HandleTransacaoConverter` — converte transacao em despesa ou receita
 - `HandleTransacaoIgnorar` — marca transacao como ignorada
 - `HandleTransacaoCategorizar` — atribui categoria a transacao
+- `HandleTransacaoMatches` — fragmento HTMX com sugestoes de vinculo, gerado por `html/template` (`escreverSugestoesDeVinculo`): nomes podem vir de descricao de Pix e sao sempre escapados
 - `HandleTransacaoVincular` — vincula transacao a despesa/receita existente
 - `HandleTransacaoDesvincular` — remove vinculo de transacao
 - `HandleAutoMatch` — auto-match de transacoes pendentes por valor/data

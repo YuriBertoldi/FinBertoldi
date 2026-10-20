@@ -4,7 +4,9 @@ import (
 	"database/sql"
 	"encoding/csv"
 	"fmt"
+	"html/template"
 	"io"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -541,60 +543,84 @@ func HandleTransacaoMatches(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		var grupos []grupoDeSugestoes
 		if txn.Tipo == "debito" {
 			despesas, _ := store.BuscarMatchesDespesas(db, fid, txn.Valor, txn.Descricao)
 			parcelas, _ := store.BuscarMatchesParcelamentos(db, fid, txn.Valor, txn.Data)
-			fmt.Fprintf(w, `<div class="match-results">`)
-			if len(despesas) == 0 && len(parcelas) == 0 {
-				fmt.Fprintf(w, `<p class="text-muted">Nenhum match encontrado.</p>`)
+			grupos = []grupoDeSugestoes{
+				{Titulo: "Despesas", Sugestoes: sugestoesDeDespesa(despesas)},
+				{Titulo: "Parcelamentos", Sugestoes: sugestoesDeDespesa(parcelas)},
 			}
-			if len(despesas) > 0 {
-				fmt.Fprintf(w, `<h4>Despesas</h4>`)
-				for _, m := range despesas {
-					fmt.Fprintf(w, `<form method="POST" action="/transacoes/%d/vincular" class="match-item">
-						<input type="hidden" name="destino" value="despesa">
-						<input type="hidden" name="vinculo_id" value="%d">
-						<span class="match-nome">%s</span>
-						<span class="match-valor">R$ %.2f</span>
-						<span class="match-score badge">%d%%</span>
-						<button type="submit" class="btn-action">Vincular</button>
-					</form>`, id, m.ID, m.Nome, m.Valor, m.Score)
-				}
-			}
-			if len(parcelas) > 0 {
-				fmt.Fprintf(w, `<h4>Parcelamentos</h4>`)
-				for _, m := range parcelas {
-					fmt.Fprintf(w, `<form method="POST" action="/transacoes/%d/vincular" class="match-item">
-						<input type="hidden" name="destino" value="despesa">
-						<input type="hidden" name="vinculo_id" value="%d">
-						<span class="match-nome">%s</span>
-						<span class="match-valor">R$ %.2f</span>
-						<span class="match-score badge">%d%%</span>
-						<button type="submit" class="btn-action">Vincular</button>
-					</form>`, id, m.ID, m.Nome, m.Valor, m.Score)
-				}
-			}
-			fmt.Fprintf(w, `</div>`)
 		} else {
 			receitas, _ := store.BuscarMatchesReceitas(db, fid, txn.Valor, txn.Data)
-			fmt.Fprintf(w, `<div class="match-results">`)
-			if len(receitas) == 0 {
-				fmt.Fprintf(w, `<p class="text-muted">Nenhum match encontrado.</p>`)
-			}
+			var sugestoes []sugestaoDeVinculo
 			for _, m := range receitas {
-				fmt.Fprintf(w, `<form method="POST" action="/transacoes/%d/vincular" class="match-item">
-					<input type="hidden" name="destino" value="receita">
-					<input type="hidden" name="vinculo_id" value="%d">
-					<span class="match-nome">%s</span>
-					<span class="match-valor">R$ %.2f</span>
-					<span class="match-score badge">%d%%</span>
-					<button type="submit" class="btn-action">Vincular</button>
-				</form>`, id, m.ID, m.Descricao, m.Valor, m.Score)
+				sugestoes = append(sugestoes, sugestaoDeVinculo{Destino: "receita", ID: m.ID, Nome: m.Descricao, Valor: m.Valor, Score: m.Score})
 			}
-			fmt.Fprintf(w, `</div>`)
+			grupos = []grupoDeSugestoes{{Sugestoes: sugestoes}}
+		}
+
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		if err := escreverSugestoesDeVinculo(w, id, grupos); err != nil {
+			log.Printf("sugestoes de vinculo da transacao %d: %v", id, err)
 		}
 	}
+}
+
+// sugestaoDeVinculo e uma linha da lista "vincular a" de uma transacao.
+type sugestaoDeVinculo struct {
+	Destino string // "despesa" ou "receita": o que o formulario envia
+	ID      int
+	Nome    string
+	Valor   float64
+	Score   int
+}
+
+// grupoDeSugestoes agrupa as sugestoes sob um titulo; titulo vazio = sem titulo.
+type grupoDeSugestoes struct {
+	Titulo    string
+	Sugestoes []sugestaoDeVinculo
+}
+
+func sugestoesDeDespesa(encontradas []store.MatchDespesa) []sugestaoDeVinculo {
+	var sugestoes []sugestaoDeVinculo
+	for _, m := range encontradas {
+		sugestoes = append(sugestoes, sugestaoDeVinculo{Destino: "despesa", ID: m.ID, Nome: m.Nome, Valor: m.Valor, Score: m.Score})
+	}
+	return sugestoes
+}
+
+// Nomes de despesa e de receita podem vir de descricao de transacao bancaria
+// (texto de Pix, escrito por quem paga). Por isso o fragmento e gerado por
+// html/template, que escapa tudo, e nunca por concatenacao de texto.
+var templateDeSugestoesDeVinculo = template.Must(template.New("sugestoes-de-vinculo").Parse(`<div class="match-results">
+{{- if not .TemAlgumaSugestao}}<p class="text-muted">Nenhum match encontrado.</p>{{end}}
+{{- range .Grupos}}{{if .Sugestoes}}
+{{- if .Titulo}}<h4>{{.Titulo}}</h4>{{end}}
+{{- range .Sugestoes}}
+<form method="POST" action="/transacoes/{{$.TransacaoID}}/vincular" class="match-item">
+	<input type="hidden" name="destino" value="{{.Destino}}">
+	<input type="hidden" name="vinculo_id" value="{{.ID}}">
+	<span class="match-nome">{{.Nome}}</span>
+	<span class="match-valor">R$ {{printf "%.2f" .Valor}}</span>
+	<span class="match-score badge">{{.Score}}%</span>
+	<button type="submit" class="btn-action">Vincular</button>
+</form>
+{{- end}}{{end}}{{end}}
+</div>`))
+
+func escreverSugestoesDeVinculo(w io.Writer, transacaoID int, grupos []grupoDeSugestoes) error {
+	temAlgumaSugestao := false
+	for _, grupo := range grupos {
+		if len(grupo.Sugestoes) > 0 {
+			temAlgumaSugestao = true
+		}
+	}
+	return templateDeSugestoesDeVinculo.Execute(w, struct {
+		TransacaoID       int
+		Grupos            []grupoDeSugestoes
+		TemAlgumaSugestao bool
+	}{transacaoID, grupos, temAlgumaSugestao})
 }
 
 // ---------------------------------------------------------------------------
