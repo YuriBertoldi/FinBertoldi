@@ -130,8 +130,9 @@ Cada execução cria um schema PostgreSQL temporário (`test_<timestamp>`) e o d
 1. `go build ./...`
 2. Análise estática no app e no `pluggy-service`: `gofmt -l` (falha se houver arquivo sem formatar), `go vet`, `staticcheck` e `govulncheck` (falha se houver vulnerabilidade **alcançável** pelo código)
 3. `go test ./...` (unit)
-4. Sobe um serviço **PostgreSQL 16** e roda `go test -tags=integration ./internal/store/ ./internal/integrations/` com `INTEGRATION_REQUIRED=1` — sem banco o teste **falha** em vez de ser pulado
-5. Só se tudo passar **e** o gatilho for o botão *Run workflow* na `main`: backup do banco (`pg_dump`) e deploy via SSH; as migrations rodam no startup do app. Merge na `main` sozinho **não** publica. Detalhes em [`documentacao/10-deploy.md`](documentacao/10-deploy.md).
+4. Em paralelo, job `docker-images`: `docker build` das imagens do app e do `pluggy-service` (Dockerfile quebrado falha no PR, nao no deploy)
+5. Sobe um serviço **PostgreSQL 16** e roda `go test -tags=integration ./internal/store/ ./internal/integrations/` com `INTEGRATION_REQUIRED=1` — sem banco o teste **falha** em vez de ser pulado
+6. Só se tudo passar **e** o gatilho for o botão *Run workflow* na `main`: backup do banco (`pg_dump`) e deploy via SSH; as migrations rodam no startup do app. Merge na `main` sozinho **não** publica. Detalhes em [`documentacao/10-deploy.md`](documentacao/10-deploy.md).
 
 Localmente:
 

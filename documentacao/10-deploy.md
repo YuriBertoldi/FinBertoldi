@@ -53,7 +53,7 @@ Etapas do deploy:
 
 1. **build-and-test** — `go build`, testes unitarios e testes de integracao contra um PostgreSQL 16 do proprio CI (`INTEGRATION_REQUIRED=1`).
 2. **backup** — so roda se os testes passarem: conecta por SSH (segredos `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY` no GitHub) e grava `~/backups/fincontrol_<data>_<hora>.sql.gz` com `pg_dump`. Se o dump falhar ou sair vazio, o deploy para antes de mexer em qualquer coisa. Ficam os 7 backups automaticos mais recentes.
-3. **publicacao** — avanca a `main` do servidor ate o commit testado (`git merge --ff-only`) e roda `docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build --wait app pluggy-service`. O `--wait` so termina quando os healthchecks ficam saudaveis (app: `GET /healthz`, que testa o banco; pluggy-service: `GET /api/pluggy/status`). Se em 3 minutos nao ficarem, o job mostra as ultimas linhas do log, informa o backup feito antes e termina com falha.
+3. **publicacao** — avanca a `main` do servidor ate o commit testado (`git merge --ff-only`) constroi as imagens uma por vez (`build app`, depois `build pluggy-service`, com os containers atuais ainda no ar) e roda `up -d --no-build --wait app pluggy-service`. O passo SSH tem limite de 30 minutos (o padrao da action, 10 minutos, nao basta para um build sem cache no servidor de 1 GB). Os Dockerfiles usam cache de modulos e de compilacao do BuildKit, entao os deploys seguintes so recompilam o que mudou. O `--wait` so termina quando os healthchecks ficam saudaveis (app: `GET /healthz`, que testa o banco; pluggy-service: `GET /api/pluggy/status`). Se em 3 minutos nao ficarem, o job mostra as ultimas linhas do log, informa o backup feito antes e termina com falha.
 4. O app aplica as migrations pendentes ao iniciar (log `[migrate] vN (...) aplicada`). O container do PostgreSQL nao e recriado.
 
 Dois deploys nunca rodam ao mesmo tempo (`concurrency: deploy-producao`).
@@ -275,20 +275,28 @@ ssh -i <SSH_KEY_PATH> <USER>@<SERVER_IP> \
 
 ### App principal (Dockerfile)
 
-Multi-stage build: compila em `golang:1.27-alpine`, roda em `alpine:3.24`.
+Multi-stage build: compila em `golang:1.27-alpine`, roda em `alpine:3.24`. Usa BuildKit (`# syntax=docker/dockerfile:1`, padrao no Docker Compose atual):
+
+- `go.mod`/`go.sum` sao copiados e baixados antes do codigo, em camada propria: as dependencias so baixam de novo quando eles mudam.
+- `RUN --mount=type=cache` guarda os modulos (`/go/pkg/mod`) e o cache de compilacao (`/root/.cache/go-build`) entre deploys: o servidor recompila so o que mudou.
+- Sem `go mod tidy` no build: o build usa exatamente o `go.mod`/`go.sum` versionados, os mesmos que o CI testou.
+- `.dockerignore` deixa fora do contexto `.git`, backups, `Oracle/`, `.env*`, documentacao e o `pluggy-service/` (que tem build proprio).
 
 ```dockerfile
-FROM golang:1.27-alpine AS builder    # Stage de compilacao
+# syntax=docker/dockerfile:1
+FROM golang:1.27-alpine AS builder
 WORKDIR /app
+COPY go.mod go.sum ./
+RUN --mount=type=cache,target=/go/pkg/mod go mod download
 COPY . .
-RUN go mod tidy && CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o fincontrol .
+RUN --mount=type=cache,target=/go/pkg/mod     --mount=type=cache,target=/root/.cache/go-build     CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o fincontrol .
 
-FROM alpine:3.24                      # Stage de runtime (imagem minima)
+FROM alpine:3.24
 RUN apk add --no-cache ca-certificates tzdata
 WORKDIR /app
-COPY --from=builder /app/fincontrol . # Binario compilado
-COPY templates/ ./templates/          # Templates HTML
-COPY static/    ./static/             # CSS, JS, imagens
+COPY --from=builder /app/fincontrol .
+COPY templates/ ./templates/
+COPY static/    ./static/
 ENV TZ=America/Sao_Paulo
 EXPOSE 8080
 CMD ["./fincontrol"]
@@ -296,23 +304,7 @@ CMD ["./fincontrol"]
 
 ### Pluggy Service (pluggy-service/Dockerfile)
 
-Mesmo padrao multi-stage:
-
-```dockerfile
-FROM golang:1.27-alpine AS builder
-WORKDIR /app
-COPY go.mod go.sum ./
-RUN go mod download                   # Cache de dependencias
-COPY . .
-RUN CGO_ENABLED=0 go build -o pluggy-service .
-
-FROM alpine:3.24
-RUN apk add --no-cache ca-certificates tzdata
-WORKDIR /app
-COPY --from=builder /app/pluggy-service .
-EXPOSE 8081
-CMD ["./pluggy-service"]
-```
+Mesmo padrao, com os mesmos caches.
 
 ---
 

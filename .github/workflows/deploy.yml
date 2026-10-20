@@ -77,8 +77,20 @@ jobs:
           INTEGRATION_REQUIRED: "1"
         run: go test -tags=integration ./internal/store/ ./internal/integrations/ -v -count=1
 
+  # Garante que os Dockerfiles constroem antes de chegar ao servidor.
+  docker-images:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Imagem do app
+        run: docker build --tag finbertoldi-app:ci .
+
+      - name: Imagem do pluggy-service
+        run: docker build --tag finbertoldi-pluggy-service:ci ./pluggy-service
+
   deploy:
-    needs: build-and-test
+    needs: [build-and-test, docker-images]
     if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     concurrency:
@@ -94,6 +106,9 @@ jobs:
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           envs: VERSAO_PUBLICADA
+          # O padrao da action e 10m; o servidor (1 GB de RAM) leva mais que
+          # isso num build sem cache, como o da troca de versao do Go.
+          command_timeout: 30m
           script: |
             set -euo pipefail
             cd /home/ubuntu/finBertoldi
@@ -116,9 +131,14 @@ jobs:
             git fetch origin main
             git checkout main
             git merge --ff-only "$VERSAO_PUBLICADA"
+            # Uma imagem por vez: com 1 GB de RAM, os dois builds em paralelo
+            # disputam memoria. Os containers atuais seguem no ar durante o build.
+            $compose build app
+            $compose build pluggy-service
+
             # --wait so retorna quando os healthchecks ficam saudaveis; se nao
             # ficarem, mostra o log e marca o deploy como falho.
-            if ! $compose up -d --build --wait --wait-timeout 180 app pluggy-service; then
+            if ! $compose up -d --no-build --wait --wait-timeout 180 app pluggy-service; then
               echo "Containers nao ficaram saudaveis. Ultimas linhas do log:"
               $compose logs --tail 60 app pluggy-service
               echo "Backup feito antes deste deploy: $arquivo_backup"
