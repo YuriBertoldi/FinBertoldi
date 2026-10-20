@@ -243,7 +243,13 @@ var TelasDispo = []models.ScreenInfo{
 
 // --- Login / Logout ---
 
-func HandleLogin(db *sql.DB) http.HandlerFunc {
+// hashParaEmailSemConta e comparado quando o e-mail nao tem conta, para que a
+// resposta leve o mesmo tempo de uma senha errada e nao revele quem tem conta.
+var hashParaEmailSemConta, _ = bcrypt.GenerateFromPassword([]byte("senha-que-nunca-confere"), bcrypt.DefaultCost)
+
+const mensagemDeLoginBloqueado = "Muitas tentativas de login. Aguarde 15 minutos e tente de novo."
+
+func HandleLogin(db *sql.DB, limiteDeTentativas *auth.LimiteDeTentativasDeLogin) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if u := auth.AuthUser(db, r); u != nil && u.Ativo {
 			http.Redirect(w, r, "/", http.StatusSeeOther)
@@ -263,16 +269,27 @@ func HandleLogin(db *sql.DB) http.HandlerFunc {
 		r.ParseForm()
 		email := strings.TrimSpace(r.FormValue("email"))
 		senha := r.FormValue("senha")
+		enderecoIP := auth.EnderecoIPDoCliente(r)
+
+		if limiteDeTentativas.EstaBloqueado(email, enderecoIP) {
+			w.WriteHeader(http.StatusTooManyRequests)
+			renderLogin(w, models.LoginPage{Title: "Login — FinBertoldi", Erro: mensagemDeLoginBloqueado, GoogleClientID: os.Getenv("GOOGLE_CLIENT_ID")})
+			return
+		}
 
 		user, hash, err := store.GetUserByEmail(db, email)
-		if err != nil || !user.Ativo {
+		contaPodeEntrar := err == nil && user.Ativo
+		if !contaPodeEntrar {
+			hash = string(hashParaEmailSemConta)
+		}
+		senhaConfere := bcrypt.CompareHashAndPassword([]byte(hash), []byte(senha)) == nil
+		if !contaPodeEntrar || !senhaConfere {
+			limiteDeTentativas.RegistrarFalha(email, enderecoIP)
+			log.Printf("login: falha para o IP %s", enderecoIP)
 			http.Redirect(w, r, "/login?erro=1", http.StatusSeeOther)
 			return
 		}
-		if bcrypt.CompareHashAndPassword([]byte(hash), []byte(senha)) != nil {
-			http.Redirect(w, r, "/login?erro=1", http.StatusSeeOther)
-			return
-		}
+		limiteDeTentativas.RegistrarSucesso(email)
 
 		token := auth.GenerateToken()
 		expiry := time.Now().Add(7 * 24 * time.Hour)

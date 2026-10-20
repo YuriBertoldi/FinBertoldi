@@ -64,9 +64,27 @@ Usuario Comum
   └── Acesso apenas a telas liberadas pelo FamilyAdmin
 ```
 
+## Limite de tentativas de login (limite_de_tentativas.go)
+
+`LimiteDeTentativasDeLogin` bloqueia por **15 minutos**:
+- o **e-mail** que errar a senha **5 vezes** em 15 minutos (forca bruta numa conta);
+- o **IP** que errar **20 vezes** em 15 minutos, em qualquer e-mail (uma senha testada contra muitas contas).
+
+Regras:
+- O e-mail e comparado sem diferenca de maiusculas e sem espacos nas pontas.
+- O bloqueio vale para qualquer e-mail digitado, exista ou nao, e e-mail sem conta passa pelo bcrypt com um hash ficticio: nem a mensagem nem o tempo de resposta revelam quem tem conta.
+- Login certo zera o contador do e-mail, nunca o do IP.
+- Bloqueado: `POST /login` responde **429** com a pagina de login e a mensagem de espera, sem consultar o banco.
+- Contadores em memoria (o app roda em uma instancia so); reiniciar o app zera tudo. Registros expirados sao limpos a cada minuto.
+
+`EnderecoIPDoCliente(r)`: atras do Caddy a conexao chega de endereco local/privado e o IP real e o ultimo item do `X-Forwarded-For`. Conexao direta de IP publico ignora o cabecalho, que poderia ser forjado.
+
+O login com Google nao passa por este limite: quem valida a senha e o Google.
+
 ## Testes
 
 `auth_test.go` — testa middlewares, geracao de token, manipulacao de cookies
+`limite_de_tentativas_test.go` — limites por e-mail e por IP, janela, expiracao do bloqueio, e-mail com maiusculas/espacos, sucesso que nao zera o IP e extracao do IP atras do proxy
 
 ## E-mail (email.go)
 
