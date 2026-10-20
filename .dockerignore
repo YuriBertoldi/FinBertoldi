@@ -1,0 +1,20 @@
+# Fora do contexto de build: acelera o envio e evita que dados sensiveis
+# (backups do banco, chaves, .env) entrem em qualquer camada da imagem.
+.git
+.github
+.claude
+backups
+Oracle
+infra
+deploy
+argocd
+docs
+documentacao
+scripts
+pluggy-service
+*.exe
+*.sql
+*.dump
+*.ods
+.env*
+PRODUCAO.md
