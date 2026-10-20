@@ -129,18 +129,6 @@ func renderLogin(w http.ResponseWriter, data any) {
 	}
 }
 
-func renderPartial(w http.ResponseWriter, page, name string, data any) {
-	t, ok := tmplPages[page]
-	if !ok {
-		http.Error(w, "template não encontrado: "+page, http.StatusInternalServerError)
-		return
-	}
-	if err := t.ExecuteTemplate(w, name, data); err != nil {
-		log.Printf("partial %s/%s error: %v", page, name, err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
-}
-
 // --- Helpers ---
 
 func bp(db *sql.DB, r *http.Request, active, title string) models.BasePage {
@@ -224,12 +212,12 @@ func parseDate(s string) time.Time {
 
 // TelasDispo lista as telas que podem ter acesso controlado.
 var TelasDispo = []models.ScreenInfo{
-	{"despesas", "💸 Despesas"},
-	{"receitas", "💵 Receitas"},
-	{"investimentos", "📈 Investimentos"},
-	{"planejamento", "🎯 Planejamento"},
-	{"emprestimos", "🤝 Empréstimos"},
-	{"cadastros", "🗂️ Cadastros"},
+	{Key: "despesas", Label: "💸 Despesas"},
+	{Key: "receitas", Label: "💵 Receitas"},
+	{Key: "investimentos", Label: "📈 Investimentos"},
+	{Key: "planejamento", Label: "🎯 Planejamento"},
+	{Key: "emprestimos", Label: "🤝 Empréstimos"},
+	{Key: "cadastros", Label: "🗂️ Cadastros"},
 }
 
 // --- Login / Logout ---

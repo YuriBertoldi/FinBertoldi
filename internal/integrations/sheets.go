@@ -111,7 +111,7 @@ func (sa *ServiceAccount) TokenAcesso() (string, error) {
 	}
 	json.NewDecoder(resp.Body).Decode(&r)
 	if resp.StatusCode != http.StatusOK || r.AccessToken == "" {
-		return "", fmt.Errorf("Google recusou a service account (%s %s) — confira se a chave não foi revogada", r.Erro, r.Descricao)
+		return "", fmt.Errorf("service account recusada pelo Google (%s %s) — confira se a chave não foi revogada", r.Erro, r.Descricao)
 	}
 	return r.AccessToken, nil
 }
@@ -303,7 +303,7 @@ func chamarSheets(token, metodo, endereco string, corpo any, saida any) error {
 		} `json:"error"`
 	}
 	json.NewDecoder(resp.Body).Decode(&e)
-	return fmt.Errorf("Google Sheets retornou %d: %s", resp.StatusCode, e.Error.Message)
+	return fmt.Errorf("resposta %d do Google Sheets: %s", resp.StatusCode, e.Error.Message)
 }
 
 // EnviarAbas cria as abas que faltam, limpa e grava cada uma.

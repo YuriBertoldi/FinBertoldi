@@ -1075,7 +1075,6 @@ func GetTransacoesBanco(db *sql.DB, fid int, mes, origem, status, banco string) 
 	if banco != "" {
 		q += fmt.Sprintf(` AND banco = $%d`, n)
 		args = append(args, banco)
-		n++
 	}
 	q += ` ORDER BY data DESC, id DESC`
 	rows, err := db.Query(q, args...)
