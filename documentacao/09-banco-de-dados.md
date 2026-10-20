@@ -309,7 +309,7 @@ Configuracao dos widgets do dashboard por usuario (visibilidade, ordem e coluna)
 | posicao | INTEGER | Ordem escolhida pelo usuario |
 | coluna | VARCHAR(10) | `topo` (fixo: resumo), `esquerda` ou `direita` — **v18**; vazio = coluna padrao do widget |
 
-**PK:** `(user_id, widget_key)`. Widgets que nao estao salvos entram no fim com a configuracao padrao (`widgetCatalogo` em `store.go`).
+**PK:** `(user_id, widget_key)`. Widgets que nao estao salvos entram no fim com a configuracao padrao (`widgetCatalogo` em `internal/store/dashboard_widgets.go`).
 
 ### user_notificacoes (v17)
 Preferencias de envio automatico das contas do mes (pagina `/notificacoes`).

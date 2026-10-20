@@ -61,7 +61,7 @@ finBertoldi/
 ├── main.go                          # Wiring: rotas + startup
 ├── internal/
 │   ├── models/models.go             # Structs de dominio e page data
-│   ├── store/store.go               # Queries SQL + migrations (v1-v18)
+│   ├── store/                       # Queries SQL, um arquivo por dominio + migrations.go (v1-v18)
 │   ├── auth/
 │   │   ├── auth.go                  # Sessoes, bcrypt, middlewares
 │   │   └── email.go                 # Envio de e-mail SMTP (Gmail embutido)

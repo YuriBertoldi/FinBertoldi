@@ -14,7 +14,7 @@ Sistema de controle financeiro familiar em Go 1.27 + PostgreSQL 16 + HTMX.
 ## Estrutura de pacotes
 - `main.go` — wiring: rotas + startup
 - `internal/models/` — structs de dominio e page data
-- `internal/store/` — queries PostgreSQL + RunMigrations() (18 migrations)
+- `internal/store/` — queries PostgreSQL, um arquivo por dominio (`despesas.go`, `usuarios.go`...); `migrations.go` com RunMigrations() (18 migrations); mapa em `documentacao/03-store.md`
 - `internal/auth/` — sessoes, bcrypt, middlewares (Protected, AdminOnly, FamilyAdminOnly, ScreenProtected) + email.go (SMTP)
 - `internal/handler/` — handlers HTTP, um arquivo por tela (`despesas.go`, `receitas.go`, `autenticacao.go`...); `templates.go` (InitTemplates/render); mapa em `documentacao/05-handler.md`
 - `internal/integrations/` — integracoes gratuitas (BCB, cotacoes, Telegram, BrasilAPI, Google Sheets) + scheduler
