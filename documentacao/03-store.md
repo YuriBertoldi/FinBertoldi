@@ -42,7 +42,7 @@ Camada de acesso a dados. Todas as queries SQL do sistema estao neste pacote. Ta
 1. `DATABASE_URL` (prioridade, usado em producao)
 2. Variaveis individuais: `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASS`, `DB_NAME`
 
-## Migrations (v1-v22)
+## Migrations (v1-v23)
 
 Executadas automaticamente no startup via `RunMigrations()`. Cada migration e registrada na tabela `schema_migrations` (version + nome + data de aplicacao). Idempotentes: se ja aplicada, e ignorada.
 
@@ -70,6 +70,7 @@ Executadas automaticamente no startup via `RunMigrations()`. Cada migration e re
 | 20 | alerta_de_orcamento | Preferencias `alerta_orcamento_email`/`_telegram` em `user_notificacoes` e tabela `alertas_de_orcamento_enviados` (um registro por usuario, categoria, mes e faixa) |
 | 21 | regras_de_categorizacao | Tabela `regras_de_categorizacao` e coluna `categoria_do_banco` em `transacoes_banco` (preenchida com a categoria atual quando ela nao e da familia) |
 | 22 | metas_financeiras | Tabelas `metas` (valor-alvo > 0, prazo mensal) e `metas_aportes` (valor != 0; negativo = retirada; CASCADE com a meta) |
+| 23 | transacao_vinculada_a_parcelamento | Coluna `parcelamento_id` em `transacoes_banco` (FK parcelamentos, SET NULL); antes o vinculo com parcelamento ia para `despesa_id` |
 
 ## Funcoes por dominio
 
