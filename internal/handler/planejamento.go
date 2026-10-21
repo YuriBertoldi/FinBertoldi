@@ -26,13 +26,10 @@ func HandlePlanejamento(db *sql.DB) http.HandlerFunc {
 		var despesasFixas float64
 		db.QueryRow(`SELECT COALESCE(SUM(valor),0) FROM despesas_fixas WHERE ativa = true AND family_id = $1`, fid).Scan(&despesasFixas)
 
-		var despesasParc float64
-		db.QueryRow(`
-			SELECT COALESCE(SUM(valor_parcela),0) FROM parcelamentos
-			WHERE ativo = true AND family_id = $2
-			  AND data_inicio <= $1::date
-			  AND (EXTRACT(YEAR FROM $1::date) - EXTRACT(YEAR FROM data_inicio)) * 12
-			    + (EXTRACT(MONTH FROM $1::date) - EXTRACT(MONTH FROM data_inicio)) + 1 <= total_parcelas`, mes, fid).Scan(&despesasParc)
+		despesasParc, err := store.TotalDeParcelasNoMes(db, fid, mes)
+		if err != nil {
+			log.Printf("parcelas do mes no planejamento: %v", err)
+		}
 
 		despesaMensal := despesasFixas + despesasParc
 		sobra := receitaMensal - despesaMensal

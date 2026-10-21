@@ -25,13 +25,10 @@ func GetHistoricoMeses(db *sql.DB, fid int, mesRef time.Time, numMeses int) ([]m
 		var despesasFixas float64
 		db.QueryRow(`SELECT COALESCE(SUM(valor), 0) FROM despesas_fixas WHERE ativa = true AND family_id=$1`, fid).Scan(&despesasFixas)
 
-		var despesasParc float64
-		db.QueryRow(`
-			SELECT COALESCE(SUM(valor_parcela), 0) FROM parcelamentos
-			WHERE ativo = true AND family_id=$2
-			  AND data_inicio <= $1::date
-			  AND (EXTRACT(YEAR  FROM $1::date) - EXTRACT(YEAR  FROM data_inicio)) * 12
-			    + (EXTRACT(MONTH FROM $1::date) - EXTRACT(MONTH FROM data_inicio)) + 1 <= total_parcelas`, mes, fid).Scan(&despesasParc)
+		despesasParc, err := TotalDeParcelasNoMes(db, fid, mes)
+		if err != nil {
+			return nil, err
+		}
 
 		var invest float64
 		db.QueryRow(`
