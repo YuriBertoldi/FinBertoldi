@@ -73,7 +73,7 @@ Browser (HTMX) ──── :443 ────► Caddy (HTTPS)
 |--------|-----------|
 | Backend | Go 1.27 — `net/http` + `html/template` (stdlib puro, sem frameworks) |
 | Frontend | HTMX 1.9.12 · Chart.js 4.4.1 · Pico CSS v2 · CSS custom (dark/glassmorphism) |
-| Banco de dados | PostgreSQL 16 · lib/pq · 19 migrations automaticas |
+| Banco de dados | PostgreSQL 16 · lib/pq · 20 migrations automaticas |
 | Autenticacao | Sessoes HTTP-only + bcrypt · recuperacao de senha via email · troca de senha encerra as outras sessoes |
 | Importacao | excelize/v2 (XLSX) · ofxgo (OFX/QFX) · CSV com auto-deteccao |
 | Integracoes | Pluggy API · BCB · AwesomeAPI · BrasilAPI · Telegram Bot · Google Sheets · SMTP (Gmail) |
@@ -86,6 +86,7 @@ Browser (HTMX) ──── :443 ────► Caddy (HTTPS)
 ### Financeiro
 - **Dashboard** — cards de resumo (Receitas, Despesas, Sobra, Caixa, Patrimonio), graficos de evolucao, historico 6 meses
 - **Despesas fixas** — recorrentes com toggle pago/pendente por mes
+- **Alerta de orcamento** — aviso por e-mail e/ou Telegram (opcao em Notificacoes) quando uma categoria chega a 80% e quando passa de 100% do orcamento no mes, uma vez por faixa
 - **Orcamento por categoria** — limite mensal opcional por categoria; widget "Orcamento do mes" soma despesas fixas e debitos do extrato (sem contar duas vezes transacoes ja convertidas) com barra verde/amarela (80%)/vermelha (acima de 100%)
 - **Parcelamentos** — cartao de credito com progresso visual + suporte a financiamentos com antecipacao e desconto racional
 - **Receitas** — recorrentes e unicas, edicao inline
@@ -161,7 +162,7 @@ No primeiro startup, um usuario admin e criado automaticamente com senha aleator
 docker compose logs app | grep "admin criado"
 ```
 
-> As 19 migrations do banco sao executadas automaticamente.
+> As 20 migrations do banco sao executadas automaticamente.
 
 ---
 
@@ -210,7 +211,7 @@ finBertoldi/
 ├── docker-compose.prod.yml          # Producao
 ├── internal/
 │   ├── models/models.go             # Structs de dominio e page data
-│   ├── store/                       # Queries SQL, um arquivo por dominio + migrations.go (v1-v19)
+│   ├── store/                       # Queries SQL, um arquivo por dominio + migrations.go (v1-v20)
 │   ├── auth/
 │   │   ├── auth.go                  # Middlewares + sessoes + bcrypt
 │   │   └── email.go                 # Envio de e-mail SMTP (Gmail embutido)

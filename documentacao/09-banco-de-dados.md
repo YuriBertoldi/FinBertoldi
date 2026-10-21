@@ -325,9 +325,22 @@ Preferencias de envio automatico das contas do mes (pagina `/notificacoes`).
 | mes_seguinte | BOOLEAN | `true` = envia as contas do mes seguinte ao do envio |
 | ultimo_envio | DATE | Primeiro dia do mes do ultimo envio automatico (evita repetir no mes) |
 
+### alertas_de_orcamento_enviados
+Registro dos alertas de orcamento ja enviados (v20). Impede que o agendador, que roda de hora em hora, repita o mesmo aviso.
+
+| Coluna | Tipo | Descricao |
+|--------|------|-----------|
+| user_id | INTEGER FK users (CASCADE) | Quem recebeu |
+| categoria_id | INTEGER FK categorias (CASCADE) | Categoria do orcamento |
+| mes | DATE | Primeiro dia do mes |
+| faixa | VARCHAR(10) | `alerta` (80%) ou `estourado` (acima de 100%) |
+| enviado_em | TIMESTAMPTZ | Quando foi registrado |
+
+**PK:** `(user_id, categoria_id, mes, faixa)`. `user_notificacoes` ganhou `alerta_orcamento_email` e `alerta_orcamento_telegram` (BOOLEAN, padrao false).
+
 ## Migrations
 
-`RunMigrations()` roda no startup do app, e idempotente e registra cada versao em `schema_migrations`. Versao atual: **19**.
+`RunMigrations()` roda no startup do app, e idempotente e registra cada versao em `schema_migrations`. Versao atual: **20**.
 
 | Versao | Nome | O que faz |
 |--------|------|-----------|
@@ -335,6 +348,7 @@ Preferencias de envio automatico das contas do mes (pagina `/notificacoes`).
 | 17 | user_notificacoes | Preferencias de envio mensal das contas |
 | 18 | dashboard_widgets_coluna | Coluna escolhida para cada widget |
 | 19 | orcamento_mensal_por_categoria | Orcamento mensal por categoria |
+| 20 | alerta_de_orcamento | Alerta de orcamento por e-mail/Telegram |
 
 ## Sessoes e troca de senha
 

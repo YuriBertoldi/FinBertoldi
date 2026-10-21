@@ -42,6 +42,7 @@ const (
 
 // OrcamentoDaCategoria e o gasto do mes de uma categoria com orcamento.
 type OrcamentoDaCategoria struct {
+	CategoriaID          int
 	Categoria            string
 	Cor                  string
 	Limite               float64
@@ -491,6 +492,9 @@ type Notificacoes struct {
 	DiaEnvio       int  // 1–31; em meses mais curtos envia no último dia
 	MesSeguinte    bool // true = envia as contas do mês seguinte ao do envio
 	UltimoEnvio    *time.Time
+	// Alerta quando um orcamento passa de 80% e de 100% no mes.
+	AlertaOrcamentoEmail    bool
+	AlertaOrcamentoTelegram bool
 }
 
 // NotificacaoPendente é um usuário que deve receber o envio mensal hoje.

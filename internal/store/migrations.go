@@ -409,6 +409,24 @@ var migrations = []migration{
 				CHECK (orcamento_mensal IS NULL OR orcamento_mensal > 0)`,
 		},
 	},
+	{
+		version: 20,
+		name:    "alerta_de_orcamento",
+		stmts: []string{
+			`ALTER TABLE user_notificacoes ADD COLUMN IF NOT EXISTS alerta_orcamento_email BOOLEAN NOT NULL DEFAULT false`,
+			`ALTER TABLE user_notificacoes ADD COLUMN IF NOT EXISTS alerta_orcamento_telegram BOOLEAN NOT NULL DEFAULT false`,
+			// Um registro por usuario, categoria, mes e faixa: e o que impede o
+			// mesmo alerta de sair de novo a cada hora.
+			`CREATE TABLE IF NOT EXISTS alertas_de_orcamento_enviados (
+				user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+				categoria_id INTEGER NOT NULL REFERENCES categorias(id) ON DELETE CASCADE,
+				mes          DATE NOT NULL,
+				faixa        VARCHAR(10) NOT NULL CHECK (faixa IN ('alerta', 'estourado')),
+				enviado_em   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+				PRIMARY KEY (user_id, categoria_id, mes, faixa)
+			)`,
+		},
+	},
 }
 
 // RunMigrations executa as migrations pendentes registrando cada uma em schema_migrations.

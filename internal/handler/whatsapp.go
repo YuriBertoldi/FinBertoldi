@@ -101,6 +101,8 @@ func HandleSaveNotificacoes(db *sql.DB) http.HandlerFunc {
 		atual.TelegramChatID = r.FormValue("telegram_chat_id")
 		atual.DiaEnvio = dia
 		atual.MesSeguinte = r.FormValue("mes_referencia") == "seguinte"
+		atual.AlertaOrcamentoEmail = r.FormValue("alerta_orcamento_email") == "on"
+		atual.AlertaOrcamentoTelegram = r.FormValue("alerta_orcamento_telegram") == "on"
 		if err := store.SaveNotificacoes(db, u.ID, atual); err != nil {
 			http.Redirect(w, r, "/notificacoes?erro=Erro ao salvar: "+err.Error(), http.StatusSeeOther)
 			return

@@ -75,7 +75,7 @@ jobs:
         env:
           DATABASE_URL: postgres://fincontrol:fincontrol@localhost:5432/fincontrol?sslmode=disable
           INTEGRATION_REQUIRED: "1"
-        run: go test -tags=integration ./internal/store/ ./internal/integrations/ ./internal/handler/ ./internal/auth/ -v -count=1
+        run: go test -tags=integration ./internal/store/ ./internal/integrations/ ./internal/handler/ ./internal/auth/ ./internal/contas/ -v -count=1
 
   # Garante que os Dockerfiles constroem antes de chegar ao servidor.
   docker-images:
