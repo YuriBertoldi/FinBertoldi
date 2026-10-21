@@ -357,20 +357,21 @@ type RegraDeCategorizacao struct {
 }
 
 type TransacaoBanco struct {
-	ID           int
-	Data         time.Time
-	Descricao    string
-	Valor        float64
-	Tipo         string // "debito" ou "credito"
-	Categoria    string
-	Origem       string // "csv", "ofx", "pluggy"
-	Banco        string
-	FitID        string
-	Status       string // "pendente", "categorizada", "convertida", "ignorada"
-	DespesaID    *int
-	ReceitaID    *int
-	PluggyItemID string
-	CriadoEm     time.Time
+	ID             int
+	Data           time.Time
+	Descricao      string
+	Valor          float64
+	Tipo           string // "debito" ou "credito"
+	Categoria      string
+	Origem         string // "csv", "ofx", "pluggy"
+	Banco          string
+	FitID          string
+	Status         string // "pendente", "categorizada", "convertida", "ignorada"
+	DespesaID      *int
+	ReceitaID      *int
+	ParcelamentoID *int
+	PluggyItemID   string
+	CriadoEm       time.Time
 }
 
 type PluggyItem struct {
