@@ -278,7 +278,9 @@ type MatchReceita struct {
 
 // BuscarMatchesDespesas busca despesas que combinam com a transação por valor e nome
 func BuscarMatchesDespesas(db *sql.DB, fid int, valor float64, descricao string) ([]MatchDespesa, error) {
-	// Busca despesas com valor similar (±20%) e ativas
+	// Busca despesas com valor similar (±20%) e ativas. Debito chega negativo
+	// do extrato; despesa e cadastrada positiva.
+	valor = math.Abs(valor)
 	margem := valor * 0.20
 	rows, err := db.Query(`SELECT id, nome, valor, categoria
 		FROM despesas_fixas WHERE family_id=$1 AND ativa=true
@@ -306,6 +308,7 @@ func BuscarMatchesDespesas(db *sql.DB, fid int, valor float64, descricao string)
 
 // BuscarMatchesReceitas busca receitas que combinam com a transação por valor e data
 func BuscarMatchesReceitas(db *sql.DB, fid int, valor float64, data time.Time) ([]MatchReceita, error) {
+	valor = math.Abs(valor)
 	margem := valor * 0.20
 	rows, err := db.Query(`SELECT id, descricao, valor, data, tipo
 		FROM receitas WHERE family_id=$1
@@ -334,7 +337,10 @@ func BuscarMatchesReceitas(db *sql.DB, fid int, valor float64, data time.Time) (
 
 // BuscarMatchesParcelamentos busca parcelas que combinam por valor no mês da transação
 func BuscarMatchesParcelamentos(db *sql.DB, fid int, valor float64, data time.Time) ([]MatchDespesa, error) {
-	mes := data.Format("2006-01")
+	// parcelamentos_mes.mes e DATE (primeiro dia do mes); o texto "2026-10"
+	// nao e data valida no PostgreSQL. Debito chega negativo; a parcela, positiva.
+	mes := primeiroDiaDoMes(data)
+	valor = math.Abs(valor)
 	margem := valor * 0.20
 	rows, err := db.Query(`SELECT p.id, p.descricao, p.valor_parcela, COALESCE(p.descricao,'')
 		FROM parcelamentos p
