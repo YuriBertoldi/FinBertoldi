@@ -427,6 +427,28 @@ var migrations = []migration{
 			)`,
 		},
 	},
+	{
+		version: 21,
+		name:    "regras_de_categorizacao",
+		stmts: []string{
+			// Categoria original que veio do banco (ex.: "Groceries" do Pluggy).
+			// Fica guardada para as regras continuarem casando depois que a
+			// categoria da transacao for trocada pela da familia.
+			`ALTER TABLE transacoes_banco ADD COLUMN IF NOT EXISTS categoria_do_banco VARCHAR(255) NOT NULL DEFAULT ''`,
+			`UPDATE transacoes_banco t SET categoria_do_banco = t.categoria
+				WHERE t.categoria_do_banco = '' AND t.categoria <> ''
+				  AND NOT EXISTS (SELECT 1 FROM categorias c WHERE c.family_id = t.family_id AND c.nome = t.categoria)`,
+			`CREATE TABLE IF NOT EXISTS regras_de_categorizacao (
+				id           SERIAL PRIMARY KEY,
+				family_id    INTEGER NOT NULL REFERENCES families(id),
+				campo        VARCHAR(20) NOT NULL CHECK (campo IN ('descricao', 'categoria_do_banco')),
+				texto        VARCHAR(100) NOT NULL CHECK (texto <> ''),
+				categoria_id INTEGER NOT NULL REFERENCES categorias(id) ON DELETE CASCADE,
+				criado_em    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+				UNIQUE (family_id, campo, texto)
+			)`,
+		},
+	},
 }
 
 // RunMigrations executa as migrations pendentes registrando cada uma em schema_migrations.

@@ -89,6 +89,9 @@ func TestIsolamento_OperacoesPorIDNaoAlteramOutraFamilia(t *testing.T) {
 		{"categorizar transacao", func(db *sql.DB, fid int, r registrosDaFamilia) error {
 			return CategorizarTransacao(db, fid, r.transacaoID, "Mercado")
 		}},
+		{"excluir regra de categorizacao", func(db *sql.DB, fid int, r registrosDaFamilia) error {
+			return ExcluirRegraDeCategorizacao(db, fid, r.regraID)
+		}},
 		{"excluir conexao Pluggy", func(db *sql.DB, fid int, r registrosDaFamilia) error {
 			return DeletePluggyItem(db, fid, r.pluggyItemID)
 		}},
@@ -118,7 +121,7 @@ func TestIsolamento_OperacoesPorIDNaoAlteramOutraFamilia(t *testing.T) {
 
 type registrosDaFamilia struct {
 	categoriaID, cartaoID, investimentoID, receitaID, reservaID int
-	emprestimoID, parcelamentoID, transacaoID                   int
+	emprestimoID, parcelamentoID, transacaoID, regraID          int
 	pluggyItemID                                                string
 }
 
@@ -142,18 +145,22 @@ func criarRegistrosDaFamilia(t *testing.T, db *sql.DB, fid int, mes time.Time) r
 	}})
 	falharSeErro("transacao", err)
 	falharSeErro("pluggy", CreatePluggyItem(db, fid, "item-de-teste", "Banco"))
+	var categoriaID int
+	db.QueryRow(`SELECT id FROM categorias WHERE family_id=$1`, fid).Scan(&categoriaID)
+	falharSeErro("regra", CriarRegraDeCategorizacao(db, fid, "descricao", "MERCADO", categoriaID))
 
 	var registros registrosDaFamilia
 	registros.pluggyItemID = "item-de-teste"
 	for tabela, destino := range map[string]*int{
-		"categorias":         &registros.categoriaID,
-		"cartoes":            &registros.cartaoID,
-		"investimentos":      &registros.investimentoID,
-		"receitas":           &registros.receitaID,
-		"reserva_emergencia": &registros.reservaID,
-		"emprestimos":        &registros.emprestimoID,
-		"parcelamentos":      &registros.parcelamentoID,
-		"transacoes_banco":   &registros.transacaoID,
+		"categorias":              &registros.categoriaID,
+		"cartoes":                 &registros.cartaoID,
+		"investimentos":           &registros.investimentoID,
+		"receitas":                &registros.receitaID,
+		"reserva_emergencia":      &registros.reservaID,
+		"emprestimos":             &registros.emprestimoID,
+		"parcelamentos":           &registros.parcelamentoID,
+		"transacoes_banco":        &registros.transacaoID,
+		"regras_de_categorizacao": &registros.regraID,
 	} {
 		if err := db.QueryRow(`SELECT id FROM `+tabela+` WHERE family_id=$1 ORDER BY id LIMIT 1`, fid).Scan(destino); err != nil {
 			t.Fatalf("ler id em %s: %v", tabela, err)
@@ -179,6 +186,7 @@ func fotografiaDaFamilia(t *testing.T, db *sql.DB, fid int) string {
 		`SELECT to_jsonb(x)::text FROM parcelamentos_mes x WHERE parcelamento_id IN (SELECT id FROM parcelamentos WHERE family_id=$1)`,
 		`SELECT to_jsonb(x)::text FROM transacoes_banco x WHERE family_id=$1`,
 		`SELECT to_jsonb(x)::text FROM pluggy_items x WHERE family_id=$1`,
+		`SELECT to_jsonb(x)::text FROM regras_de_categorizacao x WHERE family_id=$1`,
 	}
 	var fotografia string
 	for _, consulta := range consultas {

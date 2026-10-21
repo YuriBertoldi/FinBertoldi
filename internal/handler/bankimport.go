@@ -355,6 +355,9 @@ func HandleImportCSV(db *sql.DB) http.HandlerFunc {
 			renderTransacoesComErro(w, r, db, u, "Erro ao salvar: "+err.Error())
 			return
 		}
+		if _, err := store.AplicarRegrasDeCategorizacao(db, fid); err != nil {
+			log.Printf("regras de categorizacao da familia %d: %v", fid, err)
+		}
 
 		renderTransacoesComResultado(w, r, db, u, &models.ImportBancoResultado{
 			Total:      len(txns),
@@ -394,6 +397,9 @@ func HandleImportOFX(db *sql.DB) http.HandlerFunc {
 		if err != nil {
 			renderTransacoesComErro(w, r, db, u, "Erro ao salvar: "+err.Error())
 			return
+		}
+		if _, err := store.AplicarRegrasDeCategorizacao(db, fid); err != nil {
+			log.Printf("regras de categorizacao da familia %d: %v", fid, err)
 		}
 
 		renderTransacoesComResultado(w, r, db, u, &models.ImportBancoResultado{

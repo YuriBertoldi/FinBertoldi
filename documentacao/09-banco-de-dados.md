@@ -338,9 +338,23 @@ Registro dos alertas de orcamento ja enviados (v20). Impede que o agendador, que
 
 **PK:** `(user_id, categoria_id, mes, faixa)`. `user_notificacoes` ganhou `alerta_orcamento_email` e `alerta_orcamento_telegram` (BOOLEAN, padrao false).
 
+### regras_de_categorizacao
+Regras que trocam a categoria do banco (ex.: "Groceries" do Pluggy) por uma categoria da familia (v21).
+
+| Coluna | Tipo | Descricao |
+|--------|------|-----------|
+| id | SERIAL PK | ID |
+| family_id | INTEGER FK families | Familia |
+| campo | VARCHAR(20) | `descricao` (contem) ou `categoria_do_banco` (igual) |
+| texto | VARCHAR(100) | Texto comparado sem diferenca de maiusculas e acentos |
+| categoria_id | INTEGER FK categorias (CASCADE) | Categoria de destino |
+| criado_em | TIMESTAMPTZ | Data de criacao |
+
+**UNIQUE:** `(family_id, campo, texto)`. `transacoes_banco` ganhou `categoria_do_banco` (VARCHAR, padrao `''`): a categoria original, guardada para as regras continuarem casando depois da troca.
+
 ## Migrations
 
-`RunMigrations()` roda no startup do app, e idempotente e registra cada versao em `schema_migrations`. Versao atual: **20**.
+`RunMigrations()` roda no startup do app, e idempotente e registra cada versao em `schema_migrations`. Versao atual: **21**.
 
 | Versao | Nome | O que faz |
 |--------|------|-----------|
@@ -349,6 +363,7 @@ Registro dos alertas de orcamento ja enviados (v20). Impede que o agendador, que
 | 18 | dashboard_widgets_coluna | Coluna escolhida para cada widget |
 | 19 | orcamento_mensal_por_categoria | Orcamento mensal por categoria |
 | 20 | alerta_de_orcamento | Alerta de orcamento por e-mail/Telegram |
+| 21 | regras_de_categorizacao | Regras de categorizacao automatica + categoria original do banco |
 
 ## Sessoes e troca de senha
 

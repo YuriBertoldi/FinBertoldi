@@ -16,7 +16,71 @@
   <a href="/cadastros?tab=cartoes" class="tab-item {{if eq .TabAtivo "cartoes"}}active{{end}}">
     💳 Cartões
   </a>
+  <a href="/cadastros?tab=regras" class="tab-item {{if eq .TabAtivo "regras"}}active{{end}}">
+    🪄 Regras de categorização
+  </a>
 </div>
+
+{{if .Mensagem}}<div class="alert alert-success">{{.Mensagem}}</div>{{end}}
+
+<!-- ===== TAB: REGRAS DE CATEGORIZACAO ===== -->
+{{if eq .TabAtivo "regras"}}
+<p class="hint">💡 As transações do extrato chegam com a categoria do banco (no Pluggy, em inglês: <em>Groceries</em>, <em>Eating out</em>...), que não conta no orçamento. As regras trocam essa categoria por uma das suas. Valem para transações <strong>pendentes</strong>; categoria escolhida à mão não é alterada. Rodam ao criar a regra, a cada importação e de hora em hora (o que o Pluggy sincroniza). Maiúsculas e acentos não importam; regra de descrição vale antes da de categoria do banco, e texto mais longo antes do mais curto.</p>
+
+<article>
+  <form method="POST" action="/cadastros/regras">
+    <div class="grid">
+      <label>Quando
+        <select name="campo" required>
+          <option value="categoria_do_banco">a categoria do banco for</option>
+          <option value="descricao">a descrição contiver</option>
+        </select>
+      </label>
+      <label>Texto
+        <input type="text" name="texto" list="categorias-do-banco" maxlength="100" placeholder="Ex.: Groceries ou IFOOD" required>
+        <datalist id="categorias-do-banco">
+          {{range .CategoriasDoBancoSemRegra}}<option value="{{.}}">{{end}}
+        </datalist>
+      </label>
+      <label>Usar a categoria
+        <select name="categoria_id" required>
+          {{range .Categorias}}{{if .Ativo}}<option value="{{.ID}}">{{.Nome}}</option>{{end}}{{end}}
+        </select>
+      </label>
+    </div>
+    <button type="submit">+ Criar regra</button>
+  </form>
+  {{if .CategoriasDoBancoSemRegra}}
+  <small class="muted">Categorias do banco em transações pendentes ainda sem regra: {{range $i, $c := .CategoriasDoBancoSemRegra}}{{if $i}}, {{end}}<strong>{{$c}}</strong>{{end}}</small>
+  {{end}}
+</article>
+
+<div class="table-responsive">
+  <table>
+    <thead>
+      <tr><th>Ordem</th><th>Quando</th><th>Texto</th><th>Usar a categoria</th><th>Ações</th></tr>
+    </thead>
+    <tbody>
+      {{range $i, $r := .Regras}}
+      <tr>
+        <td>{{somarUm $i}}º</td>
+        <td>{{if eq $r.Campo "descricao"}}a descrição contiver{{else}}a categoria do banco for{{end}}</td>
+        <td><strong>{{$r.Texto}}</strong></td>
+        <td>{{$r.Categoria}}</td>
+        <td class="actions">
+          <form method="POST" action="/cadastros/regras/{{$r.ID}}/delete" style="display:inline"
+                onsubmit="return confirm('Excluir esta regra? Transações já categorizadas não voltam atrás.')">
+            <button type="submit" class="btn-action danger" title="Excluir">🗑️</button>
+          </form>
+        </td>
+      </tr>
+      {{else}}
+      <tr><td colspan="5" class="muted center">Nenhuma regra ainda.</td></tr>
+      {{end}}
+    </tbody>
+  </table>
+</div>
+{{end}}
 
 <!-- ===== TAB: CATEGORIAS ===== -->
 {{if eq .TabAtivo "categorias"}}

@@ -73,7 +73,7 @@ Browser (HTMX) ──── :443 ────► Caddy (HTTPS)
 |--------|-----------|
 | Backend | Go 1.27 — `net/http` + `html/template` (stdlib puro, sem frameworks) |
 | Frontend | HTMX 1.9.12 · Chart.js 4.4.1 · Pico CSS v2 · CSS custom (dark/glassmorphism) |
-| Banco de dados | PostgreSQL 16 · lib/pq · 20 migrations automaticas |
+| Banco de dados | PostgreSQL 16 · lib/pq · 21 migrations automaticas |
 | Autenticacao | Sessoes HTTP-only + bcrypt · recuperacao de senha via email · troca de senha encerra as outras sessoes |
 | Importacao | excelize/v2 (XLSX) · ofxgo (OFX/QFX) · CSV com auto-deteccao |
 | Integracoes | Pluggy API · BCB · AwesomeAPI · BrasilAPI · Telegram Bot · Google Sheets · SMTP (Gmail) |
@@ -98,6 +98,7 @@ Browser (HTMX) ──── :443 ────► Caddy (HTTPS)
 ### Bancario
 - **Importacao CSV/OFX** — auto-deteccao de formato, deduplicacao por FitID
 - **Integracao Pluggy** — conexao automatica com bancos brasileiros, sync a cada 6h
+- **Regras de categorizacao** — "categoria do banco e X" ou "descricao contem X" -> categoria da familia (Cadastros -> Regras); aplicadas em transacoes pendentes ao criar a regra, a cada importacao e de hora em hora. Sem elas, o extrato do Pluggy (categorias em ingles) nao entra no orcamento
 - **Conciliacao** — vincular transacoes a despesas/receitas existentes, auto-match por valor/data
 
 ### Integracoes gratuitas (ativaveis por familia)
@@ -162,7 +163,7 @@ No primeiro startup, um usuario admin e criado automaticamente com senha aleator
 docker compose logs app | grep "admin criado"
 ```
 
-> As 20 migrations do banco sao executadas automaticamente.
+> As 21 migrations do banco sao executadas automaticamente.
 
 ---
 
@@ -211,7 +212,7 @@ finBertoldi/
 ├── docker-compose.prod.yml          # Producao
 ├── internal/
 │   ├── models/models.go             # Structs de dominio e page data
-│   ├── store/                       # Queries SQL, um arquivo por dominio + migrations.go (v1-v20)
+│   ├── store/                       # Queries SQL, um arquivo por dominio + migrations.go (v1-v21)
 │   ├── auth/
 │   │   ├── auth.go                  # Middlewares + sessoes + bcrypt
 │   │   └── email.go                 # Envio de e-mail SMTP (Gmail embutido)
