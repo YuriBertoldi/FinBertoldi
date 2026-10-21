@@ -28,6 +28,21 @@ func ToggleParcelamentoMesPago(db *sql.DB, fid, parcID int, mes time.Time) (bool
 	return pago, err
 }
 
+// TotalDeParcelasNoMes soma as parcelas vigentes no mes com a mesma regra do
+// dashboard (GetParcelamentosVigentesNoMes, que considera a parcela atual).
+// Historico e Planejamento usam esta funcao para nao divergirem do dashboard.
+func TotalDeParcelasNoMes(db *sql.DB, fid int, mes time.Time) (float64, error) {
+	parcelamentos, err := GetParcelamentosVigentesNoMes(db, fid, mes)
+	if err != nil {
+		return 0, err
+	}
+	var total float64
+	for _, parcelamento := range parcelamentos {
+		total += parcelamento.ValorParcela
+	}
+	return total, nil
+}
+
 func GetParcelamentosVigentesNoMes(db *sql.DB, fid int, mes time.Time) ([]models.Parcelamento, error) {
 	mesStr := mes.Format("2006-01")
 	rows, err := db.Query(`
