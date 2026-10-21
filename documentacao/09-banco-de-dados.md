@@ -352,9 +352,17 @@ Regras que trocam a categoria do banco (ex.: "Groceries" do Pluggy) por uma cate
 
 **UNIQUE:** `(family_id, campo, texto)`. `transacoes_banco` ganhou `categoria_do_banco` (VARCHAR, padrao `''`): a categoria original, guardada para as regras continuarem casando depois da troca.
 
+### metas / metas_aportes
+Metas financeiras da familia (v22). O total guardado e a soma de `metas_aportes.valor` (retirada entra negativa).
+
+| Tabela | Colunas |
+|--------|---------|
+| metas | id, family_id (FK), nome (VARCHAR 80, nao vazio), valor_alvo (NUMERIC > 0), data_alvo (DATE, primeiro dia do mes do prazo), criado_em |
+| metas_aportes | id, meta_id (FK CASCADE), family_id (FK), valor (NUMERIC != 0), data (DATE), criado_em |
+
 ## Migrations
 
-`RunMigrations()` roda no startup do app, e idempotente e registra cada versao em `schema_migrations`. Versao atual: **21**.
+`RunMigrations()` roda no startup do app, e idempotente e registra cada versao em `schema_migrations`. Versao atual: **22**.
 
 | Versao | Nome | O que faz |
 |--------|------|-----------|
@@ -364,6 +372,7 @@ Regras que trocam a categoria do banco (ex.: "Groceries" do Pluggy) por uma cate
 | 19 | orcamento_mensal_por_categoria | Orcamento mensal por categoria |
 | 20 | alerta_de_orcamento | Alerta de orcamento por e-mail/Telegram |
 | 21 | regras_de_categorizacao | Regras de categorizacao automatica + categoria original do banco |
+| 22 | metas_financeiras | Metas financeiras e seus aportes |
 
 ## Sessoes e troca de senha
 

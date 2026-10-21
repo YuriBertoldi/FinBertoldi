@@ -726,6 +726,19 @@ h1, h2, h3, h4 {
 .detalhes-mes summary:hover { background: var(--border-soft); }
 .detalhes-mes > div { padding: 0 1.5rem 1.5rem; }
 
+/* Metas financeiras (Planejamento); a barra reaproveita .orcamento-barra. */
+.metas-lista { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1rem; }
+.meta-card { margin: 0; padding: 1rem 1.1rem; }
+.meta-cabecalho { display: flex; justify-content: space-between; align-items: center; gap: .5rem; padding: 0; margin: 0 0 .4rem; background: none; border: 0; }
+.meta-valores { margin: 0; font-size: var(--fs-sm); }
+.meta-prazo { margin: .2rem 0 .6rem; font-size: var(--fs-xs); }
+.meta-acoes { display: flex; justify-content: space-between; align-items: center; gap: .5rem; padding: 0; margin: 0; background: none; border: 0; }
+.meta-aporte { display: flex; align-items: center; gap: .4rem; margin: 0; flex: 1; }
+.meta-aporte input[type="text"] { margin: 0; max-width: 8rem; padding: .3rem .5rem; }
+.meta-retirada { display: inline-flex; align-items: center; gap: .25rem; font-size: var(--fs-xs); margin: 0; white-space: nowrap; }
+.meta-concluida .orcamento-barra > span { background: var(--color-sobra); }
+.meta-vencida .orcamento-barra > span { background: var(--color-warn); }
+
 /* Orcamento do mes: barra verde ate 80%, amarela ate 100%, vermelha acima. */
 .orcamento-lista { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: .9rem; }
 .orcamento-item { list-style: none; }

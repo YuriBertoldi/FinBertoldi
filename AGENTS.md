@@ -16,7 +16,7 @@ Este arquivo e a memoria operacional do Codex para este repositorio.
 ## Estrutura de pacotes
 - `main.go` — wiring: rotas + startup
 - `internal/models/` — structs de dominio e page data
-- `internal/store/` — queries PostgreSQL + RunMigrations() (v1-v21) + EnsureAdmin()
+- `internal/store/` — queries PostgreSQL + RunMigrations() (v1-v22) + EnsureAdmin()
 - `internal/auth/` — sessoes, bcrypt, middlewares (Protected, AdminOnly, FamilyAdminOnly, ScreenProtected)
 - `internal/handler/` — handlers HTTP + InitTemplates() + helpers + reports.go + importexport.go + bankimport.go + whatsapp.go
 - `internal/contas/` — resumo das contas do mes + envio e-mail/Telegram + agendador mensal
@@ -84,7 +84,7 @@ Dados de acesso ao servidor (IP, SSH key, credenciais) estao em `PRODUCAO.md` (i
 Todos os dados isolados por `family_id`. Toda query inclui `WHERE family_id = $X`.
 
 ## Migracoes
-`RunMigrations()` e idempotente e roda no startup. 21 migrations.
+`RunMigrations()` e idempotente e roda no startup. 22 migrations.
 
 Tabelas:
 `families` → `users` → `sessions` → `categorias` → `cartoes` → `despesas_fixas` → `despesas_fixas_mes` → `parcelamentos` → `receitas` → `investimentos` → `reserva_emergencia` → `emprestimos` → `emprestimos_pagamentos` → `screen_permissions` → `transacoes_banco` → `pluggy_items` → `integracoes_config` → `password_resets` → `dados_economicos` → `feriados` → `integracoes_kv` → `dashboard_widgets` → `user_notificacoes`

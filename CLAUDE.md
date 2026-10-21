@@ -14,7 +14,7 @@ Sistema de controle financeiro familiar em Go 1.27 + PostgreSQL 16 + HTMX.
 ## Estrutura de pacotes
 - `main.go` — wiring: rotas + startup
 - `internal/models/` — structs de dominio e page data
-- `internal/store/` — queries PostgreSQL, um arquivo por dominio (`despesas.go`, `usuarios.go`...); `migrations.go` com RunMigrations() (21 migrations); mapa em `documentacao/03-store.md`
+- `internal/store/` — queries PostgreSQL, um arquivo por dominio (`despesas.go`, `usuarios.go`...); `migrations.go` com RunMigrations() (22 migrations); mapa em `documentacao/03-store.md`
 - `internal/auth/` — sessoes, bcrypt, middlewares (Protected, AdminOnly, FamilyAdminOnly, ScreenProtected) + email.go (SMTP)
 - `internal/handler/` — handlers HTTP, um arquivo por tela (`despesas.go`, `receitas.go`, `autenticacao.go`...); `templates.go` (InitTemplates/render); mapa em `documentacao/05-handler.md`
 - `internal/integrations/` — integracoes gratuitas (BCB, cotacoes, Telegram, BrasilAPI, Google Sheets) + scheduler
@@ -62,7 +62,7 @@ Ativadas por familia via `/integracoes`. Scheduler em background coleta dados:
 - **Telegram** (alertas de vencimento) — a cada 24h
 - **Google Sheets** — Service Account; abas Resumo/Contas/Receitas/Parcelamentos/Investimentos/Transacoes, 1x/dia
 
-## Tabelas do banco (21 migrations)
+## Tabelas do banco (22 migrations)
 `families` → `users` → `sessions` → `categorias` → `cartoes` → `despesas_fixas` → `despesas_fixas_mes` → `parcelamentos` → `parcelamentos_mes` → `receitas` → `investimentos` → `reserva_emergencia` → `emprestimos` → `emprestimos_pagamentos` → `screen_permissions` → `transacoes_banco` → `pluggy_items` → `integracoes_config` → `password_resets` → `dados_economicos` → `feriados` → `integracoes_kv` → `dashboard_widgets` → `user_notificacoes`
 
 ## Documentacao

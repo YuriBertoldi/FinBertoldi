@@ -21,6 +21,7 @@
 | `dashboard_widgets.go` | Layout dos widgets do dashboard |
 | `alertas_de_orcamento.go` | Quem pediu alerta de orcamento e quais faixas ja foram avisadas no mes |
 | `regras_de_categorizacao.go` | Regras "descricao contem X" / "categoria do banco e X" -> categoria da familia; `AplicarRegrasDeCategorizacao` (so pendentes cuja categoria nao e da familia) |
+| `metas.go` | Metas financeiras: `CriarMeta`, `RegistrarAporteNaMeta` (so na meta da familia), `ExcluirMeta`, `Metas` (com o total guardado) |
 | `orcamentos.go` | Orcamento mensal por categoria: `DefinirOrcamentoMensalDaCategoria` e `OrcamentosDoMes` (gasto = despesas fixas ativas + debitos do extrato no mes, sem transacoes convertidas ou ignoradas) |
 | `notificacoes.go` | Envio mensal das contas |
 
@@ -40,7 +41,7 @@ Camada de acesso a dados. Todas as queries SQL do sistema estao neste pacote. Ta
 1. `DATABASE_URL` (prioridade, usado em producao)
 2. Variaveis individuais: `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASS`, `DB_NAME`
 
-## Migrations (v1-v21)
+## Migrations (v1-v22)
 
 Executadas automaticamente no startup via `RunMigrations()`. Cada migration e registrada na tabela `schema_migrations` (version + nome + data de aplicacao). Idempotentes: se ja aplicada, e ignorada.
 
@@ -67,6 +68,7 @@ Executadas automaticamente no startup via `RunMigrations()`. Cada migration e re
 | 19 | orcamento_mensal_por_categoria | Coluna `orcamento_mensal` em `categorias` (NULL = sem orcamento; CHECK > 0) |
 | 20 | alerta_de_orcamento | Preferencias `alerta_orcamento_email`/`_telegram` em `user_notificacoes` e tabela `alertas_de_orcamento_enviados` (um registro por usuario, categoria, mes e faixa) |
 | 21 | regras_de_categorizacao | Tabela `regras_de_categorizacao` e coluna `categoria_do_banco` em `transacoes_banco` (preenchida com a categoria atual quando ela nao e da familia) |
+| 22 | metas_financeiras | Tabelas `metas` (valor-alvo > 0, prazo mensal) e `metas_aportes` (valor != 0; negativo = retirada; CASCADE com a meta) |
 
 ## Funcoes por dominio
 

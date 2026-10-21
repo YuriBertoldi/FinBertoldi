@@ -497,6 +497,9 @@ type PlanejamentoPage struct {
 	FireAgressivo   float64
 	DespesaAnual    float64
 	HistoricoSobra  []MesResumo
+	Metas           []Meta
+	Hoje            time.Time // referencia para prazo e aporte sugerido das metas
+	Mensagem        string
 }
 
 // Notificacoes são as preferências de envio das contas do mês de um usuário.

@@ -5,7 +5,10 @@ import (
 	"fincontrol/internal/auth"
 	"fincontrol/internal/models"
 	"fincontrol/internal/store"
+	"log"
 	"net/http"
+	"net/url"
+	"strings"
 	"time"
 )
 
@@ -43,6 +46,10 @@ func HandlePlanejamento(db *sql.DB) http.HandlerFunc {
 		patrimonio := totalInvest + reserva
 		despesaAnual := despesaMensal * 12
 		historico, _ := store.GetHistoricoMeses(db, fid, mes, 6)
+		metas, err := store.Metas(db, fid)
+		if err != nil {
+			log.Printf("metas da familia %d: %v", fid, err)
+		}
 
 		render(w, "planejamento", models.PlanejamentoPage{
 			BasePage:        bp(db, r, "planejamento", "Planejamento"),
@@ -60,6 +67,61 @@ func HandlePlanejamento(db *sql.DB) http.HandlerFunc {
 			FireModerado:    despesaAnual * 28.5,
 			FireConservador: despesaAnual * 33.3,
 			HistoricoSobra:  historico,
+			Metas:           metas,
+			Hoje:            time.Now(),
+			Mensagem:        r.URL.Query().Get("msg"),
 		})
 	}
+}
+
+func HandleCreateMeta(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		r.ParseForm()
+		fid := auth.CurrentUser(r).FamilyID
+		prazo, err := time.Parse("2006-01", r.FormValue("prazo"))
+		valorAlvo := parseFloat(r.FormValue("valor_alvo"))
+		if err != nil || valorAlvo <= 0 || strings.TrimSpace(r.FormValue("nome")) == "" {
+			redirecionarParaMetas(w, r, "Informe nome, valor-alvo maior que zero e prazo (mês/ano).")
+			return
+		}
+		if err := store.CriarMeta(db, fid, r.FormValue("nome"), valorAlvo, prazo); err != nil {
+			log.Printf("criar meta: %v", err)
+			redirecionarParaMetas(w, r, "Não foi possível criar a meta.")
+			return
+		}
+		redirecionarParaMetas(w, r, "Meta criada.")
+	}
+}
+
+// HandleAporteNaMeta registra um aporte; com "retirada" marcada, o valor entra negativo.
+func HandleAporteNaMeta(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		r.ParseForm()
+		valor := parseFloat(r.FormValue("valor"))
+		if valor <= 0 {
+			redirecionarParaMetas(w, r, "Informe um valor maior que zero.")
+			return
+		}
+		if r.FormValue("retirada") == "on" {
+			valor = -valor
+		}
+		fid := auth.CurrentUser(r).FamilyID
+		if err := store.RegistrarAporteNaMeta(db, fid, parseInt(r.PathValue("id")), valor, time.Now()); err != nil {
+			log.Printf("aporte na meta: %v", err)
+			redirecionarParaMetas(w, r, "Não foi possível registrar.")
+			return
+		}
+		redirecionarParaMetas(w, r, "Registrado.")
+	}
+}
+
+func HandleDeleteMeta(db *sql.DB) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		store.ExcluirMeta(db, auth.CurrentUser(r).FamilyID, parseInt(r.PathValue("id")))
+		redirecionarParaMetas(w, r, "Meta excluída.")
+	}
+}
+
+func redirecionarParaMetas(w http.ResponseWriter, r *http.Request, mensagem string) {
+	http.Redirect(w, r, "/planejamento?msg="+url.QueryEscape(mensagem)+"#metas", http.StatusSeeOther)
 }

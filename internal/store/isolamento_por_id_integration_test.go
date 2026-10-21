@@ -92,6 +92,12 @@ func TestIsolamento_OperacoesPorIDNaoAlteramOutraFamilia(t *testing.T) {
 		{"excluir regra de categorizacao", func(db *sql.DB, fid int, r registrosDaFamilia) error {
 			return ExcluirRegraDeCategorizacao(db, fid, r.regraID)
 		}},
+		{"excluir meta", func(db *sql.DB, fid int, r registrosDaFamilia) error {
+			return ExcluirMeta(db, fid, r.metaID)
+		}},
+		{"registrar aporte na meta", func(db *sql.DB, fid int, r registrosDaFamilia) error {
+			return RegistrarAporteNaMeta(db, fid, r.metaID, 100, mesDoTeste)
+		}},
 		{"excluir conexao Pluggy", func(db *sql.DB, fid int, r registrosDaFamilia) error {
 			return DeletePluggyItem(db, fid, r.pluggyItemID)
 		}},
@@ -121,7 +127,7 @@ func TestIsolamento_OperacoesPorIDNaoAlteramOutraFamilia(t *testing.T) {
 
 type registrosDaFamilia struct {
 	categoriaID, cartaoID, investimentoID, receitaID, reservaID int
-	emprestimoID, parcelamentoID, transacaoID, regraID          int
+	emprestimoID, parcelamentoID, transacaoID, regraID, metaID  int
 	pluggyItemID                                                string
 }
 
@@ -148,6 +154,7 @@ func criarRegistrosDaFamilia(t *testing.T, db *sql.DB, fid int, mes time.Time) r
 	var categoriaID int
 	db.QueryRow(`SELECT id FROM categorias WHERE family_id=$1`, fid).Scan(&categoriaID)
 	falharSeErro("regra", CriarRegraDeCategorizacao(db, fid, "descricao", "MERCADO", categoriaID))
+	falharSeErro("meta", CriarMeta(db, fid, "Viagem", 5000, mes.AddDate(1, 0, 0)))
 
 	var registros registrosDaFamilia
 	registros.pluggyItemID = "item-de-teste"
@@ -161,6 +168,7 @@ func criarRegistrosDaFamilia(t *testing.T, db *sql.DB, fid int, mes time.Time) r
 		"parcelamentos":           &registros.parcelamentoID,
 		"transacoes_banco":        &registros.transacaoID,
 		"regras_de_categorizacao": &registros.regraID,
+		"metas":                   &registros.metaID,
 	} {
 		if err := db.QueryRow(`SELECT id FROM `+tabela+` WHERE family_id=$1 ORDER BY id LIMIT 1`, fid).Scan(destino); err != nil {
 			t.Fatalf("ler id em %s: %v", tabela, err)
@@ -187,6 +195,8 @@ func fotografiaDaFamilia(t *testing.T, db *sql.DB, fid int) string {
 		`SELECT to_jsonb(x)::text FROM transacoes_banco x WHERE family_id=$1`,
 		`SELECT to_jsonb(x)::text FROM pluggy_items x WHERE family_id=$1`,
 		`SELECT to_jsonb(x)::text FROM regras_de_categorizacao x WHERE family_id=$1`,
+		`SELECT to_jsonb(x)::text FROM metas x WHERE family_id=$1`,
+		`SELECT to_jsonb(x)::text FROM metas_aportes x WHERE meta_id IN (SELECT id FROM metas WHERE family_id=$1)`,
 	}
 	var fotografia string
 	for _, consulta := range consultas {
