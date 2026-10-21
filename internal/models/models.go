@@ -283,9 +283,12 @@ type IntegracaoConfig struct {
 
 type CadastrosPage struct {
 	BasePage
-	TabAtivo   string
-	Categorias []Categoria
-	Cartoes    []Cartao
+	TabAtivo                  string
+	Categorias                []Categoria
+	Cartoes                   []Cartao
+	Regras                    []RegraDeCategorizacao
+	CategoriasDoBancoSemRegra []string
+	Mensagem                  string
 }
 
 type ReceitasPage struct {
@@ -338,6 +341,18 @@ type RegisterPage struct {
 }
 
 // --- Transações Bancárias ---
+
+// RegraDeCategorizacao troca a categoria de transacoes pendentes do extrato.
+// Campo "descricao": a descricao contem Texto. Campo "categoria_do_banco": a
+// categoria que veio do banco e igual a Texto. Maiusculas e acentos nao
+// importam nos dois casos.
+type RegraDeCategorizacao struct {
+	ID          int
+	Campo       string
+	Texto       string
+	CategoriaID int
+	Categoria   string // nome atual da categoria de destino
+}
 
 type TransacaoBanco struct {
 	ID           int

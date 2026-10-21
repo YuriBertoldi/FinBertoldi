@@ -108,14 +108,19 @@ func EmailHTML(txt string) string {
 </body></html>`
 }
 
-// StartScheduler verifica de hora em hora quem deve receber o envio mensal hoje
-// e quais orcamentos passaram de 80% ou de 100%.
+// StartScheduler verifica de hora em hora quem deve receber o envio mensal hoje,
+// aplica as regras de categorizacao e avisa os orcamentos que passaram de 80% ou de 100%.
 func StartScheduler(db *sql.DB) {
 	go func() {
 		time.Sleep(15 * time.Second)
 		for {
 			agora := time.Now()
 			EnviarMensais(db, agora)
+			// Antes do alerta: as transacoes sincronizadas pelo Pluggy chegam com
+			// a categoria do banco, que so conta no orcamento depois das regras.
+			if err := store.AplicarRegrasEmTodasAsFamilias(db); err != nil {
+				log.Printf("[regras-categorizacao] %v", err)
+			}
 			EnviarAlertasDeOrcamento(db, agora)
 			time.Sleep(time.Hour)
 		}

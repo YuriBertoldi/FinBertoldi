@@ -57,6 +57,8 @@ func buildFuncMap() template.FuncMap {
 			return fmt.Sprintf("%.0f%%", (v/total)*100)
 		},
 		"mesDisplay": mesDisplay,
+		// somarUm transforma o indice do range (0, 1...) em posicao (1, 2...).
+		"somarUm": func(indice int) int { return indice + 1 },
 		"seq": func(n int) []int {
 			s := make([]int, n)
 			for i := range s {

@@ -16,7 +16,7 @@ Comandos de deploy e backup estao la tambem.
 ```
 internal/
   models/   — structs de dominio + page data
-  store/    — queries PostgreSQL + RunMigrations() (v1-v20) + EnsureAdmin()
+  store/    — queries PostgreSQL + RunMigrations() (v1-v21) + EnsureAdmin()
   auth/     — sessoes, bcrypt, middlewares
   handler/  — handlers HTTP, InitTemplates(), reports.go, importexport.go, bankimport.go, whatsapp.go
   contas/   — contas do mes (WhatsApp) + envio e-mail/Telegram + agendador mensal
@@ -45,7 +45,7 @@ pluggy-service/ — microservico de integracao bancaria Pluggy
 Todos os dados isolados por `family_id`. Toda query inclui `WHERE family_id = $X`.
 
 ## Migracao (RunMigrations)
-Idempotente, roda no startup. 20 migrations.
+Idempotente, roda no startup. 21 migrations.
 Tabelas: `families` → `users` → `sessions` → `categorias` → `cartoes` → `despesas_fixas` → `despesas_fixas_mes` → `parcelamentos` → `receitas` → `investimentos` → `reserva_emergencia` → `emprestimos` → `emprestimos_pagamentos` → `screen_permissions` → `transacoes_banco` → `pluggy_items` → `integracoes_config` → `password_resets` → `dados_economicos` → `feriados` → `integracoes_kv` → `dashboard_widgets` → `user_notificacoes`
 
 ## Grupos de categoria (dashboard)

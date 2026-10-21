@@ -113,6 +113,8 @@ func main() {
 	mux.HandleFunc("POST /cadastros/categorias/{id}/update", auth.ScreenProtected(db, "cadastros", handler.HandleUpdateCategoria(db)))
 	mux.HandleFunc("POST /cadastros/categorias/{id}/delete", auth.ScreenProtected(db, "cadastros", handler.HandleDeleteCategoria(db)))
 	mux.HandleFunc("POST /cadastros/categorias/{id}/toggle-ativa", auth.ScreenProtected(db, "cadastros", handler.HandleToggleCategoriaAtiva(db)))
+	mux.HandleFunc("POST /cadastros/regras", auth.ScreenProtected(db, "cadastros", handler.HandleCreateRegraDeCategorizacao(db)))
+	mux.HandleFunc("POST /cadastros/regras/{id}/delete", auth.ScreenProtected(db, "cadastros", handler.HandleDeleteRegraDeCategorizacao(db)))
 	mux.HandleFunc("POST /cadastros/cartoes", auth.ScreenProtected(db, "cadastros", handler.HandleCreateCartao(db)))
 	mux.HandleFunc("POST /cadastros/cartoes/{id}/update", auth.ScreenProtected(db, "cadastros", handler.HandleUpdateCartao(db)))
 	mux.HandleFunc("POST /cadastros/cartoes/{id}/delete", auth.ScreenProtected(db, "cadastros", handler.HandleDeleteCartao(db)))
