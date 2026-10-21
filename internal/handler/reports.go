@@ -105,6 +105,7 @@ type rDashboard struct {
 	DespesasVR      []models.DespesaMes
 	Parcelamentos   []models.Parcelamento
 	Historico       []models.MesResumo
+	Projecao        []models.MesProjetado
 }
 
 // --- Handlers ---
@@ -245,6 +246,10 @@ func HandleRelatorioDashboard(db *sql.DB) http.HandlerFunc {
 		_, totalInvestido, _ := store.GetInvestimentosTotais(db, fid)
 		reserva, _ := store.GetReservaEM(db, fid)
 		historico, _ := store.GetHistoricoMeses(db, fid, mes, 6)
+		projecao, err := store.ProjecaoDoFluxoDeCaixa(db, fid, mes, mesesDaProjecao)
+		if err != nil {
+			log.Printf("projecao do fluxo de caixa: %v", err)
+		}
 
 		var totalDespesas float64
 		for _, d := range basicas {
@@ -285,6 +290,7 @@ func HandleRelatorioDashboard(db *sql.DB) http.HandlerFunc {
 			DespesasVR:      vr,
 			Parcelamentos:   parcelamentos,
 			Historico:       historico,
+			Projecao:        projecao,
 		})
 	}
 }

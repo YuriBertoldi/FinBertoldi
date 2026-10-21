@@ -93,6 +93,7 @@ Browser (HTMX) ──── :443 ────► Caddy (HTTPS)
 - **Investimentos** — por instituicao/tipo, totais por categoria
 - **Reserva de emergencia** — depositos e retiradas com saldo
 - **Emprestimos** — devo/me devem, quitacao total ou parcial
+- **Fluxo de caixa projetado** — proximos 12 meses (receitas, despesas fixas e parcelas restantes, sem as antecipadas) em widget com grafico no dashboard e tabela no relatorio geral; avisa o primeiro mes em que as despesas passam as receitas
 - **Metas financeiras** — objetivo com valor-alvo e prazo (no Planejamento); aportes e retiradas registrados na meta, progresso, quanto falta e quanto guardar por mes ate o prazo
 - **Planejamento FIRE** — taxa de poupanca, metas FIRE (conservador/moderado/agressivo), reserva ideal 6-12 meses
 

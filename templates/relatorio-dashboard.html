@@ -8,7 +8,7 @@
     <div class="label">Despesas</div>
     <div class="value">{{.TotalDespesas}}</div>
   </div>
-  <div class="summary-card {{if ge .Sobra 0.0}}green{{else}}red{{end}}">
+  <div class="summary-card {{if ge .Sobra_f 0.0}}green{{else}}red{{end}}">
     <div class="label">Sobra do Mês</div>
     <div class="value">{{.Sobra}}</div>
   </div>
@@ -125,5 +125,34 @@
     {{end}}
   </tbody>
 </table>
+{{end}}
+
+{{if .Projecao}}
+<div class="section-title">Fluxo de Caixa Projetado — Próximos 12 Meses</div>
+<table>
+  <thead>
+    <tr>
+      <th>Mês</th>
+      <th class="num">Receitas</th>
+      <th class="num">Despesas fixas</th>
+      <th class="num">Parcelas</th>
+      <th class="num">Sobra</th>
+      <th class="num">Acumulado</th>
+    </tr>
+  </thead>
+  <tbody>
+    {{range .Projecao}}
+    <tr>
+      <td>{{.Rotulo}}</td>
+      <td class="num">{{brl .Receitas}}</td>
+      <td class="num">{{brl .DespesasFixas}}</td>
+      <td class="num">{{brl .Parcelas}}</td>
+      <td class="num">{{brl .Sobra}}</td>
+      <td class="num">{{brl .SaldoAcumulado}}</td>
+    </tr>
+    {{end}}
+  </tbody>
+</table>
+<p class="muted">Receitas recorrentes e únicas do mês, despesas fixas ativas e parcelas restantes (sem as já antecipadas).</p>
 {{end}}
 {{end}}

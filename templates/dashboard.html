@@ -173,6 +173,23 @@ function moverWidget(btn, dir) {
     options: commonOpts
   });
 
+  // ===== Fluxo de caixa projetado: barras de receita/despesa e linha da sobra acumulada =====
+  const PROJECAO = {{json .Projecao}} || [];
+  if (document.getElementById('chartFluxoDeCaixa'))
+  new Chart(document.getElementById('chartFluxoDeCaixa'), {
+    type: 'bar',
+    data: {
+      labels: PROJECAO.map(m => m.Rotulo),
+      datasets: [
+        { label: 'Receitas', data: PROJECAO.map(m => m.Receitas), backgroundColor: COLOR_RECEITA + 'cc', borderRadius: 6, order: 2 },
+        { label: 'Despesas', data: PROJECAO.map(m => m.Despesas), backgroundColor: COLOR_DESPESA + 'cc', borderRadius: 6, order: 2 },
+        { label: 'Sobra acumulada', data: PROJECAO.map(m => m.SaldoAcumulado), type: 'line', borderColor: COLOR_SOBRA,
+          backgroundColor: COLOR_SOBRA, tension: 0.3, borderWidth: 3, pointRadius: 3, order: 1 }
+      ]
+    },
+    options: commonOpts
+  });
+
   // ===== GRÁFICO 3: Investimentos (bar) =====
   if (document.getElementById('chartInvestido'))
   new Chart(document.getElementById('chartInvestido'), {
@@ -259,7 +276,7 @@ function moverWidget(btn, dir) {
 </div>
 {{end}}
 
-{{define "dash-widget"}}{{$p := .P}}{{if eq .K "grafico_receitas_despesas"}}{{template "dw-grafico_receitas_despesas" $p}}{{else if eq .K "grafico_sobra"}}{{template "dw-grafico_sobra" $p}}{{else if eq .K "grafico_investimentos"}}{{template "dw-grafico_investimentos" $p}}{{else if eq .K "detalhes_mes"}}{{template "dw-detalhes_mes" $p}}{{else if eq .K "parcelamentos"}}{{template "dw-parcelamentos" $p}}{{else if eq .K "reserva_em"}}{{template "dw-reserva_em" $p}}{{else if eq .K "indicadores"}}{{template "dw-indicadores" $p}}{{else if eq .K "feriados"}}{{template "dw-feriados" $p}}{{else if eq .K "orcamento"}}{{template "dw-orcamento" $p}}{{end}}{{end}}
+{{define "dash-widget"}}{{$p := .P}}{{if eq .K "grafico_receitas_despesas"}}{{template "dw-grafico_receitas_despesas" $p}}{{else if eq .K "grafico_sobra"}}{{template "dw-grafico_sobra" $p}}{{else if eq .K "grafico_investimentos"}}{{template "dw-grafico_investimentos" $p}}{{else if eq .K "detalhes_mes"}}{{template "dw-detalhes_mes" $p}}{{else if eq .K "parcelamentos"}}{{template "dw-parcelamentos" $p}}{{else if eq .K "reserva_em"}}{{template "dw-reserva_em" $p}}{{else if eq .K "indicadores"}}{{template "dw-indicadores" $p}}{{else if eq .K "feriados"}}{{template "dw-feriados" $p}}{{else if eq .K "orcamento"}}{{template "dw-orcamento" $p}}{{else if eq .K "fluxo_de_caixa"}}{{template "dw-fluxo_de_caixa" $p}}{{end}}{{end}}
 
 {{define "dw-grafico_receitas_despesas"}}
     <section class="dash-section">
@@ -368,6 +385,20 @@ function moverWidget(btn, dir) {
       <a href="/investimentos" class="outline secondary" role="button" style="font-size:var(--fs-xs);padding:.3rem .8rem">
         Gerenciar →
       </a>
+    </section>
+{{end}}
+
+{{define "dw-fluxo_de_caixa"}}
+    <section class="dash-section">
+      <h3 class="section-title">🔮 Fluxo de caixa — próximos 12 meses</h3>
+      {{if .Projecao}}
+      <p class="muted fluxo-resumo">
+        Receitas recorrentes e únicas, despesas fixas e parcelas restantes (sem as antecipadas).
+        {{with .UltimoMesProjetado}}Sobra acumulada até {{.Rotulo}}: <strong>{{brl .SaldoAcumulado}}</strong>.{{end}}
+      </p>
+      {{with .MesNoVermelho}}<div class="alert alert-erro">⚠️ Em <strong>{{.Rotulo}}</strong> as despesas ({{brl .Despesas}}) passam as receitas ({{brl .Receitas}}).</div>{{end}}
+      <div class="chart-wrap"><canvas id="chartFluxoDeCaixa"></canvas></div>
+      {{end}}
     </section>
 {{end}}
 

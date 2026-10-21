@@ -21,6 +21,7 @@
 | `dashboard_widgets.go` | Layout dos widgets do dashboard |
 | `alertas_de_orcamento.go` | Quem pediu alerta de orcamento e quais faixas ja foram avisadas no mes |
 | `regras_de_categorizacao.go` | Regras "descricao contem X" / "categoria do banco e X" -> categoria da familia; `AplicarRegrasDeCategorizacao` (so pendentes cuja categoria nao e da familia) |
+| `fluxo_de_caixa.go` | `ProjecaoDoFluxoDeCaixa`: proximos N meses com receitas (recorrentes + unicas do mes), despesas fixas ativas e parcelas vigentes pela regra do dashboard (parcela atual), sem as antecipadas |
 | `metas.go` | Metas financeiras: `CriarMeta`, `RegistrarAporteNaMeta` (so na meta da familia), `ExcluirMeta`, `Metas` (com o total guardado) |
 | `orcamentos.go` | Orcamento mensal por categoria: `DefinirOrcamentoMensalDaCategoria` e `OrcamentosDoMes` (gasto = despesas fixas ativas + debitos do extrato no mes, sem transacoes convertidas ou ignoradas) |
 | `notificacoes.go` | Envio mensal das contas |

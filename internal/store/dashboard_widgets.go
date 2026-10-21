@@ -7,7 +7,7 @@ import (
 
 var defaultWidgets = []string{
 	"resumo", "grafico_receitas_despesas", "grafico_sobra", "grafico_investimentos",
-	"detalhes_mes", "parcelamentos", "reserva_em", "indicadores", "feriados", "orcamento",
+	"detalhes_mes", "parcelamentos", "reserva_em", "indicadores", "feriados", "orcamento", "fluxo_de_caixa",
 }
 
 // widgetCatalogo define rótulo e coluna padrão de cada widget, na ordem padrão.
@@ -22,6 +22,7 @@ var widgetCatalogo = []models.DashboardWidget{
 	{Key: "indicadores", Label: "📡 Indicadores", Visivel: true, Coluna: "direita"},
 	{Key: "feriados", Label: "📅 Feriados", Visivel: true, Coluna: "direita"},
 	{Key: "orcamento", Label: "🎯 Orçamento do mês", Visivel: true, Coluna: "direita"},
+	{Key: "fluxo_de_caixa", Label: "🔮 Fluxo de caixa projetado", Visivel: true, Coluna: "esquerda"},
 }
 
 // GetDashboardLayout devolve todos os widgets na ordem salva pelo usuário

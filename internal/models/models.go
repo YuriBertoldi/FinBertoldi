@@ -223,6 +223,8 @@ type DashboardData struct {
 	WidgetsEsquerda []string          // chaves visíveis da coluna esquerda, em ordem
 	WidgetsDireita  []string          // chaves visíveis da coluna direita, em ordem
 	Orcamentos      []OrcamentoDaCategoria
+	Projecao        []MesProjetado // proximos 12 meses a partir do mes exibido
+	MesNoVermelho   *MesProjetado  // primeiro mes projetado com despesas acima das receitas
 }
 
 // DashboardWidget é a configuração de um widget do dashboard para um usuário.
