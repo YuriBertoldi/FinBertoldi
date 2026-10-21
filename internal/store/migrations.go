@@ -449,6 +449,30 @@ var migrations = []migration{
 			)`,
 		},
 	},
+	{
+		version: 22,
+		name:    "metas_financeiras",
+		stmts: []string{
+			`CREATE TABLE IF NOT EXISTS metas (
+				id         SERIAL PRIMARY KEY,
+				family_id  INTEGER NOT NULL REFERENCES families(id),
+				nome       VARCHAR(80) NOT NULL CHECK (nome <> ''),
+				valor_alvo NUMERIC(14,2) NOT NULL CHECK (valor_alvo > 0),
+				data_alvo  DATE NOT NULL,
+				criado_em  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+			)`,
+			`CREATE INDEX IF NOT EXISTS idx_metas_family ON metas(family_id)`,
+			// Retirada entra como valor negativo; zero nao faz sentido.
+			`CREATE TABLE IF NOT EXISTS metas_aportes (
+				id        SERIAL PRIMARY KEY,
+				meta_id   INTEGER NOT NULL REFERENCES metas(id) ON DELETE CASCADE,
+				family_id INTEGER NOT NULL REFERENCES families(id),
+				valor     NUMERIC(14,2) NOT NULL CHECK (valor <> 0),
+				data      DATE NOT NULL DEFAULT CURRENT_DATE,
+				criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+			)`,
+		},
+	},
 }
 
 // RunMigrations executa as migrations pendentes registrando cada uma em schema_migrations.

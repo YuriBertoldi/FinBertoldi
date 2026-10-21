@@ -1,6 +1,7 @@
 {{define "content"}}
 <div class="page-header">
   <h2>🎯 Planejamento Financeiro</h2>
+  <button data-open-dialog="dialog-nova-meta">+ Nova meta</button>
 </div>
 
 <p class="hint">💡 Calculadoras e projeções baseadas nos seus dados reais. Use para se planejar a curto e longo prazo. Valores em <strong>termos reais</strong> (já descontada inflação) seguem práticas do movimento FIRE adaptado ao Brasil.</p>
@@ -36,6 +37,73 @@
     </div>
   </article>
 </div>
+
+<!-- ====== METAS ====== -->
+<section class="dash-section" id="metas">
+  <h3 class="section-title">🏁 Minhas metas</h3>
+  {{if .Mensagem}}<div class="alert alert-success">{{.Mensagem}}</div>{{end}}
+  {{if .Metas}}
+  <div class="metas-lista">
+    {{range .Metas}}{{$situacao := .Situacao $.Hoje}}
+    <article class="meta-card meta-{{$situacao}}">
+      <header class="meta-cabecalho">
+        <strong>{{.Nome}}</strong>
+        {{if eq $situacao "concluida"}}<span class="badge badge-grupo-basica">✅ Concluída</span>
+        {{else if eq $situacao "vencida"}}<span class="badge badge-grupo-cartao">⏰ Prazo vencido</span>{{end}}
+      </header>
+      <p class="meta-valores">{{brl .ValorGuardado}} <span class="muted">de {{brl .ValorAlvo}} · {{printf "%.0f" .PercentualAtingido}}%</span></p>
+      <div class="orcamento-barra" role="progressbar" aria-label="{{.Nome}}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{printf "%.0f" .LarguraDaBarra}}">
+        <span style="width: {{printf "%.1f" .LarguraDaBarra}}%"></span>
+      </div>
+      <p class="muted meta-prazo">
+        Prazo: {{mesDisplay (.DataAlvo.Format "2006-01")}}
+        {{if eq $situacao "em_andamento"}} · {{.MesesRestantes $.Hoje}} {{if eq (.MesesRestantes $.Hoje) 1}}mês{{else}}meses{{end}} · guardar <strong>{{brl (.AporteMensalSugerido $.Hoje)}}/mês</strong>{{end}}
+        {{if eq $situacao "vencida"}} · faltam {{brl .Falta}}{{end}}
+      </p>
+      <footer class="meta-acoes">
+        <form method="POST" action="/planejamento/metas/{{.ID}}/aportes" class="meta-aporte">
+          <input type="text" inputmode="decimal" name="valor" placeholder="Valor" aria-label="Valor do aporte em {{.Nome}}" required>
+          <label class="meta-retirada"><input type="checkbox" name="retirada"> retirada</label>
+          <button type="submit" class="btn-action">Registrar</button>
+        </form>
+        <form method="POST" action="/planejamento/metas/{{.ID}}/delete" onsubmit="return confirm('Excluir a meta {{.Nome}} e os aportes dela?')">
+          <button type="submit" class="btn-action danger" title="Excluir meta">🗑️</button>
+        </form>
+      </footer>
+    </article>
+    {{end}}
+  </div>
+  {{else}}
+  <p class="muted">Nenhuma meta ainda. Crie uma (viagem, carro, entrada de imóvel...) em <strong>+ Nova meta</strong>: o sistema mostra quanto guardar por mês até o prazo.</p>
+  {{end}}
+</section>
+
+<dialog id="dialog-nova-meta">
+  <article>
+    <header>
+      <button data-close-dialog aria-label="Fechar"></button>
+      <h3>Nova meta</h3>
+    </header>
+    <form method="POST" action="/planejamento/metas">
+      <label>Nome
+        <input type="text" name="nome" maxlength="80" placeholder="Ex.: Viagem para o Chile" required>
+      </label>
+      <div class="grid">
+        <label>Valor-alvo
+          <input type="text" inputmode="decimal" name="valor_alvo" placeholder="Ex.: 15.000,00" required>
+        </label>
+        <label>Prazo
+          <input type="month" name="prazo" required>
+        </label>
+      </div>
+      <small class="muted">O aporte sugerido divide o que falta pelos meses até o prazo, contando o mês atual. Registre cada valor guardado na própria meta.</small>
+      <footer>
+        <button data-close-dialog type="button" class="secondary">Cancelar</button>
+        <button type="submit">Criar meta</button>
+      </footer>
+    </form>
+  </article>
+</dialog>
 
 <!-- ====== SAÚDE FINANCEIRA ====== -->
 <section class="dash-section">

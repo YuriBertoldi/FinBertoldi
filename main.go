@@ -106,6 +106,9 @@ func main() {
 
 	// Planejamento
 	mux.HandleFunc("GET /planejamento", auth.ScreenProtected(db, "planejamento", handler.HandlePlanejamento(db)))
+	mux.HandleFunc("POST /planejamento/metas", auth.ScreenProtected(db, "planejamento", handler.HandleCreateMeta(db)))
+	mux.HandleFunc("POST /planejamento/metas/{id}/aportes", auth.ScreenProtected(db, "planejamento", handler.HandleAporteNaMeta(db)))
+	mux.HandleFunc("POST /planejamento/metas/{id}/delete", auth.ScreenProtected(db, "planejamento", handler.HandleDeleteMeta(db)))
 
 	// Cadastros
 	mux.HandleFunc("GET /cadastros", auth.ScreenProtected(db, "cadastros", handler.HandleCadastros(db)))

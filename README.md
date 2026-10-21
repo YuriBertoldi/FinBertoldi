@@ -73,7 +73,7 @@ Browser (HTMX) ──── :443 ────► Caddy (HTTPS)
 |--------|-----------|
 | Backend | Go 1.27 — `net/http` + `html/template` (stdlib puro, sem frameworks) |
 | Frontend | HTMX 1.9.12 · Chart.js 4.4.1 · Pico CSS v2 · CSS custom (dark/glassmorphism) |
-| Banco de dados | PostgreSQL 16 · lib/pq · 21 migrations automaticas |
+| Banco de dados | PostgreSQL 16 · lib/pq · 22 migrations automaticas |
 | Autenticacao | Sessoes HTTP-only + bcrypt · recuperacao de senha via email · troca de senha encerra as outras sessoes |
 | Importacao | excelize/v2 (XLSX) · ofxgo (OFX/QFX) · CSV com auto-deteccao |
 | Integracoes | Pluggy API · BCB · AwesomeAPI · BrasilAPI · Telegram Bot · Google Sheets · SMTP (Gmail) |
@@ -93,6 +93,7 @@ Browser (HTMX) ──── :443 ────► Caddy (HTTPS)
 - **Investimentos** — por instituicao/tipo, totais por categoria
 - **Reserva de emergencia** — depositos e retiradas com saldo
 - **Emprestimos** — devo/me devem, quitacao total ou parcial
+- **Metas financeiras** — objetivo com valor-alvo e prazo (no Planejamento); aportes e retiradas registrados na meta, progresso, quanto falta e quanto guardar por mes ate o prazo
 - **Planejamento FIRE** — taxa de poupanca, metas FIRE (conservador/moderado/agressivo), reserva ideal 6-12 meses
 
 ### Bancario
@@ -163,7 +164,7 @@ No primeiro startup, um usuario admin e criado automaticamente com senha aleator
 docker compose logs app | grep "admin criado"
 ```
 
-> As 21 migrations do banco sao executadas automaticamente.
+> As 22 migrations do banco sao executadas automaticamente.
 
 ---
 
@@ -212,7 +213,7 @@ finBertoldi/
 ├── docker-compose.prod.yml          # Producao
 ├── internal/
 │   ├── models/models.go             # Structs de dominio e page data
-│   ├── store/                       # Queries SQL, um arquivo por dominio + migrations.go (v1-v21)
+│   ├── store/                       # Queries SQL, um arquivo por dominio + migrations.go (v1-v22)
 │   ├── auth/
 │   │   ├── auth.go                  # Middlewares + sessoes + bcrypt
 │   │   └── email.go                 # Envio de e-mail SMTP (Gmail embutido)
