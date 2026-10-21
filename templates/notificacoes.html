@@ -58,6 +58,19 @@
 
     {{with .Notificacoes.UltimoEnvioFmt}}<p class="muted">Último envio automático: {{.}}</p>{{end}}
 
+    <fieldset>
+      <legend>🎯 Alerta de orçamento</legend>
+      <p class="hint">💡 Avisa quando uma categoria com orçamento chega a <strong>80%</strong> e quando passa de <strong>100%</strong> no mês — uma vez por faixa, por categoria. O orçamento é definido ao editar a categoria em <a href="/cadastros?tab=categorias">Cadastros → Categorias</a>.</p>
+      <label>
+        <input type="checkbox" name="alerta_orcamento_email" role="switch" {{if .Notificacoes.AlertaOrcamentoEmail}}checked{{end}}>
+        📧 Avisar por e-mail
+      </label>
+      <label>
+        <input type="checkbox" name="alerta_orcamento_telegram" role="switch" {{if .Notificacoes.AlertaOrcamentoTelegram}}checked{{end}}>
+        ✈️ Avisar pelo Telegram <small class="muted">(usa o mesmo Chat ID acima)</small>
+      </label>
+    </fieldset>
+
     <button type="submit">Salvar preferências</button>
   </form>
 </article>

@@ -19,6 +19,7 @@
 | `integracoes.go` · `integracao_pluggy.go` | Configuracao e chave-valor das integracoes, itens Pluggy |
 | `dados_economicos.go` · `feriados.go` | Dados coletados pelas integracoes gratuitas |
 | `dashboard_widgets.go` | Layout dos widgets do dashboard |
+| `alertas_de_orcamento.go` | Quem pediu alerta de orcamento e quais faixas ja foram avisadas no mes |
 | `orcamentos.go` | Orcamento mensal por categoria: `DefinirOrcamentoMensalDaCategoria` e `OrcamentosDoMes` (gasto = despesas fixas ativas + debitos do extrato no mes, sem transacoes convertidas ou ignoradas) |
 | `notificacoes.go` | Envio mensal das contas |
 
@@ -38,7 +39,7 @@ Camada de acesso a dados. Todas as queries SQL do sistema estao neste pacote. Ta
 1. `DATABASE_URL` (prioridade, usado em producao)
 2. Variaveis individuais: `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASS`, `DB_NAME`
 
-## Migrations (v1-v19)
+## Migrations (v1-v20)
 
 Executadas automaticamente no startup via `RunMigrations()`. Cada migration e registrada na tabela `schema_migrations` (version + nome + data de aplicacao). Idempotentes: se ja aplicada, e ignorada.
 
@@ -63,6 +64,7 @@ Executadas automaticamente no startup via `RunMigrations()`. Cada migration e re
 | 17 | user_notificacoes | Preferencias de envio mensal das contas (e-mail/Telegram, dia, mes atual/seguinte) |
 | 18 | dashboard_widgets_coluna | Coluna (esquerda/direita) escolhida para cada widget |
 | 19 | orcamento_mensal_por_categoria | Coluna `orcamento_mensal` em `categorias` (NULL = sem orcamento; CHECK > 0) |
+| 20 | alerta_de_orcamento | Preferencias `alerta_orcamento_email`/`_telegram` em `user_notificacoes` e tabela `alertas_de_orcamento_enviados` (um registro por usuario, categoria, mes e faixa) |
 
 ## Funcoes por dominio
 
@@ -172,6 +174,14 @@ Executadas automaticamente no startup via `RunMigrations()`. Cada migration e re
 - `SaveNotificacoes(db, userID, n)` — UPSERT das preferencias
 - `GetNotificacoesPendentes(db, hoje, mes)` — usuarios ativos com envio ligado cujo dia e hoje (ou o ultimo dia do mes, se o dia escolhido nao existir) e que ainda nao receberam no mes
 - `MarcarEnvioMensal(db, userID, mes)` — registra o envio do mes
+
+### Orcamento e alerta de orcamento
+- `DefinirOrcamentoMensalDaCategoria(db, fid, categoriaID, limite)` — grava ou remove (nil) o limite
+- `OrcamentosDoMes(db, fid, mes)` — gasto de cada categoria com orcamento: despesas fixas ativas + debitos do extrato no mes, sem transacoes `convertida` ou `ignorada`
+- `UsuariosComAlertaDeOrcamento(db)` — usuarios ativos com alerta por e-mail ou Telegram ligado
+- `AlertasDeOrcamentoEnviados(db, userID, mes)` / `RegistrarAlertaDeOrcamentoEnviado(...)` — o que ja foi avisado no mes, por categoria e faixa
+
+O envio fica em `internal/contas/alerta_de_orcamento.go` (`EnviarAlertasDeOrcamento`), chamado pelo mesmo agendador de hora em hora do envio mensal, a partir das 8h. Cada faixa (80% e acima de 100%) sai uma vez por categoria e mes; ao estourar, o aviso de 80% e dado como enviado.
 
 ### Widgets do dashboard
 - `GetDashboardLayout(db, userID)` — todos os widgets na ordem salva, com coluna e visibilidade; widgets nao salvos entram no fim com o padrao do `widgetCatalogo`

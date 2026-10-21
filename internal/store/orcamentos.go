@@ -23,7 +23,7 @@ func DefinirOrcamentoMensalDaCategoria(db *sql.DB, fid, categoriaID int, limite 
 //     na primeira soma; "ignorada" fica de fora por definicao.
 func OrcamentosDoMes(db *sql.DB, fid int, mes time.Time) ([]models.OrcamentoDaCategoria, error) {
 	linhas, err := db.Query(`
-		SELECT c.nome, c.cor, c.orcamento_mensal,
+		SELECT c.id, c.nome, c.cor, c.orcamento_mensal,
 		       COALESCE((SELECT SUM(df.valor) FROM despesas_fixas df
 		                 WHERE df.family_id = c.family_id AND df.ativa AND df.categoria = c.nome), 0),
 		       COALESCE((SELECT SUM(ABS(t.valor)) FROM transacoes_banco t
@@ -41,7 +41,7 @@ func OrcamentosDoMes(db *sql.DB, fid int, mes time.Time) ([]models.OrcamentoDaCa
 	var orcamentos []models.OrcamentoDaCategoria
 	for linhas.Next() {
 		var orcamento models.OrcamentoDaCategoria
-		if err := linhas.Scan(&orcamento.Categoria, &orcamento.Cor, &orcamento.Limite,
+		if err := linhas.Scan(&orcamento.CategoriaID, &orcamento.Categoria, &orcamento.Cor, &orcamento.Limite,
 			&orcamento.GastoEmDespesasFixas, &orcamento.GastoEmTransacoes); err != nil {
 			return nil, err
 		}

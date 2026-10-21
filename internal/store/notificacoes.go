@@ -9,18 +9,23 @@ import (
 
 func GetNotificacoes(db *sql.DB, userID int) models.Notificacoes {
 	n := models.Notificacoes{DiaEnvio: 1}
-	db.QueryRow(`SELECT email_mensal, telegram_mensal, telegram_chat_id, dia_envio, mes_seguinte, ultimo_envio
+	db.QueryRow(`SELECT email_mensal, telegram_mensal, telegram_chat_id, dia_envio, mes_seguinte, ultimo_envio,
+		       alerta_orcamento_email, alerta_orcamento_telegram
 		FROM user_notificacoes WHERE user_id=$1`, userID).
-		Scan(&n.EmailMensal, &n.TelegramMensal, &n.TelegramChatID, &n.DiaEnvio, &n.MesSeguinte, &n.UltimoEnvio)
+		Scan(&n.EmailMensal, &n.TelegramMensal, &n.TelegramChatID, &n.DiaEnvio, &n.MesSeguinte, &n.UltimoEnvio,
+			&n.AlertaOrcamentoEmail, &n.AlertaOrcamentoTelegram)
 	return n
 }
 
 func SaveNotificacoes(db *sql.DB, userID int, n models.Notificacoes) error {
 	_, err := db.Exec(`
-		INSERT INTO user_notificacoes (user_id, email_mensal, telegram_mensal, telegram_chat_id, dia_envio, mes_seguinte)
-		VALUES ($1,$2,$3,$4,$5,$6)
-		ON CONFLICT (user_id) DO UPDATE SET email_mensal=$2, telegram_mensal=$3, telegram_chat_id=$4, dia_envio=$5, mes_seguinte=$6`,
-		userID, n.EmailMensal, n.TelegramMensal, strings.TrimSpace(n.TelegramChatID), n.DiaEnvio, n.MesSeguinte)
+		INSERT INTO user_notificacoes (user_id, email_mensal, telegram_mensal, telegram_chat_id, dia_envio, mes_seguinte,
+		                               alerta_orcamento_email, alerta_orcamento_telegram)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+		ON CONFLICT (user_id) DO UPDATE SET email_mensal=$2, telegram_mensal=$3, telegram_chat_id=$4, dia_envio=$5,
+		                                    mes_seguinte=$6, alerta_orcamento_email=$7, alerta_orcamento_telegram=$8`,
+		userID, n.EmailMensal, n.TelegramMensal, strings.TrimSpace(n.TelegramChatID), n.DiaEnvio, n.MesSeguinte,
+		n.AlertaOrcamentoEmail, n.AlertaOrcamentoTelegram)
 	return err
 }
 

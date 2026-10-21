@@ -24,7 +24,14 @@ type Resultado struct {
 
 // Enviar manda as contas do mês do usuário pelos canais pedidos.
 func Enviar(db *sql.DB, u *models.User, n models.Notificacoes, mes time.Time, email, telegram bool) []Resultado {
-	txt := Texto(db, u.FamilyID, mes)
+	assunto := "Contas de " + MesDisplay(mes) + " - FinBertoldi"
+	return enviarMensagem(db, u, n, assunto, Texto(db, u.FamilyID, mes), email, telegram)
+}
+
+// enviarMensagem manda um texto no formato do WhatsApp (``` e *) pelos canais
+// pedidos: por e-mail para o endereco do usuario e pelo bot do Telegram da
+// familia, no chat do usuario (ou no da familia, se ele nao informou o dele).
+func enviarMensagem(db *sql.DB, u *models.User, n models.Notificacoes, assunto, txt string, email, telegram bool) []Resultado {
 	var res []Resultado
 
 	if email {
@@ -33,7 +40,6 @@ func Enviar(db *sql.DB, u *models.User, n models.Notificacoes, mes time.Time, em
 		case !auth.SMTPConfigurado():
 			r.Erro = "envio de e-mail não configurado no servidor (SMTP)"
 		default:
-			assunto := "Contas de " + MesDisplay(mes) + " - FinBertoldi"
 			if err := auth.SendEmail(u.Email, assunto, EmailHTML(txt)); err != nil {
 				r.Erro = "falha ao enviar: " + err.Error()
 			}
@@ -102,12 +108,15 @@ func EmailHTML(txt string) string {
 </body></html>`
 }
 
-// StartScheduler verifica de hora em hora quem deve receber o envio mensal hoje.
+// StartScheduler verifica de hora em hora quem deve receber o envio mensal hoje
+// e quais orcamentos passaram de 80% ou de 100%.
 func StartScheduler(db *sql.DB) {
 	go func() {
 		time.Sleep(15 * time.Second)
 		for {
-			EnviarMensais(db, time.Now())
+			agora := time.Now()
+			EnviarMensais(db, agora)
+			EnviarAlertasDeOrcamento(db, agora)
 			time.Sleep(time.Hour)
 		}
 	}()
