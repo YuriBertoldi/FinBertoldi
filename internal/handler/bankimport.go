@@ -458,13 +458,16 @@ func HandleTransacaoVincular(db *sql.DB) http.HandlerFunc {
 		u := auth.CurrentUser(r)
 		fid := u.FamilyID
 		id := parseInt(r.PathValue("id"))
-		destino := r.FormValue("destino") // "despesa" ou "receita"
+		destino := r.FormValue("destino") // "despesa", "parcelamento" ou "receita"
 		vinculoID := parseInt(r.FormValue("vinculo_id"))
 
 		var err error
-		if destino == "despesa" {
+		switch destino {
+		case "despesa":
 			err = store.VincularTransacaoDespesa(db, fid, id, vinculoID)
-		} else {
+		case "parcelamento":
+			err = store.VincularTransacaoParcelamento(db, fid, id, vinculoID)
+		default:
 			err = store.VincularTransacaoReceita(db, fid, id, vinculoID)
 		}
 		if err != nil {
@@ -554,8 +557,8 @@ func HandleTransacaoMatches(db *sql.DB) http.HandlerFunc {
 			despesas, _ := store.BuscarMatchesDespesas(db, fid, txn.Valor, txn.Descricao)
 			parcelas, _ := store.BuscarMatchesParcelamentos(db, fid, txn.Valor, txn.Data)
 			grupos = []grupoDeSugestoes{
-				{Titulo: "Despesas", Sugestoes: sugestoesDeDespesa(despesas)},
-				{Titulo: "Parcelamentos", Sugestoes: sugestoesDeDespesa(parcelas)},
+				{Titulo: "Despesas", Sugestoes: sugestoesDeVinculo(despesas, "despesa")},
+				{Titulo: "Parcelamentos", Sugestoes: sugestoesDeVinculo(parcelas, "parcelamento")},
 			}
 		} else {
 			receitas, _ := store.BuscarMatchesReceitas(db, fid, txn.Valor, txn.Data)
@@ -575,7 +578,7 @@ func HandleTransacaoMatches(db *sql.DB) http.HandlerFunc {
 
 // sugestaoDeVinculo e uma linha da lista "vincular a" de uma transacao.
 type sugestaoDeVinculo struct {
-	Destino string // "despesa" ou "receita": o que o formulario envia
+	Destino string // "despesa", "parcelamento" ou "receita": o que o formulario envia
 	ID      int
 	Nome    string
 	Valor   float64
@@ -588,10 +591,12 @@ type grupoDeSugestoes struct {
 	Sugestoes []sugestaoDeVinculo
 }
 
-func sugestoesDeDespesa(encontradas []store.MatchDespesa) []sugestaoDeVinculo {
+// sugestoesDeVinculo converte despesas ou parcelamentos encontrados; destino
+// e o que o formulario envia ("despesa" ou "parcelamento").
+func sugestoesDeVinculo(encontradas []store.MatchDespesa, destino string) []sugestaoDeVinculo {
 	var sugestoes []sugestaoDeVinculo
 	for _, m := range encontradas {
-		sugestoes = append(sugestoes, sugestaoDeVinculo{Destino: "despesa", ID: m.ID, Nome: m.Nome, Valor: m.Valor, Score: m.Score})
+		sugestoes = append(sugestoes, sugestaoDeVinculo{Destino: destino, ID: m.ID, Nome: m.Nome, Valor: m.Valor, Score: m.Score})
 	}
 	return sugestoes
 }

@@ -73,7 +73,7 @@ Browser (HTMX) ──── :443 ────► Caddy (HTTPS)
 |--------|-----------|
 | Backend | Go 1.27 — `net/http` + `html/template` (stdlib puro, sem frameworks) |
 | Frontend | HTMX 1.9.12 · Chart.js 4.4.1 · Pico CSS v2 · CSS custom (dark/glassmorphism) |
-| Banco de dados | PostgreSQL 16 · lib/pq · 22 migrations automaticas |
+| Banco de dados | PostgreSQL 16 · lib/pq · 23 migrations automaticas |
 | Autenticacao | Sessoes HTTP-only + bcrypt · recuperacao de senha via email · troca de senha encerra as outras sessoes |
 | Importacao | excelize/v2 (XLSX) · ofxgo (OFX/QFX) · CSV com auto-deteccao |
 | Integracoes | Pluggy API · BCB · AwesomeAPI · BrasilAPI · Telegram Bot · Google Sheets · SMTP (Gmail) |
@@ -165,7 +165,7 @@ No primeiro startup, um usuario admin e criado automaticamente com senha aleator
 docker compose logs app | grep "admin criado"
 ```
 
-> As 22 migrations do banco sao executadas automaticamente.
+> As 23 migrations do banco sao executadas automaticamente.
 
 ---
 
@@ -214,7 +214,7 @@ finBertoldi/
 ├── docker-compose.prod.yml          # Producao
 ├── internal/
 │   ├── models/models.go             # Structs de dominio e page data
-│   ├── store/                       # Queries SQL, um arquivo por dominio + migrations.go (v1-v22)
+│   ├── store/                       # Queries SQL, um arquivo por dominio + migrations.go (v1-v23)
 │   ├── auth/
 │   │   ├── auth.go                  # Middlewares + sessoes + bcrypt
 │   │   └── email.go                 # Envio de e-mail SMTP (Gmail embutido)

@@ -362,7 +362,7 @@ Metas financeiras da familia (v22). O total guardado e a soma de `metas_aportes.
 
 ## Migrations
 
-`RunMigrations()` roda no startup do app, e idempotente e registra cada versao em `schema_migrations`. Versao atual: **22**.
+`RunMigrations()` roda no startup do app, e idempotente e registra cada versao em `schema_migrations`. Versao atual: **23**.
 
 | Versao | Nome | O que faz |
 |--------|------|-----------|
@@ -373,6 +373,7 @@ Metas financeiras da familia (v22). O total guardado e a soma de `metas_aportes.
 | 20 | alerta_de_orcamento | Alerta de orcamento por e-mail/Telegram |
 | 21 | regras_de_categorizacao | Regras de categorizacao automatica + categoria original do banco |
 | 22 | metas_financeiras | Metas financeiras e seus aportes |
+| 23 | transacao_vinculada_a_parcelamento | Vinculo de transacao com parcelamento em coluna propria |
 
 ## Sessoes e troca de senha
 

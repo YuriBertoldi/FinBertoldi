@@ -2,6 +2,7 @@ package store
 
 import (
 	"database/sql"
+	"errors"
 	"fincontrol/internal/models"
 	"fmt"
 	"math"
@@ -38,7 +39,7 @@ func CreateTransacaoBancoBatch(db *sql.DB, fid int, txns []models.TransacaoBanco
 
 func GetTransacoesBanco(db *sql.DB, fid int, mes, origem, status, banco string) ([]models.TransacaoBanco, error) {
 	q := `SELECT id, data, descricao, valor, tipo, categoria, origem, banco, fit_id, status,
-	             despesa_id, receita_id, pluggy_item_id, criado_em
+	             despesa_id, receita_id, parcelamento_id, pluggy_item_id, criado_em
 	      FROM transacoes_banco WHERE family_id=$1`
 	args := []any{fid}
 	n := 2
@@ -72,7 +73,7 @@ func GetTransacoesBanco(db *sql.DB, fid int, mes, origem, status, banco string) 
 		var t models.TransacaoBanco
 		rows.Scan(&t.ID, &t.Data, &t.Descricao, &t.Valor, &t.Tipo, &t.Categoria,
 			&t.Origem, &t.Banco, &t.FitID, &t.Status,
-			&t.DespesaID, &t.ReceitaID, &t.PluggyItemID, &t.CriadoEm)
+			&t.DespesaID, &t.ReceitaID, &t.ParcelamentoID, &t.PluggyItemID, &t.CriadoEm)
 		list = append(list, t)
 	}
 	return list, nil
@@ -222,18 +223,38 @@ func CategorizarTransacao(db *sql.DB, fid, id int, categoria string) error {
 	return err
 }
 
-// VincularTransacaoDespesa vincula uma transação bancária a uma despesa existente
+// ErrVinculoNaoEncontrado: a transacao ou o registro de destino nao existe na familia.
+var ErrVinculoNaoEncontrado = errors.New("transação ou registro de destino não encontrado")
+
+// VincularTransacaoDespesa vincula uma transação bancária a uma despesa fixa da familia.
 func VincularTransacaoDespesa(db *sql.DB, fid, txnID, despesaID int) error {
-	_, err := db.Exec(`UPDATE transacoes_banco SET status='convertida', despesa_id=$1
-		WHERE id=$2 AND family_id=$3`, despesaID, txnID, fid)
-	return err
+	return vincularTransacao(db, fid, txnID, "despesa_id", "despesas_fixas", despesaID)
 }
 
-// VincularTransacaoReceita vincula uma transação bancária a uma receita existente
+// VincularTransacaoReceita vincula uma transação bancária a uma receita da familia.
 func VincularTransacaoReceita(db *sql.DB, fid, txnID, receitaID int) error {
-	_, err := db.Exec(`UPDATE transacoes_banco SET status='convertida', receita_id=$1
-		WHERE id=$2 AND family_id=$3`, receitaID, txnID, fid)
-	return err
+	return vincularTransacao(db, fid, txnID, "receita_id", "receitas", receitaID)
+}
+
+// VincularTransacaoParcelamento vincula uma transação bancária a um parcelamento da familia.
+func VincularTransacaoParcelamento(db *sql.DB, fid, txnID, parcelamentoID int) error {
+	return vincularTransacao(db, fid, txnID, "parcelamento_id", "parcelamentos", parcelamentoID)
+}
+
+// vincularTransacao grava o vinculo so se a transacao e o registro de destino
+// forem da familia. colunaDoVinculo e tabelaDeDestino sao constantes dos
+// chamadores acima, nunca vem do usuario.
+func vincularTransacao(db *sql.DB, fid, txnID int, colunaDoVinculo, tabelaDeDestino string, destinoID int) error {
+	resultado, err := db.Exec(`UPDATE transacoes_banco SET status='convertida', `+colunaDoVinculo+`=$1
+		WHERE id=$2 AND family_id=$3
+		  AND EXISTS (SELECT 1 FROM `+tabelaDeDestino+` WHERE id=$1 AND family_id=$3)`, destinoID, txnID, fid)
+	if err != nil {
+		return err
+	}
+	if linhasAlteradas, _ := resultado.RowsAffected(); linhasAlteradas == 0 {
+		return ErrVinculoNaoEncontrado
+	}
+	return nil
 }
 
 // MatchDespesa representa um match entre transação e despesa
@@ -257,7 +278,9 @@ type MatchReceita struct {
 
 // BuscarMatchesDespesas busca despesas que combinam com a transação por valor e nome
 func BuscarMatchesDespesas(db *sql.DB, fid int, valor float64, descricao string) ([]MatchDespesa, error) {
-	// Busca despesas com valor similar (±20%) e ativas
+	// Busca despesas com valor similar (±20%) e ativas. Debito chega negativo
+	// do extrato; despesa e cadastrada positiva.
+	valor = math.Abs(valor)
 	margem := valor * 0.20
 	rows, err := db.Query(`SELECT id, nome, valor, categoria
 		FROM despesas_fixas WHERE family_id=$1 AND ativa=true
@@ -285,6 +308,7 @@ func BuscarMatchesDespesas(db *sql.DB, fid int, valor float64, descricao string)
 
 // BuscarMatchesReceitas busca receitas que combinam com a transação por valor e data
 func BuscarMatchesReceitas(db *sql.DB, fid int, valor float64, data time.Time) ([]MatchReceita, error) {
+	valor = math.Abs(valor)
 	margem := valor * 0.20
 	rows, err := db.Query(`SELECT id, descricao, valor, data, tipo
 		FROM receitas WHERE family_id=$1
@@ -313,7 +337,10 @@ func BuscarMatchesReceitas(db *sql.DB, fid int, valor float64, data time.Time) (
 
 // BuscarMatchesParcelamentos busca parcelas que combinam por valor no mês da transação
 func BuscarMatchesParcelamentos(db *sql.DB, fid int, valor float64, data time.Time) ([]MatchDespesa, error) {
-	mes := data.Format("2006-01")
+	// parcelamentos_mes.mes e DATE (primeiro dia do mes); o texto "2026-10"
+	// nao e data valida no PostgreSQL. Debito chega negativo; a parcela, positiva.
+	mes := primeiroDiaDoMes(data)
+	valor = math.Abs(valor)
 	margem := valor * 0.20
 	rows, err := db.Query(`SELECT p.id, p.descricao, p.valor_parcela, COALESCE(p.descricao,'')
 		FROM parcelamentos p
@@ -342,7 +369,7 @@ func BuscarMatchesParcelamentos(db *sql.DB, fid int, valor float64, data time.Ti
 
 // DesvincularTransacao remove a vinculação de uma transação
 func DesvincularTransacao(db *sql.DB, fid, txnID int) error {
-	_, err := db.Exec(`UPDATE transacoes_banco SET status='pendente', despesa_id=NULL, receita_id=NULL
+	_, err := db.Exec(`UPDATE transacoes_banco SET status='pendente', despesa_id=NULL, receita_id=NULL, parcelamento_id=NULL
 		WHERE id=$1 AND family_id=$2`, txnID, fid)
 	return err
 }
@@ -363,7 +390,7 @@ func AutoMatchTransacoes(db *sql.DB, fid int) (matched int, err error) {
 			}
 			pMatches, _ := BuscarMatchesParcelamentos(db, fid, t.Valor, t.Data)
 			if len(pMatches) > 0 && pMatches[0].Score >= 95 {
-				VincularTransacaoDespesa(db, fid, t.ID, pMatches[0].ID)
+				VincularTransacaoParcelamento(db, fid, t.ID, pMatches[0].ID)
 				matched++
 			}
 		} else {

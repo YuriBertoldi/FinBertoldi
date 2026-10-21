@@ -473,6 +473,16 @@ var migrations = []migration{
 			)`,
 		},
 	},
+	{
+		version: 23,
+		name:    "transacao_vinculada_a_parcelamento",
+		stmts: []string{
+			// Antes o vinculo com parcelamento gravava o id em despesa_id, que
+			// aponta para despesas_fixas.
+			`ALTER TABLE transacoes_banco ADD COLUMN IF NOT EXISTS parcelamento_id INTEGER
+				REFERENCES parcelamentos(id) ON DELETE SET NULL`,
+		},
+	},
 }
 
 // RunMigrations executa as migrations pendentes registrando cada uma em schema_migrations.
