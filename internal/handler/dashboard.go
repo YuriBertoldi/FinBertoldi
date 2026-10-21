@@ -10,6 +10,9 @@ import (
 	"net/http"
 )
 
+// mesesDaProjecao e o horizonte do fluxo de caixa projetado (dashboard e relatorio).
+const mesesDaProjecao = 12
+
 func HandleDashboard(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		fid := auth.CurrentUser(r).FamilyID
@@ -37,6 +40,10 @@ func HandleDashboard(db *sql.DB) http.HandlerFunc {
 		orcamentos, err := store.OrcamentosDoMes(db, fid, mes)
 		if err != nil {
 			log.Printf("orcamentos do mes: %v", err)
+		}
+		projecao, err := store.ProjecaoDoFluxoDeCaixa(db, fid, mes, mesesDaProjecao)
+		if err != nil {
+			log.Printf("projecao do fluxo de caixa: %v", err)
 		}
 
 		// Reserva de emergência conta como investimento no total
@@ -83,6 +90,8 @@ func HandleDashboard(db *sql.DB) http.HandlerFunc {
 			WidgetsEsquerda: esquerda,
 			WidgetsDireita:  direita,
 			Orcamentos:      orcamentos,
+			Projecao:        projecao,
+			MesNoVermelho:   models.PrimeiroMesNoVermelho(projecao),
 		})
 	}
 }
